@@ -18,6 +18,8 @@
 
 module nucular.threadpool;
 
+import std.stdio;
+
 import std.container;
 import std.algorithm;
 import std.array;
@@ -42,6 +44,10 @@ class ThreadPool {
 				_spawnWorker();
 			}
 		}
+	}
+
+	~this () {
+		shutdown();
 	}
 
 	void resize (int min, int max = 0) {
