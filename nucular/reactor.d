@@ -19,6 +19,7 @@
 module nucular.reactor;
 
 import nucular.threadpool;
+import nucular.pipe;
 import nucular.descriptor;
 import nucular.signature;
 import nucular.timer;
@@ -27,10 +28,13 @@ import nucular.periodictimer;
 private Timer[]         timers;
 private PeriodicTimer[] periodic_timers;
 private Descriptor[]    descriptors;
+private Pipe            pipe;
 
 shared Threadpool threadpool;
 
 void run (void delegate () block) {
+	pipe = new Pipe;
+
 	block();
 }
 
@@ -56,6 +60,7 @@ PeriodicTimer addPeriodicTimer (float time, void delegate () block) {
 	auto timer = new PeriodicTimer(time, block);
 
 	periodic_timers.push timer;
+
 	wake_up();
 
 	return timer;
