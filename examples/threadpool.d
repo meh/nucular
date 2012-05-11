@@ -2,10 +2,14 @@ import std.stdio;
 import nucular.threadpool;
 
 void main () {
-	auto pool = new ThreadPool;
+	auto pool1 = new ThreadPool;
+	auto pool2 = new ThreadPool;
 
-	pool.process({ writeln(";)"); });
-	pool.shutdown();
+	pool1.process({ writeln(";)"); });
+	pool2.process({ writeln(":("); });
+
+	pool1.shutdown();
+	pool2.shutdown();
 
 	writeln("D:");
 }

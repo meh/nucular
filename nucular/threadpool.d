@@ -18,8 +18,6 @@
 
 module nucular.threadpool;
 
-import std.stdio;
-
 import std.container;
 import std.algorithm;
 import std.array;
@@ -75,7 +73,7 @@ class ThreadPool {
 
 	@property backlog () {
 		synchronized (_mutex) {
-			return count(_todo[]);
+			return _todo.length;
 		}
 	}
 
@@ -91,6 +89,10 @@ class ThreadPool {
 
 	void shutdown () {
 		synchronized (_mutex) {
+			if (_shutdown) {
+				return;
+			}
+
 			_shutdown = true;
 
 			_condition.notifyAll();
@@ -191,7 +193,6 @@ private:
 				}
 
 				if (!keep_going) {
-					writeln("XD");
 					break;
 				}
 
@@ -209,7 +210,7 @@ private:
 
 			synchronized (_mutex) {
 				_spawned--;
-				_threads = filter!((a) { return a != thread; })(_threads).array;
+				_threads = _threads.filter!((a) { return a != thread; }).array;
 			}
 		});
 
