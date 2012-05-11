@@ -44,10 +44,6 @@ class ThreadPool {
 		}
 	}
 
-	~this () {
-		shutdown();
-	}
-
 	void resize (int min, int max = 0) {
 		if (max == 0) {
 			max = min;

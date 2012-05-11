@@ -8,8 +8,7 @@ void main () {
 	pool1.process({ writeln(";)"); });
 	pool2.process({ writeln(":("); });
 
+	// shutdown has to be done, otherwise the process won't end properly
 	pool1.shutdown();
 	pool2.shutdown();
-
-	writeln("D:");
 }
