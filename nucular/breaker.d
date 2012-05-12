@@ -18,42 +18,64 @@
 
 module nucular;
 
-import std.datetime;
-import nucular.reactor;
+import core.memory;
+import nucular.descriptor;
+import nucular.available;
 
-class Timer {
-	this (Duration after, void delegate () block) {
-		_after    = after;
-		_block    = block;
-		_executed = false;
-		_started_at = Clock.currTime();
-	}
+version (Posix) {
+	extern (C) int pipe (ref int[2]);
+}
+else version (Windows) {
+	static assert (0);
+}
+else {
+	static assert (0);
+}
 
-	void execute () {
-		if (_executed) {
-			return;
+class Breaker {
+	version (Posix) {
+		this () {
+			int[2] pipes;
+
+			.pipe(pipes);
+
+			_read  = new Descriptor(pipes[0]);
+			_write = new Descriptor(pipes[1]);
+
+			_read.asynchronous  = true;
+			_write.asynchronous = true;
 		}
 
-		_executed = true;
+		~this () {
+			.close(cast (int) _read);
+			.close(cast (int) _write);
+		}
 
-		_block();
+		void act () {
+			_write.write("x");
+		}
+
+		void flush () {
+			try {
+				while (_read.read(1024)) {
+					continue;
+				}
+			}
+			catch (ErrnoException e) { }
+		}
+
+		void wait () {
+			available([_read]);
+		}
+
+	private:
+		Descriptor _read;
+		Descriptor _write;
 	}
-
-	void cancel () {
-		cancelTimer(this);
+	else version (Windows) {
+		static assert (0);
 	}
-
-	@property Duration after () {
-		return _after;
+	else {
+		static assert (0);
 	}
-
-	@property SysTime startedAt () {
-		return _started_at;
-	}
-
-protected:
-	bool             _executed;
-	Duration         _after;
-	SysTime          _started_at;
-	void delegate () _block;
 }

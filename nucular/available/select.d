@@ -18,42 +18,11 @@
 
 module nucular;
 
-import std.datetime;
-import nucular.reactor;
+import core.time;
+import nucular.descriptor;
 
-class Timer {
-	this (Duration after, void delegate () block) {
-		_after    = after;
-		_block    = block;
-		_executed = false;
-		_started_at = Clock.currTime();
-	}
+extern (C) int select (int, void*, void*, void*, void*);
 
-	void execute () {
-		if (_executed) {
-			return;
-		}
+Descriptor[] available (Descriptor[] descriptors, Duration sleep = null) {
 
-		_executed = true;
-
-		_block();
-	}
-
-	void cancel () {
-		cancelTimer(this);
-	}
-
-	@property Duration after () {
-		return _after;
-	}
-
-	@property SysTime startedAt () {
-		return _started_at;
-	}
-
-protected:
-	bool             _executed;
-	Duration         _after;
-	SysTime          _started_at;
-	void delegate () _block;
 }

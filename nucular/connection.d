@@ -18,42 +18,23 @@
 
 module nucular;
 
-import std.datetime;
-import nucular.reactor;
-
-class Timer {
-	this (Duration after, void delegate () block) {
-		_after    = after;
-		_block    = block;
-		_executed = false;
-		_started_at = Clock.currTime();
+class Connection {
+	this (Descriptor descriptor) {
+		_descriptor = descriptor;
 	}
 
-	void execute () {
-		if (_executed) {
-			return;
-		}
+	void send_data (string data) {
 
-		_executed = true;
-
-		_block();
 	}
 
-	void cancel () {
-		cancelTimer(this);
+	void close_connection (bool after_writing = false) {
+
 	}
 
-	@property Duration after () {
-		return _after;
+	void close_connection_after_writing () {
+		close_connection(true);
 	}
 
-	@property SysTime startedAt () {
-		return _started_at;
-	}
-
-protected:
-	bool             _executed;
-	Duration         _after;
-	SysTime          _started_at;
-	void delegate () _block;
+private:
+	Descriptor _descriptor;
 }

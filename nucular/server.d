@@ -16,60 +16,17 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular.pipe;
+module nucular;
 
-extern (C) int pipe (ref int[2]);
-extern (C) long write (int, void*, ulong);
-extern (C) long read (int, void*, ulong);
-extern (C) int close (int);
-
-class Pipe {
-	struct Descriptors {
-		int read;
-		int write;
-	}
-
-	this () {
-		int[2] pipes;
-
-		pipe(pipes);
-
-		_descriptors = Descriptors(pipes[0], pipes[1]);
-	}
-
-	~this () {
-		close();
-	}
-
-	@property descriptors () {
-		return _descriptors;
-	}
-
-	string read (ulong length) {
-		auto buffer = new string(length);
-
-		.read(_descriptors.read, cast (void*) buffer.ptr, length);
-
-		return buffer;
-	}
-
-	long write (string text) {
-		return .write(_descriptors.write, cast (void*) text.ptr, text.length);
-	}
-
-	void close () {
-		if (_closed) {
-			return;
-		}
-
-		_closed = true;
-
-		.close(_descriptors.read);
-		.close(_descriptors.write);
+class Server {
+	this (string host, int port = 0) {
+		_host = host;
+		_port = port;
 	}
 
 private:
-	Descriptors _descriptors;
+	string _host;
+	int    _port;
 
-	bool _closed;
+	Descriptor _listener;
 }

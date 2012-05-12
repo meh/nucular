@@ -16,27 +16,47 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular.periodictimer;
+module nucular;
+
+import std.datetime;
+import nucular.reactor;
 
 class PeriodicTimer {
-	this (float time, void delegate () block) {
-		_time  = time;
-		_block = block;
+	this (Duration every, void function () block) {
+		_every      = every;
+		_block      = block;
+		_started_at = Clock.currTime();
+	}
+
+	~this () {
+		cancel();
 	}
 
 	void execute () {
 		_block();
+
+		_last_execution_at = Clock.currTime();
 	}
 
 	void cancel () {
-
+		cancelTimer(this);
 	}
 
-	@property float time () {
-		return _time;
+	@property Duration every () {
+		return _every;
+	}
+
+	@property SysTime lastExecutionAt () {
+		return _last_execution_at;
+	}
+
+	@property SysTime startedAt () {
+		return _started_at;
 	}
 
 private:
-	float            _time;
-	void delegate () _block;
+	Duration         _every;
+	SysTime          _started_at;
+	SysTime          _last_execution_at;
+	void function () _block;
 }

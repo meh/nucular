@@ -18,42 +18,15 @@
 
 module nucular;
 
-import std.datetime;
-import nucular.reactor;
-
-class Timer {
-	this (Duration after, void delegate () block) {
-		_after    = after;
-		_block    = block;
-		_executed = false;
-		_started_at = Clock.currTime();
-	}
-
-	void execute () {
-		if (_executed) {
-			return;
-		}
-
-		_executed = true;
-
-		_block();
-	}
-
-	void cancel () {
-		cancelTimer(this);
-	}
-
-	@property Duration after () {
-		return _after;
-	}
-
-	@property SysTime startedAt () {
-		return _started_at;
-	}
-
-protected:
-	bool             _executed;
-	Duration         _after;
-	SysTime          _started_at;
-	void delegate () _block;
+version (epoll) {
+	public import nucular.available.epoll;
+}
+else version (kqueue) {
+	public import nucular.available.kqueue;
+}
+else version (iocompletion) {
+	public import nucular.available.iocompletion;
+}
+else {
+	public import nucular.available.select;
 }

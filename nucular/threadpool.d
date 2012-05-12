@@ -18,8 +18,7 @@
 
 module nucular.threadpool;
 
-import std.stdio;
-
+import std.exception;
 import std.container;
 import std.algorithm;
 import std.array;
@@ -55,9 +54,7 @@ class ThreadPool {
 			max = min;
 		}
 
-		if (max < min) {
-			throw new Error("the max can't be smalled than the min");
-		}
+		enforce(max > min, "the max can't be smalled than the min");
 
 		_min = min;
 		_max = max;
@@ -106,9 +103,7 @@ class ThreadPool {
 	}
 
 	void process () {
-		if (!_default_block) {
-			throw new Error("there's no default callback");
-		}
+		enforce(_default_block, "there's no default callback");
 
 		process(cast (void function ()) _default_block);
 	}
@@ -123,9 +118,7 @@ class ThreadPool {
 	}
 
 	void processWith(T) (T data) {
-		if (!_default_block) {
-			throw new Error("there's no default callback");
-		}
+		enforce(_default_block, "there's no default callback");
 
 		processWith(data, cast (void function (T)) _default_block);
 	}
