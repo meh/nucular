@@ -16,46 +16,64 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
+module nucular.available.select;
+
 import core.time;
 import core.sys.posix.sys.select;
 import core.sys.posix.sys.time;
+import std.algorithm;
+import std.conv;
 
 import nucular.descriptor;
 
-Descriptor[] readable (Descriptor[] descriptors, Duration sleep = null) {
+Descriptor[] readable (Descriptor[] descriptors) {
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	if (sleep) {
-		timeval tv = { to!(time_t)(sleep.total!"seconds"()), to!(suseconds_t, sleep.fracSec.usecs) };
+	select(nfds, &set, null, null, null);
 
-		select(nfds, &set, null, null, &tv);
-	}
-	else {
-		select(nfds, &set, null, null, null);
-	}
+	return set.toDescriptors(descriptors);
 }
 
-Descriptor[] writable (Descriptor[] descriptors, Duration sleep = null) {
+Descriptor[] readable (Descriptor[] descriptors, Duration sleep) {
+	fd_set  set  = descriptors.toSet();
+	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
+
+	select(nfds, &set, null, null, &tv);
+
+	return set.toDescriptors(descriptors);
+}
+
+Descriptor[] writable (Descriptor[] descriptors) {
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	if (sleep) {
-		timeval tv = { to!(time_t)(sleep.total!"seconds"()), to!(suseconds_t, sleep.fracSec.usecs) };
+	select(nfds, null, &set, null, null);
 
-		select(nfds, null, &set, null, &tv);
-	}
-	else {
-		select(nfds, null, &set, null, null);
-	}
+	return set.toDescriptors(descriptors);
+}
+
+Descriptor[] writable (Descriptor[] descriptors, Duration sleep) {
+	fd_set  set  = descriptors.toSet();
+	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
+
+	select(nfds, null, &set, null, &tv);
+
+	return set.toDescriptors(descriptors);
 }
 
 private fd_set toSet (ref Descriptor[] descriptors) {
 	fd_set set;
 
 	foreach (descriptor; descriptors) {
-		FD_SET(cast (int) descriptor, set);
+		FD_SET(cast (int) descriptor, &set);
 	}
 
 	return set;
+}
+
+private Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors) {
+	return [];
 }

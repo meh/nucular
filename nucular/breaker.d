@@ -19,9 +19,10 @@
 module nucular.breaker;
 
 import core.memory;
+import std.exception;
 
 import nucular.descriptor;
-import nucular.available;
+import nucular.available.select;
 
 version (Posix) {
 	import core.sys.posix.unistd;
@@ -66,7 +67,7 @@ class Breaker {
 		}
 
 		void wait () {
-			available.readable([_read]);
+			readable([_read]);
 		}
 
 	private:

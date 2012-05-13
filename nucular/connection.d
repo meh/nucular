@@ -18,6 +18,8 @@
 
 module nucular.connection;
 
+import nucular.descriptor;
+
 class Connection {
 	this (Descriptor descriptor) {
 		_descriptor = descriptor;

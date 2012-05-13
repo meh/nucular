@@ -22,7 +22,7 @@ import std.datetime;
 import nucular.reactor;
 
 class Timer {
-	this (Duration after, void delegate () block) {
+	this (Duration after, void function () block) {
 		_after    = after;
 		_block    = block;
 		_executed = false;
@@ -55,5 +55,5 @@ protected:
 	bool             _executed;
 	Duration         _after;
 	SysTime          _started_at;
-	void delegate () _block;
+	void function () _block;
 }

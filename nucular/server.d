@@ -18,6 +18,8 @@
 
 module nucular.server;
 
+import nucular.descriptor;
+
 class Server {
 	this (string host, int port = 0) {
 		_host = host;
