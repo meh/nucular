@@ -28,11 +28,11 @@ import core.sync.mutex;
 import core.sync.condition;
 
 class ThreadPool {
-	this (int min = 20, int max = 0) {
-		if (max == 0) {
-			max = min;
-		}
+	this (int min = 20) {
+		this(min, min);
+	}
 
+	this (int min, int max) {
 		_mutex     = new Mutex;
 		_condition = new Condition(_mutex);
 
@@ -139,6 +139,7 @@ class ThreadPool {
 	}
 
 private:
+	// must be called while locked
 	void _spawnWorker () {
 		if (_waiting != 0 || _spawned >= _max) {
 			return;
