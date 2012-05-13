@@ -7,7 +7,7 @@ void main () {
 		}
 	}
 
-	for (sig; ["INT", "TERM"]) {
+	foreach (sig; ["INT", "TERM"]) {
 		nucular.reactor.trap(sig, {
 			nucular.reactor.stopEventLoop();
 		});
