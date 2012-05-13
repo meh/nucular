@@ -16,7 +16,7 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular;
+module nucular.periodictimer;
 
 import std.datetime;
 import nucular.reactor;

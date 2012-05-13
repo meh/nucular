@@ -16,11 +16,9 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular.available.select;
-
 import core.time;
-import core.sys.posix.select;
-import core.sys.posix.sys.time.timeval;
+import core.sys.posix.sys.select;
+import core.sys.posix.sys.time;
 
 import nucular.descriptor;
 
@@ -31,7 +29,7 @@ Descriptor[] readable (Descriptor[] descriptors, Duration sleep = null) {
 	if (sleep) {
 		timeval tv = { to!(time_t)(sleep.total!"seconds"()), to!(suseconds_t, sleep.fracSec.usecs) };
 
-		select(nfds, &set, null, null, &tv)
+		select(nfds, &set, null, null, &tv);
 	}
 	else {
 		select(nfds, &set, null, null, null);
@@ -45,7 +43,7 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep = null) {
 	if (sleep) {
 		timeval tv = { to!(time_t)(sleep.total!"seconds"()), to!(suseconds_t, sleep.fracSec.usecs) };
 
-		select(nfds, null, &set, null, &tv)
+		select(nfds, null, &set, null, &tv);
 	}
 	else {
 		select(nfds, null, &set, null, null);
@@ -55,7 +53,7 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep = null) {
 private fd_set toSet (ref Descriptor[] descriptors) {
 	fd_set set;
 
-	for (descriptor; descriptors) {
+	foreach (descriptor; descriptors) {
 		FD_SET(cast (int) descriptor, set);
 	}
 

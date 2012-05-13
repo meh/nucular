@@ -16,7 +16,7 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular;
+module nucular.descriptor;
 
 import std.conv;
 import std.exception;

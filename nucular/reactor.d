@@ -27,7 +27,6 @@ import nucular.available;
 import nucular.server;
 
 public import nucular.connection;
-public import nucular.watcher;
 
 public Threadpool threadpool;
 
@@ -41,7 +40,7 @@ private Duration _quantum = dur!"msecs"(100);
 
 private Breaker              _breaker;
 private bool                 _running = false;
-private (void function ())[] _scheduled;
+private void function ()[] _scheduled;
 private Mutex                _mutex;
 
 void run (void function () block) {
@@ -59,7 +58,7 @@ void run (void function () block) {
 
 	while (_running) {
 		synchronized (_mutex) {
-			for (block; _scheduled) {
+			foreach (block; _scheduled) {
 				block();
 			}
 
@@ -132,13 +131,13 @@ PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
 
 void cancelTimer (Timer timer) {
 	schedule({
-		_timers = filter!((a) { return a != timer })(_timers);
+		_timers = _timer.sfilter!((a) { return a != timer; });
 	});
 }
 
 void cancelTimer (PeriodicTimer timer) {
 	schedule({
-		_periodical_timers = filter!((a) { return a != timer })(_periodic_timers);
+		_periodical_timers = _periodical_timers.filter!((a) { return a != timer; });
 	});
 }
 

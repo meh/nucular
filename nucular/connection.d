@@ -16,7 +16,7 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular;
+module nucular.connection;
 
 class Connection {
 	this (Descriptor descriptor) {
@@ -28,7 +28,9 @@ class Connection {
 	}
 
 	void close_connection (bool after_writing = false) {
+		if (after_writing) {
 
+		}
 	}
 
 	void close_connection_after_writing () {
