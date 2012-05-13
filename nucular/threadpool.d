@@ -54,7 +54,7 @@ class ThreadPool {
 			max = min;
 		}
 
-		enforce(max > min, "the max can't be smalled than the min");
+		enforce(max >= min, "the max can't be smaller than the min");
 
 		_min = min;
 		_max = max;
@@ -211,6 +211,7 @@ private:
 
 		_threads ~= thread;
 
+		thread.isDaemon(true);
 		thread.start();
 	}
 

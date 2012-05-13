@@ -19,11 +19,12 @@
 module nucular;
 
 import core.memory;
+
 import nucular.descriptor;
 import nucular.available;
 
 version (Posix) {
-	extern (C) int pipe (ref int[2]);
+	import core.sys.posix.unistd;
 }
 else version (Windows) {
 	static assert (0);
@@ -65,7 +66,7 @@ class Breaker {
 		}
 
 		void wait () {
-			available([_read]);
+			available.readable([_read]);
 		}
 
 	private:

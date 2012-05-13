@@ -16,13 +16,48 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular;
+module nucular.available.select;
 
 import core.time;
+import core.sys.posix.select;
+import core.sys.posix.sys.time.timeval;
+
 import nucular.descriptor;
 
-extern (C) int select (int, void*, void*, void*, void*);
+Descriptor[] readable (Descriptor[] descriptors, Duration sleep = null) {
+	fd_set set  = descriptors.toSet();
+	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-Descriptor[] available (Descriptor[] descriptors, Duration sleep = null) {
+	if (sleep) {
+		timeval tv = { to!(time_t)(sleep.total!"seconds"()), to!(suseconds_t, sleep.fracSec.usecs) };
 
+		select(nfds, &set, null, null, &tv)
+	}
+	else {
+		select(nfds, &set, null, null, null);
+	}
+}
+
+Descriptor[] writable (Descriptor[] descriptors, Duration sleep = null) {
+	fd_set set  = descriptors.toSet();
+	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+
+	if (sleep) {
+		timeval tv = { to!(time_t)(sleep.total!"seconds"()), to!(suseconds_t, sleep.fracSec.usecs) };
+
+		select(nfds, null, &set, null, &tv)
+	}
+	else {
+		select(nfds, null, &set, null, null);
+	}
+}
+
+private fd_set toSet (ref Descriptor[] descriptors) {
+	fd_set set;
+
+	for (descriptor; descriptors) {
+		FD_SET(cast (int) descriptor, set);
+	}
+
+	return set;
 }

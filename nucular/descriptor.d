@@ -22,15 +22,8 @@ import std.conv;
 import std.exception;
 
 version (Posix) {
-	extern (C) int fcntl (int, int, ...);
-	extern (C) long write (int, void*, ulong);
-	extern (C) long read (int, void*, ulong);
-	extern (C) int close (int);
-
-	const F_GETFL = 3;
-	const F_SETFL = 4;
-
-	const O_NONBLOCK = octal!4000;
+	import core.sys.posix.fcntl;
+	import core.sys.posix.unistd;
 }
 else version (Windows) {
 	static assert (0);
@@ -52,16 +45,20 @@ class Descriptor {
 		if (value) {
 			_asynchronous = true;
 
-			int old = fcntl(_fd, F_GETFL, 0);
+			version (Posix) {
+				int old = fcntl(_fd, F_GETFL, 0);
 
-			errnoEnforce(fcntl(_fd, F_SETFL, old | O_NONBLOCK) >= 0);
+				errnoEnforce(fcntl(_fd, F_SETFL, old | O_NONBLOCK) >= 0);
+			}
 		}
 		else {
 			_asynchronous = false;
 
-			int old = fcntl(_fd, F_GETFL, 0);
+			version (Posix) {
+				int old = fcntl(_fd, F_GETFL, 0);
 
-			errnoEnforce(fcntl(_fd, F_SETFL, old & ~O_NONBLOCK) >= 0);
+				errnoEnforce(fcntl(_fd, F_SETFL, old & ~O_NONBLOCK) >= 0);
+			}
 		}
 	}
 
