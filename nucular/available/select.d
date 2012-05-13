@@ -75,5 +75,13 @@ private fd_set toSet (ref Descriptor[] descriptors) {
 }
 
 private Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors) {
-	return [];
+	Descriptor[] result;
+
+	foreach (descriptor; descriptors) {
+		if (FD_ISSET(cast (int) descriptor, &set)) {
+			result ~= descriptor;
+		}
+	}
+
+	return result;
 }

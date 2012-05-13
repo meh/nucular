@@ -19,6 +19,7 @@
 module nucular.breaker;
 
 import core.memory;
+import core.time;
 import std.exception;
 
 import nucular.descriptor;
@@ -68,6 +69,14 @@ class Breaker {
 
 		void wait () {
 			readable([_read]);
+		}
+
+		void wait (Duration sleep) {
+			readable([_read], sleep);
+		}
+
+		bool opEquals (Object other) {
+			return _read.opEquals(other) || _write.opEquals(other);
 		}
 
 	private:

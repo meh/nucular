@@ -23,9 +23,10 @@ import nucular.reactor;
 
 class PeriodicTimer {
 	this (Duration every, void function () block) {
-		_every      = every;
-		_block      = block;
-		_started_at = Clock.currTime();
+		_every = every;
+		_block = block;
+
+		_started_at = _last_execution_at = Clock.currTime();
 	}
 
 	~this () {
@@ -40,6 +41,14 @@ class PeriodicTimer {
 
 	void cancel () {
 		cancelTimer(this);
+	}
+
+	Duration left (SysTime now) {
+		return every - (now - lastExecutionAt);
+	}
+
+	Duration left () {
+		return left(Clock.currTime());
 	}
 
 	@property Duration every () {

@@ -1,7 +1,8 @@
+import std.stdio;
 import nucular.reactor;
 
 void main () {
-	mixin template EchoServer {
+	class EchoServer : nucular.reactor.Connection {
 		void receiveData (ubyte[] data) {
 			sendData(data);
 		}

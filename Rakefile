@@ -15,7 +15,7 @@ EXAMPLES = FileList['examples/*.d'].ext('')
 SOURCES  = FileList['nucular/**/*.d']
 OBJECTS  = SOURCES.ext('o')
 
-CLEAN.include(OBJECTS).include(EXAMPLES)
+CLEAN.include(OBJECTS).include(EXAMPLES).include(EXAMPLES.ext('o'))
 
 task :default => EXAMPLES
 
@@ -24,8 +24,8 @@ rule '.o' => '.d' do |t|
 end
 
 EXAMPLES.each {|name|
-	file name => OBJECTS do
-		sh "#{DC} #{FLAGS} #{name}.d #{OBJECTS} -of#{name}"
+	file name => OBJECTS + ["#{name}.o"] do
+		sh "#{DC} #{FLAGS} #{name}.o #{OBJECTS} -of#{name}"
 	end
 }
 

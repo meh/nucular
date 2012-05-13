@@ -18,18 +18,8 @@
 
 module nucular.reactor;
 
-import core.time;
-import core.sync.mutex;
-import std.array;
-import std.algorithm;
-import std.exception;
-
-import nucular.threadpool;
-import nucular.timer;
-import nucular.periodictimer;
-import nucular.descriptor;
-import nucular.breaker;
-import nucular.server;
+public import core.time;
+public import nucular.connection;
 
 version (epoll) {
 	public import nucular.available.epoll;
@@ -44,7 +34,18 @@ else {
 	public import nucular.available.select;
 }
 
-public import nucular.connection;
+import core.sync.mutex;
+import std.array;
+import std.algorithm;
+import std.exception;
+import std.datetime;
+
+import nucular.threadpool;
+import nucular.timer;
+import nucular.periodictimer;
+import nucular.descriptor;
+import nucular.breaker;
+import nucular.server;
 
 public ThreadPool threadpool;
 
@@ -54,7 +55,7 @@ private Descriptor[]           _descriptors;
 private Server[Descriptor]     _servers;
 private Connection[Descriptor] _connections;
 
-private Duration _quantum = dur!"msecs"(100);
+private Duration _quantum = 100.dur!"msecs";
 
 private Breaker              _breaker;
 private bool                 _running = false;
@@ -84,7 +85,19 @@ void run (void function () block) {
 		}
 
 		if (_descriptors.empty) {
-			_breaker.wait();
+			if (!_hasTimers) {
+				_breaker.wait();
+			}
+			else {
+				_breaker.wait(_minimumSleep());
+
+				_executeTimers();
+			}
+		}
+		else {
+			Descriptor[] descriptors = _hasTimers ? readable(_descriptors, _minimumSleep()) : readable(_descriptors);
+
+			_executeTimers();
 		}
 
 		// TODO: get here the available descriptors
@@ -107,11 +120,11 @@ void schedule (void function () block) {
 	_breaker.act();
 }
 
-void next_tick (void function () block) {
+void nextTick (void function () block) {
 	schedule(block);
 }
 
-void stop_event_loop () {
+void stopEventLoop () {
 	_running = false;
 
 	_breaker.act();
@@ -173,6 +186,62 @@ void cancelTimer (PeriodicTimer timer) {
 	_breaker.act();
 }
 
-private float _nextSleep () {
-	return 0;
+private void _executeTimers () {
+	Timer[]         timers_to_call;
+	PeriodicTimer[] periodic_timers_to_call;
+
+	synchronized (_mutex) {
+		foreach (timer; _timers) {
+			if (timer.left() <= (0).dur!"seconds") {
+				timers_to_call ~= timer;
+			}
+		}
+
+		foreach (timer; _periodic_timers) {
+			if (timer.left() <= (0).dur!"seconds") {
+				periodic_timers_to_call ~= timer;
+			}
+		}
+	}
+
+	foreach (timer; timers_to_call) {
+		timer.execute();
+	}
+
+	foreach (timer; periodic_timers_to_call) {
+		timer.execute();
+	}
+
+	synchronized (_mutex) {
+		_timers = _timers.filter!((a) { return !timers_to_call.any!((b) { return a == b; }); }).array;
+	}
+}
+
+@property private bool _hasTimers () {
+	return !_timers.empty || !_periodic_timers.empty;
+}
+
+private Duration _minimumSleep () {
+	SysTime  now    = Clock.currTime();
+	Duration result = _timers.empty ? _periodic_timers.front.left(now) : _timers.front.left(now);
+
+	synchronized (_mutex) {
+		if (!_timers.empty) {
+			foreach (timer; _timers) {
+				result = min(result, timer.left(now));
+			}
+		}
+
+		if (!_periodic_timers.empty) {
+			foreach (timer; _periodic_timers) {
+				result = min(result, timer.left(now));
+			}
+		}
+	}
+
+	if (result < _quantum) {
+		return _quantum;
+	}
+
+	return result;
 }

@@ -23,9 +23,10 @@ import nucular.reactor;
 
 class Timer {
 	this (Duration after, void function () block) {
-		_after    = after;
-		_block    = block;
-		_executed = false;
+		_after = after;
+		_block = block;
+
+		_executed   = false;
 		_started_at = Clock.currTime();
 	}
 
@@ -41,6 +42,14 @@ class Timer {
 
 	void cancel () {
 		cancelTimer(this);
+	}
+
+	Duration left (SysTime now) {
+		return after - (now - startedAt);
+	}
+
+	Duration left () {
+		return left(Clock.currTime());
 	}
 
 	@property Duration after () {
