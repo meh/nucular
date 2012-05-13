@@ -38,13 +38,13 @@ class Descriptor {
 	}
 
 	@property asynchronous () {
-		return _asynchronous;
+		version (Posix) {
+			return (fcntl(_fd, F_GETFL, 0) & O_NONBLOCK) != 0;
+		}
 	}
 
 	@property asynchronous (bool value) {
 		if (value) {
-			_asynchronous = true;
-
 			version (Posix) {
 				int old = fcntl(_fd, F_GETFL, 0);
 
@@ -52,8 +52,6 @@ class Descriptor {
 			}
 		}
 		else {
-			_asynchronous = false;
-
 			version (Posix) {
 				int old = fcntl(_fd, F_GETFL, 0);
 
@@ -89,11 +87,42 @@ class Descriptor {
 		return write(cast (ubyte[]) text);
 	}
 
+	bool opEquals (Object other) {
+		if (other is this) {
+			return true;
+		}
+
+		if (typeid(other) == typeid(this)) {
+			return opEquals(cast (int) cast (Descriptor) other);
+		}
+
+		return false;
+	}
+
+	bool opEquals (int other) {
+		return _fd == other;
+	}
+
+	int opCmp (Object other) {
+		if (typeid(other) == typeid(this)) {
+			return opCmp(cast (int) cast (Descriptor) other);
+		}
+
+		return -1;
+	}
+
+	int opCmp (int other) {
+		return (_fd < other) ? -1 : (_fd > other) ? 1 : 0;
+	}
+
 	int opCast () {
 		return _fd;
 	}
 
+	hash_t toHash () {
+		return _fd;
+	}
+
 private:
-	int  _fd;
-	bool _asynchronous;
+	int _fd;
 }
