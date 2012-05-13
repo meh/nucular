@@ -5,7 +5,7 @@ NAME    = 'nucular'
 VERSION = '0.0.1'
 
 DC    = 'dmd'
-FLAGS = ENV['FLAGS'] || ''
+FLAGS = "#{ENV['FLAGS']}"
 
 if ENV['DEBUG']
 	FLAGS << ' -debug'

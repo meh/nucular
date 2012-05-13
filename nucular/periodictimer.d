@@ -22,7 +22,9 @@ import std.datetime;
 import nucular.reactor;
 
 class PeriodicTimer {
-	this (Duration every, void function () block) {
+	this (Reactor reactor, Duration every, void function () block) {
+		_reactor = reactor;
+
 		_every = every;
 		_block = block;
 
@@ -40,7 +42,7 @@ class PeriodicTimer {
 	}
 
 	void cancel () {
-		cancelTimer(this);
+		_reactor.cancelTimer(this);
 	}
 
 	Duration left (SysTime now) {
@@ -64,8 +66,11 @@ class PeriodicTimer {
 	}
 
 private:
-	Duration         _every;
-	SysTime          _started_at;
-	SysTime          _last_execution_at;
+	Reactor _reactor;
+
+	Duration _every;
+	SysTime  _started_at;
+	SysTime  _last_execution_at;
+
 	void function () _block;
 }

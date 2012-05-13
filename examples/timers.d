@@ -8,7 +8,15 @@ void main () {
 		});
 
 		nucular.reactor.addPeriodicTimer(2.dur!"seconds", {
+			static i = 0;
+
 			writeln("yo");
+
+			nucular.reactor.stop();
+
+			if (i++ >= 5) {
+				nucular.reactor.stop();
+			}
 		});
 	});
 }

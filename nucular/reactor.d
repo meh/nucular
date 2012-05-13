@@ -21,19 +21,6 @@ module nucular.reactor;
 public import core.time;
 public import nucular.connection;
 
-version (epoll) {
-	public import nucular.available.epoll;
-}
-else version (kqueue) {
-	public import nucular.available.kqueue;
-}
-else version (iocompletion) {
-	public import nucular.available.iocompletion;
-}
-else {
-	public import nucular.available.select;
-}
-
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -47,201 +34,244 @@ import nucular.descriptor;
 import nucular.breaker;
 import nucular.server;
 
-public ThreadPool threadpool;
+version (epoll) {
+	import nucular.available.epoll;
+}
+else version (kqueue) {
+	import nucular.available.kqueue;
+}
+else version (iocompletion) {
+	import nucular.available.iocompletion;
+}
+else {
+	import nucular.available.select;
+}
 
-private Timer[]                _timers;
-private PeriodicTimer[]        _periodic_timers;
-private Descriptor[]           _descriptors;
-private Server[Descriptor]     _servers;
-private Connection[Descriptor] _connections;
+class Reactor {
+	this () {
+		_breaker    = new Breaker;
+		_mutex      = new Mutex;
+		_threadpool = new ThreadPool;
 
-private Duration _quantum = 100.dur!"msecs";
+		_quantum = 100.dur!"msecs";
+		_running = false;
+	}
 
-private Breaker              _breaker;
-private bool                 _running = false;
-private void function ()[] _scheduled;
-private Mutex                _mutex;
-
-void run (void function () block) {
-	if (_running) {
+	void run (void function () block) {
 		schedule(block);
 
-		return;
+		if (_running) {
+			return;
+		}
+
+		_running = true;
+
+		while (_running) {
+			synchronized (_mutex) {
+				foreach (scheduled; _scheduled) {
+					scheduled();
+				}
+
+				_scheduled.clear();
+			}
+
+			if (_descriptors.empty) {
+				if (!hasTimers) {
+					_breaker.wait();
+				}
+				else {
+					_breaker.wait(_minimumSleep());
+
+					if (_running) {
+						executeTimers();
+					}
+				}
+
+				continue;
+			}
+
+			Descriptor[] descriptors = hasTimers ? readable(_descriptors, _minimumSleep()) : readable(_descriptors);
+
+			if (!_running) {
+				break;
+			}
+
+			executeTimers();
+
+			// TODO: we know from what we can read, so let's read
+		}
 	}
 
-	_breaker = new Breaker;
-	_mutex   = new Mutex;
-	_running = true;
-
-	schedule(block);
-
-	while (_running) {
+	void schedule (void function () block) {
 		synchronized (_mutex) {
-			foreach (scheduled; _scheduled) {
-				scheduled();
-			}
-
-			_scheduled.clear();
+			_scheduled ~= block;
 		}
 
-		if (_descriptors.empty) {
-			if (!_hasTimers) {
-				_breaker.wait();
-			}
-			else {
-				_breaker.wait(_minimumSleep());
-
-				_executeTimers();
-			}
-		}
-		else {
-			Descriptor[] descriptors = _hasTimers ? readable(_descriptors, _minimumSleep()) : readable(_descriptors);
-
-			_executeTimers();
-		}
-
-		// TODO: get here the available descriptors
-	
-		if (!_running) {
-			break;
-		}
-
-		// TODO: handle the descriptors here
-	}
-}
-
-void schedule (void function () block) {
-	enforce(_running, "the reactor isn't running");
-
-	synchronized (_mutex) {
-		_scheduled ~= block;
+		_breaker.act();
 	}
 
-	_breaker.act();
+	void nextTick (void function () block) {
+		schedule(block);
+	}
+
+	void stop () {
+		_running = false;
+
+		_breaker.act();
+	}
+
+	void defer(T) (T function () operation) {
+		threadpool.process(operation);
+	}
+
+	void defer(T) (T function () operation, void function (T) callback) {
+		threadpool.process({
+			callback(operation());
+		});
+	}
+
+	Timer addTimer (Duration time, void function () block) {
+		auto timer = new Timer(this, time, block);
+
+		synchronized (_mutex) {
+			_timers ~= timer;
+		}
+
+		_breaker.act();
+
+		return timer;
+	}
+
+	PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
+		auto timer = new PeriodicTimer(this, time, block);
+
+		synchronized (_mutex) {
+			_periodic_timers ~= timer;
+		}
+
+		_breaker.act();
+
+		return timer;
+	}
+
+	void cancelTimer (Timer timer) {
+		synchronized (_mutex) {
+			_timers = _timers.filter!((a) { return a != timer; }).array;
+		}
+
+		_breaker.act();
+	}
+
+	void cancelTimer (PeriodicTimer timer) {
+		synchronized (_mutex) {
+			_periodic_timers = _periodic_timers.filter!((a) { return a != timer; }).array;
+		}
+
+		_breaker.act();
+	}
+
+	@property quantum (Duration duration) {
+		_quantum = duration;
+
+		_breaker.act();
+	}
+
+	void executeTimers () {
+		Timer[]         timers_to_call;
+		PeriodicTimer[] periodic_timers_to_call;
+
+		synchronized (_mutex) {
+			foreach (timer; _timers) {
+				if (timer.left() <= (0).dur!"seconds") {
+					timers_to_call ~= timer;
+				}
+			}
+
+			foreach (timer; _periodic_timers) {
+				if (timer.left() <= (0).dur!"seconds") {
+					periodic_timers_to_call ~= timer;
+				}
+			}
+		}
+
+		foreach (timer; timers_to_call) {
+			timer.execute();
+		}
+
+		foreach (timer; periodic_timers_to_call) {
+			timer.execute();
+		}
+
+		synchronized (_mutex) {
+			_timers = _timers.filter!((a) { return !timers_to_call.any!((b) { return a == b; }); }).array;
+		}
+	}
+
+	@property bool hasTimers () {
+		return !_timers.empty || !_periodic_timers.empty;
+	}
+
+	private Duration _minimumSleep () {
+		SysTime  now    = Clock.currTime();
+		Duration result = _timers.empty ? _periodic_timers.front.left(now) : _timers.front.left(now);
+
+		synchronized (_mutex) {
+			if (!_timers.empty) {
+				foreach (timer; _timers) {
+					result = min(result, timer.left(now));
+				}
+			}
+
+			if (!_periodic_timers.empty) {
+				foreach (timer; _periodic_timers) {
+					result = min(result, timer.left(now));
+				}
+			}
+		}
+
+		if (result < _quantum) {
+			return _quantum;
+		}
+
+		return result;
+	}
+
+private:
+	Timer[]         _timers;
+	PeriodicTimer[] _periodic_timers;
+	Descriptor[]    _descriptors;
+
+	Server[Descriptor]     _servers;
+	Connection[Descriptor] _connections;
+
+	ThreadPool _threadpool;
+	Breaker    _breaker;
+	Mutex      _mutex;
+
+	Duration _quantum;
+	bool     _running;
+
+	void function ()[] _scheduled;
 }
 
-void nextTick (void function () block) {
-	schedule(block);
+private Reactor _reactor;
+
+void run (void function () block) {
+	if (!_reactor) {
+		_reactor = new Reactor();
+	}
+
+	_reactor.run(block);
 }
 
-void stopEventLoop () {
-	_running = false;
-
-	_breaker.act();
-}
-
-void defer(T) (T function () operation) {
-	threadpool.process(operation);
-}
-
-void defer(T) (T function () operation, void function (T) callback) {
-	threadpool.process({
-		callback(operation());
-	});
+void stop () {
+	_reactor.stop();
 }
 
 Timer addTimer (Duration time, void function () block) {
-	auto timer = new Timer(time, block);
-
-	synchronized (_mutex) {
-		_timers ~= timer;
-	}
-
-	_breaker.act();
-
-	return timer;
+	return _reactor.addTimer(time, block);
 }
 
 PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
-	auto timer = new PeriodicTimer(time, block);
-
-	synchronized (_mutex) {
-		_periodic_timers ~= timer;
-	}
-
-	_breaker.act();
-
-	return timer;
-}
-
-void cancelTimer (Timer timer) {
-	synchronized (_mutex) {
-		_timers = _timers.filter!((a) { return a != timer; }).array;
-	}
-
-	_breaker.act();
-}
-
-void cancelTimer (PeriodicTimer timer) {
-	synchronized (_mutex) {
-		_periodic_timers = _periodic_timers.filter!((a) { return a != timer; }).array;
-	}
-
-	_breaker.act();
-}
-
-@property quantum (Duration duration) {
-	_quantum = duration;
-
-	_breaker.act();
-}
-
-private void _executeTimers () {
-	Timer[]         timers_to_call;
-	PeriodicTimer[] periodic_timers_to_call;
-
-	synchronized (_mutex) {
-		foreach (timer; _timers) {
-			if (timer.left() <= (0).dur!"seconds") {
-				timers_to_call ~= timer;
-			}
-		}
-
-		foreach (timer; _periodic_timers) {
-			if (timer.left() <= (0).dur!"seconds") {
-				periodic_timers_to_call ~= timer;
-			}
-		}
-	}
-
-	foreach (timer; timers_to_call) {
-		timer.execute();
-	}
-
-	foreach (timer; periodic_timers_to_call) {
-		timer.execute();
-	}
-
-	synchronized (_mutex) {
-		_timers = _timers.filter!((a) { return !timers_to_call.any!((b) { return a == b; }); }).array;
-	}
-}
-
-@property private bool _hasTimers () {
-	return !_timers.empty || !_periodic_timers.empty;
-}
-
-private Duration _minimumSleep () {
-	SysTime  now    = Clock.currTime();
-	Duration result = _timers.empty ? _periodic_timers.front.left(now) : _timers.front.left(now);
-
-	synchronized (_mutex) {
-		if (!_timers.empty) {
-			foreach (timer; _timers) {
-				result = min(result, timer.left(now));
-			}
-		}
-
-		if (!_periodic_timers.empty) {
-			foreach (timer; _periodic_timers) {
-				result = min(result, timer.left(now));
-			}
-		}
-	}
-
-	if (result < _quantum) {
-		return _quantum;
-	}
-
-	return result;
+	return _reactor.addPeriodicTimer(time, block);
 }
