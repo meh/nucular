@@ -9,7 +9,7 @@ def name
 end
 
 DC    = 'dmd'
-FLAGS = ''
+FLAGS = ENV['FLAGS'] || ''
 
 if ENV['DEBUG']
 	FLAGS << ' -debug'
@@ -18,8 +18,14 @@ end
 SOURCES = FileList['nucular/**/*.d']
 OBJECTS = SOURCES.ext('o')
 
+CLEAN.include(OBJECTS)
+
 task :default => ["lib#{name}.so"]
 
-file "lib#{name}.so" do
-	sh "#{DC} -shared #{FLAGS} #{SOURCES}"
+rule '.o' => '.d' do |t|
+  sh "#{DC} #{FLAGS} -fPIC -of#{t.name} -c #{t.source}"
+end
+
+file "lib#{name}.so" => OBJECTS do
+	sh "#{DC} -shared -fPIC #{FLAGS} #{OBJECTS} -oflib#{name}.so"
 end
