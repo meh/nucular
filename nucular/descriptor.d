@@ -62,8 +62,8 @@ class Descriptor {
 		}
 	}
 
-	string read (ulong length) {
-		auto buffer = new string(length);
+	ubyte[] read (ulong length) {
+		auto buffer = new ubyte[](length);
 		long result;
 
 		errnoEnforce((result = .read(_fd, cast (void*) buffer.ptr, length)) >= 0);
@@ -77,12 +77,16 @@ class Descriptor {
 		return buffer;
 	}
 
-	long write (string text) {
+	long write (ubyte[] data) {
 		long result;
 
 		errnoEnforce((result = .write(_fd, cast (void*) text.ptr, text.length)) >= 0);
 
 		return result;
+	}
+
+	long write (string text) {
+		return write(cast (ubyte[]) text);
 	}
 
 	int opCast () {
