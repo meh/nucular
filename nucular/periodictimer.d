@@ -53,16 +53,20 @@ class PeriodicTimer {
 		return left(Clock.currTime());
 	}
 
-	@property Duration every () {
+	@property every () {
 		return _every;
 	}
 
-	@property SysTime lastExecutionAt () {
+	@property lastExecutionAt () {
 		return _last_execution_at;
 	}
 
-	@property SysTime startedAt () {
+	@property startedAt () {
 		return _started_at;
+	}
+
+	@property reactor () {
+		return _reactor;
 	}
 
 private:

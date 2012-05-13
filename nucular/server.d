@@ -18,15 +18,24 @@
 
 module nucular.server;
 
+import nucular.reactor;
 import nucular.descriptor;
 
 class Server {
-	this (string host, int port = 0) {
+	this (Reactor reactor, string host, int port = 0) {
+		_reactor = reactor;
+
 		_host = host;
 		_port = port;
 	}
 
+	@property reactor () {
+		return _reactor;
+	}
+
 private:
+	Reactor _reactor;
+
 	string _host;
 	int    _port;
 

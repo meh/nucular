@@ -57,6 +57,10 @@ class Reactor {
 		_running = false;
 	}
 
+	~this () {
+		stop();
+	}
+
 	void run (void function () block) {
 		schedule(block);
 
@@ -80,7 +84,7 @@ class Reactor {
 					_breaker.wait();
 				}
 				else {
-					_breaker.wait(_minimumSleep());
+					_breaker.wait(minimumSleep());
 
 					if (_running) {
 						executeTimers();
@@ -90,10 +94,22 @@ class Reactor {
 				continue;
 			}
 
-			Descriptor[] descriptors = hasTimers ? readable(_descriptors, _minimumSleep()) : readable(_descriptors);
+			Descriptor[] descriptors = hasTimers ? readable(_descriptors, minimumSleep()) : readable(_descriptors);
 
 			if (!_running) {
 				break;
+			}
+
+			foreach (descriptor; descriptors) {
+				if (_breaker.opEquals(descriptor)) {
+					_breaker.flush();
+				}
+				else if (descriptor in _servers) {
+					Server server = _servers[descriptor];
+				}
+				else if (descriptor in _connections) {
+					Connection connection = _connections[descriptor];
+				}
 			}
 
 			executeTimers();
@@ -115,6 +131,10 @@ class Reactor {
 	}
 
 	void stop () {
+		if (!_running) {
+			return;
+		}
+
 		_running = false;
 
 		_breaker.act();
@@ -170,6 +190,10 @@ class Reactor {
 		_breaker.act();
 	}
 
+	@property quantum () {
+		return _quantum;
+	}
+
 	@property quantum (Duration duration) {
 		_quantum = duration;
 
@@ -211,7 +235,7 @@ class Reactor {
 		return !_timers.empty || !_periodic_timers.empty;
 	}
 
-	private Duration _minimumSleep () {
+	Duration minimumSleep () {
 		SysTime  now    = Clock.currTime();
 		Duration result = _timers.empty ? _periodic_timers.front.left(now) : _timers.front.left(now);
 
@@ -264,8 +288,24 @@ void run (void function () block) {
 	_reactor.run(block);
 }
 
+void schedule (void function () block) {
+	_reactor.schedule(block);
+}
+
+void nextTick (void function () block) {
+	_reactor.nextTick(block);
+}
+
 void stop () {
 	_reactor.stop();
+}
+
+void defer(T) (T function () operation) {
+	_reactor.defer(operation);
+}
+
+void defer(T) (T function () operation, void function (T) callback) {
+	_reactor.defer(operation, callback);
 }
 
 Timer addTimer (Duration time, void function () block) {
@@ -274,4 +314,20 @@ Timer addTimer (Duration time, void function () block) {
 
 PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
 	return _reactor.addPeriodicTimer(time, block);
+}
+
+void cancelTimer (Timer timer) {
+	_reactor.cancelTimer(timer);
+}
+
+void cancelTimer (PeriodicTimer timer) {
+	_reactor.cancelTimer(timer);
+}
+
+@property quantum () {
+	return _reactor.quantum;
+}
+
+@property quantum (Duration duration) {
+	_reactor.quantum = duration;
 }

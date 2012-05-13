@@ -54,12 +54,16 @@ class Timer {
 		return left(Clock.currTime());
 	}
 
-	@property Duration after () {
+	@property after () {
 		return _after;
 	}
 
-	@property SysTime startedAt () {
+	@property startedAt () {
 		return _started_at;
+	}
+
+	@property reactor () {
+		return _reactor;
 	}
 
 private:
