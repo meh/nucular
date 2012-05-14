@@ -281,75 +281,79 @@ private:
 private Reactor _reactor;
 
 void run (void function () block) {
-	if (!_reactor) {
-		_reactor = new Reactor();
-	}
+	_ensureReactor();
 
 	_reactor.run(block);
 }
 
 void schedule (void function () block) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.schedule(block);
 }
 
 void nextTick (void function () block) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.nextTick(block);
 }
 
 void stop () {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.stop();
 }
 
 void defer(T) (T function () operation) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.defer(operation);
 }
 
 void defer(T) (T function () operation, void function (T) callback) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.defer(operation, callback);
 }
 
 Timer addTimer (Duration time, void function () block) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	return _reactor.addTimer(time, block);
 }
 
 PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	return _reactor.addPeriodicTimer(time, block);
 }
 
 void cancelTimer (Timer timer) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.cancelTimer(timer);
 }
 
 void cancelTimer (PeriodicTimer timer) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.cancelTimer(timer);
 }
 
 @property quantum () {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	return _reactor.quantum;
 }
 
 @property quantum (Duration duration) {
-	enforce(_reactor, "the reactor isn't running");
+	_ensureReactor();
 
 	_reactor.quantum = duration;
+}
+
+private _ensureReactor () {
+	if (!_reactor) {
+		_reactor = new Reactor();
+	}
 }
