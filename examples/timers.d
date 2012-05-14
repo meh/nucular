@@ -12,11 +12,11 @@ void main () {
 
 			writeln("yo");
 
-			nucular.reactor.stop();
-
 			if (i++ >= 5) {
 				nucular.reactor.stop();
 			}
 		});
 	});
+
+	writeln("bye");
 }

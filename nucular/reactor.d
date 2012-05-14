@@ -289,67 +289,67 @@ void run (void function () block) {
 }
 
 void schedule (void function () block) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.schedule(block);
 }
 
 void nextTick (void function () block) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.nextTick(block);
 }
 
 void stop () {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.stop();
 }
 
 void defer(T) (T function () operation) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.defer(operation);
 }
 
 void defer(T) (T function () operation, void function (T) callback) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.defer(operation, callback);
 }
 
 Timer addTimer (Duration time, void function () block) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	return _reactor.addTimer(time, block);
 }
 
 PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	return _reactor.addPeriodicTimer(time, block);
 }
 
 void cancelTimer (Timer timer) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.cancelTimer(timer);
 }
 
 void cancelTimer (PeriodicTimer timer) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.cancelTimer(timer);
 }
 
 @property quantum () {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	return _reactor.quantum;
 }
 
 @property quantum (Duration duration) {
-	ensure(_reactor, "the reactor isn't running");
+	enforce(_reactor, "the reactor isn't running");
 
 	_reactor.quantum = duration;
 }
