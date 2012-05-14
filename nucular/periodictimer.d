@@ -42,7 +42,7 @@ class PeriodicTimer {
 	}
 
 	void cancel () {
-		_reactor.cancelTimer(this);
+		reactor.cancelTimer(this);
 	}
 
 	Duration left (SysTime now) {

@@ -23,7 +23,19 @@ import core.time;
 import std.exception;
 
 import nucular.descriptor;
-import nucular.available.select;
+
+version (epoll) {
+	import nucular.available.epoll;
+}
+else version (kqueue) {
+	import nucular.available.kqueue;
+}
+else version (iocompletion) {
+	import nucular.available.iocompletion;
+}
+else {
+	import nucular.available.select;
+}
 
 version (Posix) {
 	import core.sys.posix.unistd;

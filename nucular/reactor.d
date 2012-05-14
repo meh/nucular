@@ -352,7 +352,7 @@ void cancelTimer (PeriodicTimer timer) {
 	_reactor.quantum = duration;
 }
 
-private _ensureReactor () {
+private void _ensureReactor () {
 	if (!_reactor) {
 		_reactor = new Reactor();
 	}

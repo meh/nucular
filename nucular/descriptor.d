@@ -93,26 +93,20 @@ class Descriptor {
 		}
 
 		if (typeid(other) == typeid(this)) {
-			return opEquals(cast (int) cast (Descriptor) other);
+			return _fd == cast (int) cast (Descriptor) other;
 		}
 
 		return false;
 	}
 
-	bool opEquals (int other) {
-		return _fd == other;
-	}
-
 	int opCmp (Object other) {
 		if (typeid(other) == typeid(this)) {
-			return opCmp(cast (int) cast (Descriptor) other);
+			int fd = cast (int) cast (Descriptor) other;
+
+			return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
 		}
 
 		return -1;
-	}
-
-	int opCmp (int other) {
-		return (_fd < other) ? -1 : (_fd > other) ? 1 : 0;
 	}
 
 	int opCast () {
