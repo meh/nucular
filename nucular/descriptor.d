@@ -37,6 +37,42 @@ class Descriptor {
 		_fd = fd;
 	}
 
+	this (int fd, void* keep) {
+		_fd   = fd;
+		_keep = keep;
+	}
+
+	ubyte[] read (size_t length) {
+		auto buffer = new ubyte[](length);
+		ptrdiff_t result;
+
+		errnoEnforce((result = .read(_fd, cast (void*) buffer.ptr, length)) >= 0);
+
+		if (result == 0) {
+			return null;
+		}
+
+		buffer.length = result;
+
+		return buffer;
+	}
+
+	ptrdiff_t write (ubyte[] data) {
+		ptrdiff_t result;
+
+		errnoEnforce((result = .write(_fd, cast (void*) text.ptr, text.length)) >= 0);
+
+		return result;
+	}
+
+	ptrdiff_t write (string text) {
+		return write(cast (ubyte[]) text);
+	}
+
+	void close () {
+		.close(_fd);
+	}
+
 	@property asynchronous () {
 		version (Posix) {
 			return (fcntl(_fd, F_GETFL, 0) & O_NONBLOCK) != 0;
@@ -60,31 +96,12 @@ class Descriptor {
 		}
 	}
 
-	ubyte[] read (ulong length) {
-		auto buffer = new ubyte[](length);
-		long result;
-
-		errnoEnforce((result = .read(_fd, cast (void*) buffer.ptr, length)) >= 0);
-
-		if (result == 0) {
-			return null;
-		}
-
-		buffer.length = result;
-
-		return buffer;
+	@property keep () {
+		return _keep;
 	}
 
-	long write (ubyte[] data) {
-		long result;
-
-		errnoEnforce((result = .write(_fd, cast (void*) text.ptr, text.length)) >= 0);
-
-		return result;
-	}
-
-	long write (string text) {
-		return write(cast (ubyte[]) text);
+	@property keep (void* what) {
+		_keep = what;
 	}
 
 	bool opEquals (Object other) {
@@ -119,4 +136,6 @@ class Descriptor {
 
 private:
 	int _fd;
+
+	void* _keep;
 }

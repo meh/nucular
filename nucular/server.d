@@ -18,15 +18,64 @@
 
 module nucular.server;
 
-import nucular.reactor;
+import std.exception;
+import std.socket;
+
+import nucular.reactor : Reactor;
 import nucular.descriptor;
+import nucular.connection;
 
 class Server {
-	this (Reactor reactor, string host, int port = 0) {
+	this (Reactor reactor, Address address) {
 		_reactor = reactor;
 
-		_host = host;
-		_port = port;
+		_address = address;
+	}
+
+	this (Reactor reactor, Descriptor descriptor) {
+		_reactor = reactor;
+
+		_descriptor = descriptor;
+		_address    = new UnknownAddress;
+	}
+
+	void start () {
+		if (_descriptor) {
+			return;
+		}
+
+		_socket = new TcpSocket;
+		_socket.bind(_address);
+		_socket.listen(reactor.backlog);
+
+		_descriptor = new Descriptor(_socket.handle, &_socket);
+		_descriptor.asynchronous = true;
+
+		_running = true;
+	}
+
+	void stop () {
+		_running = false;
+	}
+
+	Connection accept () {
+		auto connection = cast (Connection) _handler.create();
+		auto socket     = _socket.accept();
+		auto descriptor = new Descriptor(socket.handle, &socket);
+
+		return connection.accepted(this, descriptor);
+	}
+
+	@property handler (TypeInfo_Class handler) {
+		_handler = handler;
+	}
+
+	@property block (void function (Connection) block) {
+		_block = block;
+	}
+
+	@property running () {
+		return _running;
 	}
 
 	@property reactor () {
@@ -36,8 +85,12 @@ class Server {
 private:
 	Reactor _reactor;
 
-	string _host;
-	int    _port;
+	Address    _address;
+	Descriptor _descriptor;
+	Socket     _socket;
 
-	Descriptor _listener;
+	TypeInfo_Class             _handler;
+	void function (Connection) _block;
+
+	bool _running;
 }

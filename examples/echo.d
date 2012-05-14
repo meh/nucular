@@ -1,13 +1,13 @@
 import std.stdio;
 import nucular.reactor;
 
-void main () {
-	class EchoServer : nucular.reactor.Connection {
-		void receiveData (ubyte[] data) {
-			sendData(data);
-		}
+class EchoServer : nucular.reactor.Connection {
+	void receiveData (ubyte[] data) {
+		sendData(data);
 	}
+}
 
+void main () {
 	foreach (sig; ["INT", "TERM"]) {
 		nucular.reactor.trap(sig, {
 			nucular.reactor.stop();
@@ -15,6 +15,6 @@ void main () {
 	}
 
 	nucular.reactor.run({
-		nucular.reactor.startServer("any", 10000, EchoServer);
+		(new InternetAddress(10000)).startServer!EchoServer;
 	});
 }

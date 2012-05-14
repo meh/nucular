@@ -19,7 +19,7 @@
 module nucular.periodictimer;
 
 import std.datetime;
-import nucular.reactor;
+import nucular.reactor : Reactor;
 
 class PeriodicTimer {
 	this (Reactor reactor, Duration every, void function () block) {

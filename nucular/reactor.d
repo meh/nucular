@@ -18,14 +18,19 @@
 
 module nucular.reactor;
 
-public import core.time;
-public import nucular.connection;
+public import std.socket : InternetAddress, Internet6Address;
+public import core.time : dur, Duration;
+public import nucular.connection : Connection;
+public import nucular.descriptor : Descriptor;
+
+import socket = std.socket;
 
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
 import std.exception;
 import std.datetime;
+import std.socket;
 
 import nucular.threadpool;
 import nucular.timer;
@@ -33,6 +38,7 @@ import nucular.periodictimer;
 import nucular.descriptor;
 import nucular.breaker;
 import nucular.server;
+import nucular.connection;
 
 version (epoll) {
 	import nucular.available.epoll;
@@ -53,6 +59,7 @@ class Reactor {
 		_mutex      = new Mutex;
 		_threadpool = new ThreadPool;
 
+		_backlog = 100;
 		_quantum = 100.dur!"msecs";
 		_running = false;
 	}
@@ -100,6 +107,8 @@ class Reactor {
 				break;
 			}
 
+			executeTimers();
+
 			foreach (descriptor; descriptors) {
 				if (_breaker.opEquals(descriptor)) {
 					_breaker.flush();
@@ -112,9 +121,7 @@ class Reactor {
 				}
 			}
 
-			executeTimers();
-
-			// TODO: we know from what we can read, so let's read
+			// TODO: do the writing where possible
 		}
 	}
 
@@ -148,6 +155,39 @@ class Reactor {
 		threadpool.process({
 			callback(operation());
 		});
+	}
+
+	Server startServer(T) (socket.Address address) {
+		auto server = new Server(this, address);
+
+		server.handler = T.classinfo;
+		server.start();
+
+		return server;
+	}
+
+	Server startServer(T) (socket.Address address, void function (Connection) block) {
+		auto server = startServer!(T)(address);
+
+		server.block = block;
+
+		return server;
+	}
+
+	Connection watch(T) (Descriptor descriptor) {
+		auto connection = cast (Connection) new T;
+
+		connection.watched(this, descriptor);
+
+		return connection;
+	}
+
+	Connection watch(T) (Socket socket) {
+		return watch!(T)(new Descriptor(socket.handle, &socket));
+	}
+
+	Connection watch(T) (int fd) {
+		return watch!(T)(new Descriptor(fd));
 	}
 
 	Timer addTimer (Duration time, void function () block) {
@@ -186,16 +226,6 @@ class Reactor {
 		synchronized (_mutex) {
 			_periodic_timers = _periodic_timers.filter!((a) { return a != timer; }).array;
 		}
-
-		_breaker.act();
-	}
-
-	@property quantum () {
-		return _quantum;
-	}
-
-	@property quantum (Duration duration) {
-		_quantum = duration;
 
 		_breaker.act();
 	}
@@ -260,6 +290,24 @@ class Reactor {
 		return result;
 	}
 
+	@property backlog () {
+		return _backlog;
+	}
+
+	@property backlog (int value) {
+		_backlog = value;
+	}
+
+	@property quantum () {
+		return _quantum;
+	}
+
+	@property quantum (Duration duration) {
+		_quantum = duration;
+
+		_breaker.act();
+	}
+
 private:
 	Timer[]         _timers;
 	PeriodicTimer[] _periodic_timers;
@@ -272,13 +320,12 @@ private:
 	Breaker    _breaker;
 	Mutex      _mutex;
 
+	int      _backlog;
 	Duration _quantum;
 	bool     _running;
 
 	void function ()[] _scheduled;
 }
-
-private Reactor _reactor;
 
 void run (void function () block) {
 	_ensureReactor();
@@ -314,6 +361,36 @@ void defer(T) (T function () operation, void function (T) callback) {
 	_ensureReactor();
 
 	_reactor.defer(operation, callback);
+}
+
+Server startServer(T) (socket.Address address) {
+	_ensureReactor();
+
+	return _reactor.startServer!(T)(address);
+}
+
+Server startServer(T) (socket.Address address, void function (Connection) block) {
+	_ensureReactor();
+
+	return _reactor.startServer!(T)(address, block);
+}
+
+Connection watch(T) (Descriptor descriptor) {
+	_ensureReactor();
+
+	return _reactor.watch!(T)(descriptor);
+}
+
+Connection watch(T) (Socket socket) {
+	_ensureReactor();
+
+	return _reactor.watch!(T)(socket);
+}
+
+Connection watch(T) (int fd) {
+	_ensureReactor();
+
+	return _reactor.watch!(T)(fd);
 }
 
 Timer addTimer (Duration time, void function () block) {
@@ -352,8 +429,15 @@ void cancelTimer (PeriodicTimer timer) {
 	_reactor.quantum = duration;
 }
 
-private void _ensureReactor () {
-	if (!_reactor) {
-		_reactor = new Reactor();
-	}
+void trap (string name, void function () block) {
+
 }
+
+private:
+	Reactor _reactor;
+
+	private void _ensureReactor () {
+		if (!_reactor) {
+			_reactor = new Reactor();
+		}
+	}

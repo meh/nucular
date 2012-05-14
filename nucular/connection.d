@@ -20,7 +20,7 @@ module nucular.connection;
 
 import std.exception;
 
-import nucular.reactor;
+import nucular.reactor : Reactor;
 import nucular.descriptor;
 import nucular.server;
 
@@ -37,13 +37,25 @@ else {
 }
 
 class Connection {
-	this (Server server, Descriptor descriptor) {
-		_server = server;
+	Connection watched (Reactor reactor, Descriptor descriptor) {
+		_reactor = reactor;
 
 		_descriptor = descriptor;
 
-		reuseAddr = true;
-		noDelay   = true;
+		return this;
+	}
+
+	Connection accepted (Server server, Descriptor descriptor) {
+		_server  = server;
+		_reactor = server.reactor;
+
+		_descriptor = descriptor;
+
+		reuseAddr    = true;
+		noDelay      = true;
+		asynchronous = true;
+
+		return this;
 	}
 
 	void postInit () {
@@ -54,12 +66,12 @@ class Connection {
 		// nothing to see here
 	}
 
-	void sendData (string data) {
-
+	void sendData (ubyte[] data) {
+		// TODO: implement data sending
 	}
 
 	void closeConnection (bool after_writing = false) {
-		
+		// TODO: implement connection closing
 	}
 
 	void closeConnectionAfterWriting () {
@@ -128,6 +140,18 @@ class Connection {
 		}
 	}
 
+	@property asynchronous () {
+		return _descriptor.asynchronous;
+	}
+
+	@property asynchronous (bool value) {
+		_descriptor.asynchronous = value;
+	}
+
+	@property isWatcher () {
+		return _server is null;
+	}
+
 	@property server () {
 		return _server;
 	}
@@ -137,7 +161,8 @@ class Connection {
 	}
 
 private:
-	Server _server;
+	Server  _server;
+	Reactor _reactor;
 
 	Descriptor _descriptor;
 }

@@ -37,68 +37,45 @@ else {
 	import nucular.available.select;
 }
 
-version (Posix) {
-	import core.sys.posix.unistd;
-}
-else version (Windows) {
-	static assert (0);
-}
-else {
-	static assert (0);
-}
+import std.socket : socketPair;
 
 class Breaker {
-	version (Posix) {
-		this () {
-			int[2] pipes;
+	this () {
+		auto pair = socketPair();
 
-			.pipe(pipes);
+		_write = new Descriptor(pair[0].handle, &pair[0]);
+		_write.asynchronous = true;
 
-			_read  = new Descriptor(pipes[0]);
-			_write = new Descriptor(pipes[1]);
+		_read = new Descriptor(pair[1].handle, &pair[1]);
+		_read.asynchronous = true;
+	}
 
-			_read.asynchronous  = true;
-			_write.asynchronous = true;
-		}
+	void act () {
+		_write.write("x");
+	}
 
-		~this () {
-			.close(cast (int) _read);
-			.close(cast (int) _write);
-		}
-
-		void act () {
-			_write.write("x");
-		}
-
-		void flush () {
-			try {
-				while (_read.read(1024)) {
-					continue;
-				}
+	void flush () {
+		try {
+			while (_read.read(1024)) {
+				continue;
 			}
-			catch (ErrnoException e) { }
 		}
-
-		void wait () {
-			readable([_read]);
-		}
-
-		void wait (Duration sleep) {
-			readable([_read], sleep);
-		}
-
-		bool opEquals (Object other) {
-			return _read.opEquals(other) || _write.opEquals(other);
-		}
-
-	private:
-		Descriptor _read;
-		Descriptor _write;
+		catch (ErrnoException e) { }
 	}
-	else version (Windows) {
-		static assert (0);
+
+	void wait () {
+		readable([_read]);
 	}
-	else {
-		static assert (0);
+
+	void wait (Duration sleep) {
+		readable([_read], sleep);
 	}
+
+	bool opEquals (Object other) {
+		return _read.opEquals(other) || _write.opEquals(other);
+	}
+
+private:
+	Descriptor _read;
+	Descriptor _write;
 }

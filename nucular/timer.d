@@ -19,7 +19,7 @@
 module nucular.timer;
 
 import std.datetime;
-import nucular.reactor;
+import nucular.reactor : Reactor;
 
 class Timer {
 	this (Reactor reactor, Duration after, void function () block) {
