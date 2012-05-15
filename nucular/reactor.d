@@ -36,7 +36,6 @@ import nucular.periodictimer;
 import nucular.descriptor;
 import nucular.breaker;
 import nucular.server;
-import nucular.connection;
 import nucular.available.best;
 
 class Reactor {
@@ -223,8 +222,8 @@ class Reactor {
 		connection.watched(this, descriptor);
 
 		schedule({
-			_connections ~= connection;
-			_descriptors ~= descriptor;
+			_connections[descriptor]  = connection;
+			_descriptors             ~= descriptor;
 		});
 
 		return connection;
