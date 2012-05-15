@@ -65,13 +65,17 @@ class Reactor {
 
 		_running = true;
 
-		while (_running) {
+		while (isRunning) {
 			synchronized (_mutex) {
 				foreach (scheduled; _scheduled) {
 					scheduled();
 				}
 
 				_scheduled.clear();
+			}
+
+			if (!isRunning) {
+				break;
 			}
 
 			if (_descriptors.length == 1) {
@@ -81,7 +85,7 @@ class Reactor {
 				else {
 					_breaker.wait(minimumSleep());
 
-					if (_running) {
+					if (isRunning) {
 						executeTimers();
 					}
 				}
@@ -93,30 +97,39 @@ class Reactor {
 				readable(_descriptors, minimumSleep()) :
 				readable(_descriptors);
 
-			if (!_running) {
+			if (!isRunning) {
 				break;
 			}
 
 			executeTimers();
 
-			if (!_running) {
+			if (!isRunning) {
 				break;
 			}
 
 			foreach (descriptor; descriptors) {
-				// TODO: find out how to properly overload opEquals and opCast
-				if (_breaker.opEquals(descriptor)) {
+				if (_breaker == descriptor) {
 					_breaker.flush();
 				}
 				else if (descriptor in _servers) {
-					Server server = _servers[descriptor];
+					Server server         = _servers[descriptor];
+					Connection connection = server.accept();
+
+					schedule({
+						_descriptors ~= cast (Descriptor) connection;
+					});
 				}
 				else if (descriptor in _connections) {
 					Connection connection = _connections[descriptor];
+					ubyte[]    data       = connection.read();
+
+					if (!data.empty) {
+						connection.receiveData(data);
+					}
 				}
 			}
 
-			if (!_running) {
+			if (!isRunning) {
 				break;
 			}
 
@@ -130,7 +143,7 @@ class Reactor {
 
 			descriptors = writable(descriptors, (0).dur!"seconds");
 
-			if (!_running) {
+			if (!isRunning) {
 				break;
 			}
 
@@ -151,12 +164,16 @@ class Reactor {
 		wakeUp();
 	}
 
+	void schedule (void delegate () @system block) {
+		schedule(cast (void function ()) block);
+	}
+
 	void nextTick (void function () block) {
 		schedule(block);
 	}
 
 	void stop () {
-		if (!_running) {
+		if (!isRunning) {
 			return;
 		}
 
@@ -175,40 +192,49 @@ class Reactor {
 		});
 	}
 
-	Server startServer(T) (Address address) {
+	Server startServer(T : Connection) (Address address) {
 		auto server = new Server(this, address);
-
 		server.handler = T.classinfo;
-		server.start();
+
+		schedule({
+			_descriptors ~= server.start();
+		});
 
 		return server;
 	}
 
-	Server startServer(T) (Address address, void function (Connection) block) {
+	Server startServer(T : Connection) (Address address, void function (Connection) block) {
 		auto server = startServer!(T)(address);
-
 		server.block = block;
 
 		return server;
 	}
 
 	void stopServer (Server server) {
+		server.stop();
 
+		schedule({
+			_descriptors = _descriptors.filter!((a) { return a == cast (Descriptor) server; }).array;
+		});
 	}
 
-	Connection watch(T) (Descriptor descriptor) {
-		auto connection = cast (Connection) new T;
-
+	T watch(T : Connection) (Descriptor descriptor) {
+		auto connection = new T;
 		connection.watched(this, descriptor);
+
+		schedule({
+			_connections ~= connection;
+			_descriptors ~= descriptor;
+		});
 
 		return connection;
 	}
 
-	Connection watch(T) (Socket socket) {
+	T watch(T : Connection) (Socket socket) {
 		return watch!(T)(new Descriptor(socket.handle, &socket));
 	}
 
-	Connection watch(T) (int fd) {
+	T watch(T : Connection) (int fd) {
 		return watch!(T)(new Descriptor(fd));
 	}
 
@@ -316,6 +342,10 @@ class Reactor {
 		_breaker.act();
 	}
 
+	@property isRunning () {
+		return _running;
+	}
+
 	@property backlog () {
 		return _backlog;
 	}
@@ -402,31 +432,31 @@ void defer(T) (T function () operation, void function (T) callback) {
 	_reactor.defer(operation, callback);
 }
 
-Server startServer(T) (Address address) {
+Server startServer(T : Connection) (Address address) {
 	_ensureReactor();
 
 	return _reactor.startServer!(T)(address);
 }
 
-Server startServer(T) (Address address, void function (Connection) block) {
+Server startServer(T : Connection) (Address address, void function (Connection) block) {
 	_ensureReactor();
 
 	return _reactor.startServer!(T)(address, block);
 }
 
-Connection watch(T) (Descriptor descriptor) {
+Connection watch(T : Connection) (Descriptor descriptor) {
 	_ensureReactor();
 
 	return _reactor.watch!(T)(descriptor);
 }
 
-Connection watch(T) (Socket socket) {
+Connection watch(T : Connection) (Socket socket) {
 	_ensureReactor();
 
 	return _reactor.watch!(T)(socket);
 }
 
-Connection watch(T) (int fd) {
+Connection watch(T : Connection) (int fd) {
 	_ensureReactor();
 
 	return _reactor.watch!(T)(fd);

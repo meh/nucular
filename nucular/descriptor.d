@@ -126,8 +126,12 @@ class Descriptor {
 		return -1;
 	}
 
-	int opCast () {
+	int opCast(T : int) () {
 		return _fd;
+	}
+
+	Object opCast(T : Object) () {
+		return cast (Object) this;
 	}
 
 	hash_t toHash () {

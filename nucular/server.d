@@ -39,9 +39,9 @@ class Server {
 		_address    = new UnknownAddress;
 	}
 
-	void start () {
+	Descriptor start () {
 		if (_descriptor) {
-			return;
+			return _descriptor;
 		}
 
 		_socket = new TcpSocket;
@@ -52,10 +52,18 @@ class Server {
 		_descriptor.asynchronous = true;
 
 		_running = true;
+
+		return _descriptor;
 	}
 
 	void stop () {
+		if (!_running) {
+			return;
+		}
+
 		_running = false;
+
+		reactor.stopServer(this);
 	}
 
 	Connection accept () {

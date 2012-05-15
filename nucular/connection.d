@@ -90,6 +90,19 @@ class Connection {
 		// this is just a placeholder
 	}
 
+	ubyte[] read () {
+		ubyte[] result;
+		ubyte[] tmp;
+
+		try {
+			while ((tmp = _descriptor.read(1024)) !is null) {
+				result ~= tmp;
+			}
+		} catch (ErrnoException e) { }
+
+		return result;
+	}
+
 	bool write () {
 		synchronized (_mutex) {
 			while (!_to_write.empty) {
@@ -192,12 +205,13 @@ class Connection {
 		return _server.reactor;
 	}
 
-	// TODO: understand why all these opCast are breaking everything
-	/++
-	Descriptor opCast () {
+	Descriptor opCast(T : Descriptor) () {
 		return _descriptor;
 	}
-	++/
+
+	Object opCast(T : Object) () {
+		return cast (Object) this;
+	}
 
 private:
 	Server  _server;
