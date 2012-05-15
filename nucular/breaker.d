@@ -70,6 +70,10 @@ class Breaker {
 		return this;
 	}
 
+	string toString () {
+		return "Breaker(" ~ _read.toString() ~ ", " ~ _write.toString() ~ ")";
+	}
+
 private:
 	Descriptor _read;
 	Descriptor _write;

@@ -61,6 +61,15 @@ class Connection {
 		return this;
 	}
 
+	Connection connected (Reactor reactor, Descriptor descriptor) {
+		watched(reactor, descriptor);
+
+		noDelay      = true;
+		asynchronous = true;
+
+		return this;
+	}
+
 	void postInit () {
 		// this is just a placeholder
 	}

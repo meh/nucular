@@ -23,6 +23,7 @@ import core.sys.posix.sys.select;
 import core.sys.posix.sys.time;
 import std.algorithm;
 import std.conv;
+import std.exception;
 
 import nucular.descriptor;
 
@@ -30,7 +31,7 @@ Descriptor[] readable (Descriptor[] descriptors) {
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	select(nfds, &set, null, null, null);
+	errnoEnforce(select(nfds, &set, null, null, null) >= 0);
 
 	return set.toDescriptors(descriptors);
 }
@@ -40,7 +41,7 @@ Descriptor[] readable (Descriptor[] descriptors, Duration sleep) {
 	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
-	select(nfds, &set, null, null, &tv);
+	errnoEnforce(select(nfds, &set, null, null, &tv) >= 0);
 
 	return set.toDescriptors(descriptors);
 }
@@ -49,7 +50,7 @@ Descriptor[] writable (Descriptor[] descriptors) {
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	select(nfds, null, &set, null, null);
+	errnoEnforce(select(nfds, null, &set, null, null) >= 0);
 
 	return set.toDescriptors(descriptors);
 }
@@ -59,7 +60,7 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep) {
 	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
-	select(nfds, null, &set, null, &tv);
+	errnoEnforce(select(nfds, null, &set, null, &tv) >= 0);
 
 	return set.toDescriptors(descriptors);
 }
