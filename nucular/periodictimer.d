@@ -22,7 +22,7 @@ import std.datetime;
 import nucular.reactor : Reactor;
 
 class PeriodicTimer {
-	this (Reactor reactor, Duration every, void function () block) {
+	this (Reactor reactor, Duration every, void delegate () block) {
 		_reactor = reactor;
 
 		_every = every;
@@ -76,5 +76,5 @@ private:
 	SysTime  _started_at;
 	SysTime  _last_execution_at;
 
-	void function () _block;
+	void delegate () _block;
 }

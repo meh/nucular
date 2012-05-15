@@ -78,7 +78,7 @@ class Server {
 		_handler = handler;
 	}
 
-	@property block (void function (Connection) block) {
+	@property block (void delegate (Connection) block) {
 		_block = block;
 	}
 
@@ -98,7 +98,7 @@ private:
 	Socket     _socket;
 
 	TypeInfo_Class             _handler;
-	void function (Connection) _block;
+	void delegate (Connection) _block;
 
 	bool _running;
 }

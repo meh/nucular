@@ -28,6 +28,11 @@ import core.sync.mutex;
 import core.sync.condition;
 
 class ThreadPool {
+	struct Work {
+		void delegate (void*) block;
+		void*                 data;
+	}
+
 	this (int min = 20) {
 		this(min, min);
 	}
@@ -63,7 +68,7 @@ class ThreadPool {
 	}
 
 	@property defaultBlock(T) (T block) {
-		_default_block = cast (void*) block;
+		_default_block = cast (void delegate (T)) block;
 	}
 
 	@property autoTrim (bool what) {
@@ -105,12 +110,12 @@ class ThreadPool {
 	void process () {
 		enforce(_default_block, "there's no default callback");
 
-		process(cast (void function ()) _default_block);
+		process(cast (void delegate ()) _default_block);
 	}
 
-	void process (void function () block) {
+	void process (void delegate () block) {
 		synchronized (_mutex) {
-			_todo ~= [cast (void*) block];
+			_todo ~= Work(cast (void delegate (void*)) block, null);
 
 			_spawnWorker();
 			_condition.notify();
@@ -120,12 +125,12 @@ class ThreadPool {
 	void processWith(T) (T data) {
 		enforce(_default_block, "there's no default callback");
 
-		processWith(data, cast (void function (T)) _default_block);
+		processWith(data, _default_block);
 	}
 
-	void processWith(T) (T data, void function (T) block) {
+	void processWith(T) (T data, void delegate (T) block) {
 		synchronized (_mutex) {
-			_todo ~= [cast (void*) block, cast (void*) data];
+			_todo ~= Work(cast (void delegate (void*)) block, cast (void*) data);
 
 			_spawnWorker();
 			_condition.notify();
@@ -151,8 +156,8 @@ private:
 		
 		thread = new Thread({
 			while (true) {
-				void*[] work       = null;
-				bool    keep_going = true;
+				Work work;
+				bool keep_going = true;
 
 				synchronized (_mutex) {
 					while (_todo.empty) {
@@ -192,12 +197,7 @@ private:
 					break;
 				}
 
-				if (work.length == 1) {
-					(cast(void function ()) work[0])();
-				}
-				else {
-					(cast(void function (void*)) work[0])(work[1]);
-				}
+				work.block(work.data);
 
 				if (_auto_trim && _spawned > _min) {
 					trim();
@@ -226,11 +226,10 @@ private:
 	bool _auto_trim;
 	bool _shutdown;
 
-	void* _default_block;
-
 	Mutex     _mutex;
 	Condition _condition;
 
-	Thread[]  _threads;
-	void*[][] _todo;
+	Thread[]              _threads;
+	Work[]                _todo;
+	void delegate (void*) _default_block;
 }

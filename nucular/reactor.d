@@ -57,7 +57,7 @@ class Reactor {
 		stop();
 	}
 
-	void run (void function () block) {
+	void run (void delegate () block) {
 		schedule(block);
 
 		if (_running) {
@@ -156,7 +156,7 @@ class Reactor {
 		}
 	}
 
-	void schedule (void function () block) {
+	void schedule (void delegate () block) {
 		synchronized (_mutex) {
 			_scheduled ~= block;
 		}
@@ -164,7 +164,7 @@ class Reactor {
 		wakeUp();
 	}
 
-	void nextTick (void function () block) {
+	void nextTick (void delegate () block) {
 		schedule(block);
 	}
 
@@ -178,11 +178,11 @@ class Reactor {
 		wakeUp();
 	}
 
-	void defer(T) (T function () operation) {
+	void defer(T) (T delegate () operation) {
 		threadpool.process(operation);
 	}
 
-	void defer(T) (T function () operation, void function (T) callback) {
+	void defer(T) (T delegate () operation, void delegate (T) callback) {
 		threadpool.process({
 			callback(operation());
 		});
@@ -202,7 +202,7 @@ class Reactor {
 		return server;
 	}
 
-	Server startServer(T : Connection) (Address address, void function (Connection) block) {
+	Server startServer(T : Connection) (Address address, void delegate (Connection) block) {
 		auto server = startServer!(T)(address);
 		server.block = block;
 
@@ -237,7 +237,7 @@ class Reactor {
 		return watch!(T)(new Descriptor(fd));
 	}
 
-	Timer addTimer (Duration time, void function () block) {
+	Timer addTimer (Duration time, void delegate () block) {
 		auto timer = new Timer(this, time, block);
 
 		synchronized (_mutex) {
@@ -249,7 +249,7 @@ class Reactor {
 		return timer;
 	}
 
-	PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
+	PeriodicTimer addPeriodicTimer (Duration time, void delegate () block) {
 		auto timer = new PeriodicTimer(this, time, block);
 
 		synchronized (_mutex) {
@@ -392,26 +392,26 @@ private:
 	bool     _running;
 	bool     _is_write_pending;
 
-	void function ()[] _scheduled;
+	void delegate ()[] _scheduled;
 }
 
-void trap (string name, void function () block) {
+void trap (string name, void delegate () block) {
 	// TODO: implement signal handling
 }
 
-void run (void function () block) {
+void run (void delegate () block) {
 	_ensureReactor();
 
 	_reactor.run(block);
 }
 
-void schedule (void function () block) {
+void schedule (void delegate () block) {
 	_ensureReactor();
 
 	_reactor.schedule(block);
 }
 
-void nextTick (void function () block) {
+void nextTick (void delegate () block) {
 	_ensureReactor();
 
 	_reactor.nextTick(block);
@@ -423,13 +423,13 @@ void stop () {
 	_reactor.stop();
 }
 
-void defer(T) (T function () operation) {
+void defer(T) (T delegate () operation) {
 	_ensureReactor();
 
 	_reactor.defer(operation);
 }
 
-void defer(T) (T function () operation, void function (T) callback) {
+void defer(T) (T delegate () operation, void delegate (T) callback) {
 	_ensureReactor();
 
 	_reactor.defer(operation, callback);
@@ -441,7 +441,7 @@ Server startServer(T : Connection) (Address address) {
 	return _reactor.startServer!(T)(address);
 }
 
-Server startServer(T : Connection) (Address address, void function (Connection) block) {
+Server startServer(T : Connection) (Address address, void delegate (Connection) block) {
 	_ensureReactor();
 
 	return _reactor.startServer!(T)(address, block);
@@ -465,13 +465,13 @@ Connection watch(T : Connection) (int fd) {
 	return _reactor.watch!(T)(fd);
 }
 
-Timer addTimer (Duration time, void function () block) {
+Timer addTimer (Duration time, void delegate () block) {
 	_ensureReactor();
 
 	return _reactor.addTimer(time, block);
 }
 
-PeriodicTimer addPeriodicTimer (Duration time, void function () block) {
+PeriodicTimer addPeriodicTimer (Duration time, void delegate () block) {
 	_ensureReactor();
 
 	return _reactor.addPeriodicTimer(time, block);
