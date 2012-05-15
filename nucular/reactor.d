@@ -239,7 +239,7 @@ class Reactor {
 	}
 
 	T watch(T : Connection) (Socket socket) {
-		return watch!(T)(new Descriptor(socket.handle, &socket));
+		return watch!(T)(new Descriptor(socket));
 	}
 
 	T watch(T : Connection) (int fd) {

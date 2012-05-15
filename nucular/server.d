@@ -46,7 +46,7 @@ class Server {
 
 		_socket = new TcpSocket;
 
-		_connection = (new Connection).watched(reactor, new Descriptor(_socket.handle, &_socket));
+		_connection = (new Connection).watched(reactor, new Descriptor(_socket));
 		_connection.asynchronous = true;
 		_connection.reuseAddr    = true;
 
@@ -71,7 +71,7 @@ class Server {
 	Connection accept () {
 		auto connection = cast (Connection) _handler.create();
 		auto socket     = _socket.accept();
-		auto descriptor = new Descriptor(socket.handle, &socket);
+		auto descriptor = new Descriptor(socket);
 
 		return connection.accepted(this, descriptor);
 	}

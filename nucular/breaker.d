@@ -30,10 +30,10 @@ class Breaker {
 	this () {
 		auto pair = socketPair();
 
-		_write = new Descriptor(pair[0].handle, &pair[0]);
+		_write = new Descriptor(pair[0]);
 		_write.asynchronous = true;
 
-		_read = new Descriptor(pair[1].handle, &pair[1]);
+		_read = new Descriptor(pair[1]);
 		_read.asynchronous = true;
 	}
 

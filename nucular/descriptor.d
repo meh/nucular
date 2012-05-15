@@ -20,6 +20,7 @@ module nucular.descriptor;
 
 import std.conv;
 import std.exception;
+import std.socket;
 
 version (Posix) {
 	import core.sys.posix.fcntl;
@@ -37,9 +38,9 @@ class Descriptor {
 		_fd = fd;
 	}
 
-	this (int fd, void* keep) {
-		_fd   = fd;
-		_keep = keep;
+	this (Socket socket) {
+		_fd     = socket.handle;
+		_socket = socket;
 	}
 
 	ubyte[] read (size_t length) {
@@ -96,14 +97,6 @@ class Descriptor {
 		}
 	}
 
-	@property keep () {
-		return _keep;
-	}
-
-	@property keep (void* what) {
-		_keep = what;
-	}
-
 	bool opEquals (Object other) {
 		if (other is this) {
 			return true;
@@ -145,5 +138,5 @@ class Descriptor {
 private:
 	int _fd;
 
-	void* _keep;
+	Socket _socket;
 }
