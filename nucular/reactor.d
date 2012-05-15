@@ -67,14 +67,15 @@ class Reactor {
 		_running = true;
 
 		while (isRunning) {
-			synchronized (_mutex) {
-				while (!hasScheduled) {
-					_scheduled.front()();
+			while (hasScheduled) {
+				_scheduled.front()();
+
+				synchronized (_mutex) {
 					_scheduled.popFront();
 				}
 			}
 
-			if (!isRunning || !hasScheduled) {
+			if (!isRunning || hasScheduled) {
 				continue;
 			}
 
@@ -97,13 +98,13 @@ class Reactor {
 				readable(_descriptors, minimumSleep()) :
 				readable(_descriptors);
 
-			if (!isRunning || !hasScheduled) {
+			if (!isRunning) {
 				continue;
 			}
 
 			executeTimers();
 
-			if (!isRunning || !hasScheduled) {
+			if (!isRunning || hasScheduled) {
 				continue;
 			}
 
@@ -114,9 +115,11 @@ class Reactor {
 				else if (descriptor in _servers) {
 					Server server         = _servers[descriptor];
 					Connection connection = server.accept();
+					           descriptor = cast (Descriptor) connection;
 
 					schedule({
-						_descriptors ~= cast (Descriptor) connection;
+						_descriptors             ~= descriptor;
+						_connections[descriptor]  = connection;
 					});
 				}
 				else if (descriptor in _connections) {
@@ -129,7 +132,7 @@ class Reactor {
 				}
 			}
 
-			if (!isRunning || !hasScheduled) {
+			if (!isRunning) {
 				continue;
 			}
 
@@ -137,13 +140,19 @@ class Reactor {
 
 			foreach (descriptor, connection; _connections) {
 				if (connection.isWritePending) {
+					isWritePending = true;
+
 					descriptors ~= descriptor;
 				}
 			}
 
+			if (!isRunning || hasScheduled || descriptors.empty) {
+				continue;
+			}
+
 			descriptors = writable(descriptors, (0).dur!"seconds");
 
-			if (!isRunning || !hasScheduled) {
+			if (!isRunning) {
 				continue;
 			}
 
@@ -195,7 +204,7 @@ class Reactor {
 		schedule({
 			auto descriptor = server.start();
 
-			_descriptors         ~= _descriptors;
+			_descriptors         ~= descriptor;
 			_servers[descriptor]  = server;
 		});
 
@@ -278,6 +287,10 @@ class Reactor {
 	}
 
 	void executeTimers () {
+		if (!hasTimers) {
+			return;
+		}
+
 		Timer[]         timers_to_call;
 		PeriodicTimer[] periodic_timers_to_call;
 

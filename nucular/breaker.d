@@ -67,7 +67,7 @@ class Breaker {
 	}
 
 	Object opCast(T : Object) () {
-		return cast (Object) this;
+		return this;
 	}
 
 private:

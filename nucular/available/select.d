@@ -64,8 +64,10 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep) {
 	return set.toDescriptors(descriptors);
 }
 
-private fd_set toSet (ref Descriptor[] descriptors) {
+private fd_set toSet (Descriptor[] descriptors) {
 	fd_set set;
+
+	FD_ZERO(&set);
 
 	foreach (descriptor; descriptors) {
 		FD_SET(cast (int) descriptor, &set);

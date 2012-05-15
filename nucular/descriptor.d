@@ -131,11 +131,15 @@ class Descriptor {
 	}
 
 	Object opCast(T : Object) () {
-		return cast (Object) this;
+		return this;
 	}
 
 	hash_t toHash () {
 		return _fd;
+	}
+
+	string toString () {
+		return "Descriptor(" ~ _fd.to!string ~ ")";
 	}
 
 private:

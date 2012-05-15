@@ -35,25 +35,27 @@ class Server {
 	this (Reactor reactor, Descriptor descriptor) {
 		_reactor = reactor;
 
-		_descriptor = descriptor;
+		_connection = (new Connection).watched(reactor, descriptor);
 		_address    = new UnknownAddress;
 	}
 
 	Descriptor start () {
-		if (_descriptor) {
-			return _descriptor;
+		if (_connection) {
+			return cast (Descriptor) _connection;
 		}
 
 		_socket = new TcpSocket;
+
+		_connection = (new Connection).watched(reactor, new Descriptor(_socket.handle, &_socket));
+		_connection.asynchronous = true;
+		_connection.reuseAddr    = true;
+
 		_socket.bind(_address);
 		_socket.listen(reactor.backlog);
 
-		_descriptor = new Descriptor(_socket.handle, &_socket);
-		_descriptor.asynchronous = true;
-
 		_running = true;
 
-		return _descriptor;
+		return cast (Descriptor) _connection;
 	}
 
 	void stop () {
@@ -94,7 +96,7 @@ private:
 	Reactor _reactor;
 
 	Address    _address;
-	Descriptor _descriptor;
+	Connection _connection;
 	Socket     _socket;
 
 	TypeInfo_Class             _handler;

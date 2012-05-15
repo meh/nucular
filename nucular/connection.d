@@ -56,7 +56,6 @@ class Connection {
 		_descriptor = descriptor;
 
 		reuseAddr    = true;
-		noDelay      = true;
 		asynchronous = true;
 
 		return this;
@@ -210,7 +209,11 @@ class Connection {
 	}
 
 	Object opCast(T : Object) () {
-		return cast (Object) this;
+		return this;
+	}
+
+	string toString () {
+		return "Connection(" ~ _descriptor.toString() ~ ")";
 	}
 
 private:
