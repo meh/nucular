@@ -196,7 +196,10 @@ class Reactor {
 		server.handler = T.classinfo;
 
 		schedule({
-			_descriptors ~= server.start();
+			auto descriptor = server.start();
+
+			_descriptors         ~= _descriptors;
+			_servers[descriptor]  = server;
 		});
 
 		return server;
@@ -222,8 +225,8 @@ class Reactor {
 		connection.watched(this, descriptor);
 
 		schedule({
-			_connections[descriptor]  = connection;
 			_descriptors             ~= descriptor;
+			_connections[descriptor]  = connection;
 		});
 
 		return connection;
