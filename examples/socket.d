@@ -10,6 +10,8 @@ class Watcher : nucular.reactor.Connection {
 
 void main () {
 	nucular.reactor.run({
-		(new TcpSocket(new InternetAddress("google.com", 80))).watch!Watcher();
+		auto socket = new TcpSocket(new InternetAddress("google.com", 80));
+		
+		socket.watch!Watcher();
 	});
 }

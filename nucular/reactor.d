@@ -48,6 +48,8 @@ class Reactor {
 		_backlog = 100;
 		_quantum = 100.dur!"msecs";
 		_running = false;
+
+		_descriptors ~= cast (Descriptor) _breaker;
 	}
 
 	~this () {
@@ -72,7 +74,7 @@ class Reactor {
 				_scheduled.clear();
 			}
 
-			if (_descriptors.empty) {
+			if (_descriptors.length == 1) {
 				if (!hasTimers) {
 					_breaker.wait();
 				}
@@ -87,7 +89,9 @@ class Reactor {
 				continue;
 			}
 
-			Descriptor[] descriptors = hasTimers ? readable(_descriptors, minimumSleep()) : readable(_descriptors);
+			Descriptor[] descriptors = (hasTimers && !hasToWrite) ?
+				readable(_descriptors, minimumSleep()) :
+				readable(_descriptors);
 
 			if (!_running) {
 				break;
@@ -95,7 +99,12 @@ class Reactor {
 
 			executeTimers();
 
+			if (!_running) {
+				break;
+			}
+
 			foreach (descriptor; descriptors) {
+				// TODO: find out how to properly overload opEquals and opCast
 				if (_breaker.opEquals(descriptor)) {
 					_breaker.flush();
 				}
@@ -107,7 +116,30 @@ class Reactor {
 				}
 			}
 
-			// TODO: do the writing where possible
+			if (!_running) {
+				break;
+			}
+
+			descriptors.clear();
+
+			foreach (descriptor, connection; _connections) {
+				if (connection.hasData) {
+					descriptors ~= descriptor;
+				}
+			}
+
+			descriptors = writable(descriptors, (0).dur!"seconds");
+
+			if (!_running) {
+				break;
+			}
+
+			hasToWrite = false;
+			foreach (descriptor; descriptors) {
+				if (!_connections[descriptor].write() && !hasToWrite) {
+					hasToWrite = true;
+				}
+			}
 		}
 	}
 
@@ -116,7 +148,7 @@ class Reactor {
 			_scheduled ~= block;
 		}
 
-		_breaker.act();
+		wakeUp();
 	}
 
 	void nextTick (void function () block) {
@@ -130,7 +162,7 @@ class Reactor {
 
 		_running = false;
 
-		_breaker.act();
+		wakeUp();
 	}
 
 	void defer(T) (T function () operation) {
@@ -160,6 +192,10 @@ class Reactor {
 		return server;
 	}
 
+	void stopServer (Server server) {
+
+	}
+
 	Connection watch(T) (Descriptor descriptor) {
 		auto connection = cast (Connection) new T;
 
@@ -183,7 +219,7 @@ class Reactor {
 			_timers ~= timer;
 		}
 
-		_breaker.act();
+		wakeUp();
 
 		return timer;
 	}
@@ -195,7 +231,7 @@ class Reactor {
 			_periodic_timers ~= timer;
 		}
 
-		_breaker.act();
+		wakeUp();
 
 		return timer;
 	}
@@ -205,7 +241,7 @@ class Reactor {
 			_timers = _timers.filter!((a) { return a != timer; }).array;
 		}
 
-		_breaker.act();
+		wakeUp();
 	}
 
 	void cancelTimer (PeriodicTimer timer) {
@@ -213,7 +249,7 @@ class Reactor {
 			_periodic_timers = _periodic_timers.filter!((a) { return a != timer; }).array;
 		}
 
-		_breaker.act();
+		wakeUp();
 	}
 
 	void executeTimers () {
@@ -276,6 +312,10 @@ class Reactor {
 		return result;
 	}
 
+	void wakeUp () {
+		_breaker.act();
+	}
+
 	@property backlog () {
 		return _backlog;
 	}
@@ -291,7 +331,15 @@ class Reactor {
 	@property quantum (Duration duration) {
 		_quantum = duration;
 
-		_breaker.act();
+		wakeUp();
+	}
+
+	@property hasToWrite () {
+		return _has_to_write;
+	}
+
+	@property hasToWrite (bool value) {
+		_has_to_write = value;
 	}
 
 private:
@@ -309,8 +357,13 @@ private:
 	int      _backlog;
 	Duration _quantum;
 	bool     _running;
+	bool     _has_to_write;
 
 	void function ()[] _scheduled;
+}
+
+void trap (string name, void function () block) {
+	// TODO: implement signal handling here
 }
 
 void run (void function () block) {
@@ -413,10 +466,6 @@ void cancelTimer (PeriodicTimer timer) {
 	_ensureReactor();
 
 	_reactor.quantum = duration;
-}
-
-void trap (string name, void function () block) {
-
 }
 
 private:

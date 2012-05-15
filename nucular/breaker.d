@@ -59,7 +59,12 @@ class Breaker {
 	}
 
 	bool opEquals (Object other) {
+		// TODO: find out how to properly overload opEquals and opCast
 		return _read.opEquals(other) || _write.opEquals(other);
+	}
+
+	Descriptor opCast () {
+		return _read;
 	}
 
 private:

@@ -19,6 +19,8 @@
 module nucular.connection;
 
 import std.exception;
+import std.array;
+import core.sync.mutex;
 
 import nucular.reactor : Reactor;
 import nucular.descriptor;
@@ -39,6 +41,7 @@ else {
 class Connection {
 	Connection watched (Reactor reactor, Descriptor descriptor) {
 		_reactor = reactor;
+		_mutex   = new Mutex;
 
 		_descriptor = descriptor;
 
@@ -48,6 +51,7 @@ class Connection {
 	Connection accepted (Server server, Descriptor descriptor) {
 		_server  = server;
 		_reactor = server.reactor;
+		_mutex   = new Mutex;
 
 		_descriptor = descriptor;
 
@@ -59,15 +63,19 @@ class Connection {
 	}
 
 	void postInit () {
-		// nothing to see here
+		// this is just a placeholder
 	}
 
 	void receiveData (ubyte[] data) {
-		// nothing to see here
+		// this is just a placeholder
 	}
 
 	void sendData (ubyte[] data) {
-		// TODO: implement data sending
+		synchronized (_mutex) {
+			_to_write ~= data;
+		}
+
+		reactor.wakeUp();
 	}
 
 	void closeConnection (bool after_writing = false) {
@@ -79,7 +87,27 @@ class Connection {
 	}
 
 	void unbind () {
-		// nothing to see here
+		// this is just a placeholder
+	}
+
+	bool write () {
+		synchronized (_mutex) {
+			while (!_to_write.empty) {
+				ubyte[]   current = _to_write.front;
+				ptrdiff_t written;
+
+				if ((written = _descriptor.write(current)) != current.length) {
+					_to_write[0] = current[written .. current.length];
+
+					return false;
+				}
+				else {
+					_to_write.popFront();
+				}
+			}
+		}
+
+		return true;
 	}
 
 	@property error () {
@@ -152,6 +180,10 @@ class Connection {
 		return _server is null;
 	}
 
+	@property hasData () {
+		return !_to_write.empty;
+	}
+
 	@property server () {
 		return _server;
 	}
@@ -160,9 +192,19 @@ class Connection {
 		return _server.reactor;
 	}
 
+	// TODO: understand why all these opCast are breaking everything
+	/++
+	Descriptor opCast () {
+		return _descriptor;
+	}
+	++/
+
 private:
 	Server  _server;
 	Reactor _reactor;
+	Mutex   _mutex;
 
 	Descriptor _descriptor;
+
+	ubyte[][] _to_write;
 }

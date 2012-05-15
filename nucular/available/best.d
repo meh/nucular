@@ -16,6 +16,9 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
+version (poll) {
+	public import nucular.available.poll;
+}
 version (epoll) {
 	public import nucular.available.epoll;
 }
