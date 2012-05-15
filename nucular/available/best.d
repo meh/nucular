@@ -16,53 +16,35 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular.breaker;
-
-import core.memory;
-import core.time;
-import std.exception;
-import std.socket : socketPair;
-
-import nucular.descriptor;
-import nucular.available.best;
-
-class Breaker {
-	this () {
-		auto pair = socketPair();
-
-		_write = new Descriptor(pair[0].handle, &pair[0]);
-		_write.asynchronous = true;
-
-		_read = new Descriptor(pair[1].handle, &pair[1]);
-		_read.asynchronous = true;
+version (epoll) {
+	public import nucular.available.epoll;
+}
+else version (kqueue) {
+	public import nucular.available.kqueue;
+}
+else version (iocompletion) {
+	public import nucular.available.iocompletion;
+}
+else version (select) {
+	public import nucular.available.select;
+}
+else {
+	version (Windows) {
+		public import nucular.available.iocompletion;
 	}
-
-	void act () {
-		_write.write("x");
+	else version (FreeBSD) {
+		public import nucular.available.kqueue;
 	}
-
-	void flush () {
-		try {
-			while (_read.read(1024)) {
-				continue;
-			}
-		}
-		catch (ErrnoException e) { }
+	else version (OpenBSD) {
+		public import nucular.available.kqueue;
 	}
-
-	void wait () {
-		readable([_read]);
+	else version (linux) {
+		public import nucular.available.epoll;
 	}
-
-	void wait (Duration sleep) {
-		readable([_read], sleep);
+	else version (Posix) {
+		public import nucular.available.select;
 	}
-
-	bool opEquals (Object other) {
-		return _read.opEquals(other) || _write.opEquals(other);
+	else {
+		static assert (0);
 	}
-
-private:
-	Descriptor _read;
-	Descriptor _write;
 }

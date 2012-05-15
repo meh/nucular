@@ -23,8 +23,6 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
-import socket = std.socket;
-
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -39,19 +37,7 @@ import nucular.descriptor;
 import nucular.breaker;
 import nucular.server;
 import nucular.connection;
-
-version (epoll) {
-	import nucular.available.epoll;
-}
-else version (kqueue) {
-	import nucular.available.kqueue;
-}
-else version (iocompletion) {
-	import nucular.available.iocompletion;
-}
-else {
-	import nucular.available.select;
-}
+import nucular.available.best;
 
 class Reactor {
 	this () {
@@ -157,7 +143,7 @@ class Reactor {
 		});
 	}
 
-	Server startServer(T) (socket.Address address) {
+	Server startServer(T) (Address address) {
 		auto server = new Server(this, address);
 
 		server.handler = T.classinfo;
@@ -166,7 +152,7 @@ class Reactor {
 		return server;
 	}
 
-	Server startServer(T) (socket.Address address, void function (Connection) block) {
+	Server startServer(T) (Address address, void function (Connection) block) {
 		auto server = startServer!(T)(address);
 
 		server.block = block;
@@ -363,13 +349,13 @@ void defer(T) (T function () operation, void function (T) callback) {
 	_reactor.defer(operation, callback);
 }
 
-Server startServer(T) (socket.Address address) {
+Server startServer(T) (Address address) {
 	_ensureReactor();
 
 	return _reactor.startServer!(T)(address);
 }
 
-Server startServer(T) (socket.Address address, void function (Connection) block) {
+Server startServer(T) (Address address, void function (Connection) block) {
 	_ensureReactor();
 
 	return _reactor.startServer!(T)(address, block);
