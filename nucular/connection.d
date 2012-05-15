@@ -193,7 +193,7 @@ class Connection {
 		return _server is null;
 	}
 
-	@property hasData () {
+	@property isWritePending () {
 		return !_to_write.empty;
 	}
 

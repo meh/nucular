@@ -15,7 +15,8 @@ EXAMPLES = FileList['examples/*.d'].ext('')
 SOURCES  = FileList['nucular/**/*.d']
 OBJECTS  = SOURCES.ext('o')
 
-CLEAN.include(OBJECTS).include(EXAMPLES).include(EXAMPLES.ext('o'))
+CLEAN.include(OBJECTS).include(EXAMPLES.ext('o'))
+CLOBBER.include(EXAMPLES)
 
 task :default => EXAMPLES
 

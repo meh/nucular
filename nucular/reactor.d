@@ -23,6 +23,8 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
+import std.stdio;
+
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -66,15 +68,14 @@ class Reactor {
 
 		while (isRunning) {
 			synchronized (_mutex) {
-				foreach (scheduled; _scheduled) {
-					scheduled();
+				while (!hasScheduled) {
+					_scheduled.front()();
+					_scheduled.popFront();
 				}
-
-				_scheduled.clear();
 			}
 
-			if (!isRunning) {
-				break;
+			if (!isRunning || !hasScheduled) {
+				continue;
 			}
 
 			if (_descriptors.length == 1) {
@@ -92,18 +93,18 @@ class Reactor {
 				continue;
 			}
 
-			Descriptor[] descriptors = (hasTimers && !hasToWrite) ?
+			Descriptor[] descriptors = (hasTimers && !isWritePending) ?
 				readable(_descriptors, minimumSleep()) :
 				readable(_descriptors);
 
-			if (!isRunning) {
-				break;
+			if (!isRunning || !hasScheduled) {
+				continue;
 			}
 
 			executeTimers();
 
-			if (!isRunning) {
-				break;
+			if (!isRunning || !hasScheduled) {
+				continue;
 			}
 
 			foreach (descriptor; descriptors) {
@@ -128,28 +129,28 @@ class Reactor {
 				}
 			}
 
-			if (!isRunning) {
-				break;
+			if (!isRunning || !hasScheduled) {
+				continue;
 			}
 
 			descriptors.clear();
 
 			foreach (descriptor, connection; _connections) {
-				if (connection.hasData) {
+				if (connection.isWritePending) {
 					descriptors ~= descriptor;
 				}
 			}
 
 			descriptors = writable(descriptors, (0).dur!"seconds");
 
-			if (!isRunning) {
-				break;
+			if (!isRunning || !hasScheduled) {
+				continue;
 			}
 
-			hasToWrite = false;
+			isWritePending = false;
 			foreach (descriptor; descriptors) {
-				if (!_connections[descriptor].write() && !hasToWrite) {
-					hasToWrite = true;
+				if (!_connections[descriptor].write() && !isWritePending) {
+					isWritePending = true;
 				}
 			}
 		}
@@ -161,10 +162,6 @@ class Reactor {
 		}
 
 		wakeUp();
-	}
-
-	void schedule (void delegate () @system block) {
-		schedule(cast (void function ()) block);
 	}
 
 	void nextTick (void function () block) {
@@ -348,6 +345,10 @@ class Reactor {
 		return _running;
 	}
 
+	@property hasScheduled () {
+		return !_scheduled.empty;
+	}
+
 	@property backlog () {
 		return _backlog;
 	}
@@ -366,12 +367,12 @@ class Reactor {
 		wakeUp();
 	}
 
-	@property hasToWrite () {
-		return _has_to_write;
+	@property isWritePending () {
+		return _is_write_pending;
 	}
 
-	@property hasToWrite (bool value) {
-		_has_to_write = value;
+	@property isWritePending (bool value) {
+		_is_write_pending = value;
 	}
 
 private:
@@ -389,13 +390,13 @@ private:
 	int      _backlog;
 	Duration _quantum;
 	bool     _running;
-	bool     _has_to_write;
+	bool     _is_write_pending;
 
 	void function ()[] _scheduled;
 }
 
 void trap (string name, void function () block) {
-	// TODO: implement signal handling here
+	// TODO: implement signal handling
 }
 
 void run (void function () block) {
