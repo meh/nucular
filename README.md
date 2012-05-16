@@ -1,3 +1,5 @@
 nucular reactor for D
-=======================
-This is just a simple thing to learn D, because why not.
+=====================
+**nucular** is an easy to use reactor pattern inspired by [EventMachine](https://github.com/eventmachine/eventmachine).
+
+You can find some some examples in the `examples/` directory.
