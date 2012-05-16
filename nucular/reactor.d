@@ -232,8 +232,8 @@ class Reactor {
 		});
 	}
 
-	T watch(T : Connection) (Descriptor descriptor) {
-		auto connection = new T;
+	Connection watch(T : Connection) (Descriptor descriptor) {
+		auto connection = cast (Connection) T.classinfo.create();
 		connection.watched(this, descriptor);
 
 		schedule({
@@ -244,11 +244,11 @@ class Reactor {
 		return connection;
 	}
 
-	T watch(T : Connection) (Socket socket) {
+	Connection watch(T : Connection) (Socket socket) {
 		return watch!(T)(new Descriptor(socket));
 	}
 
-	T watch(T : Connection) (int fd) {
+	Connection watch(T : Connection) (int fd) {
 		return watch!(T)(new Descriptor(fd));
 	}
 
