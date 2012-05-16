@@ -115,6 +115,7 @@ class Reactor {
 			}
 
 			foreach (descriptor; descriptors) {
+				// FIXME: use == when they fix the bug
 				if (_breaker.opEquals(descriptor)) {
 					_breaker.flush();
 				}
@@ -237,6 +238,7 @@ class Reactor {
 		server.stop();
 
 		schedule({
+			// FIXME: use == when they fix the bug
 			_descriptors = _descriptors.filter!((a) { return a.opEquals(server); }).array;
 		});
 	}

@@ -64,6 +64,7 @@ class Breaker {
 		}
 
 		if (auto descriptor = cast (Descriptor) other) {
+			// FIXME: use == when they fix the bug
 			return _read.opEquals(descriptor) || _write.opEquals(descriptor);
 		}
 
