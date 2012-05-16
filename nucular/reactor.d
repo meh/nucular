@@ -115,7 +115,7 @@ class Reactor {
 			}
 
 			foreach (descriptor; descriptors) {
-				if (_breaker == descriptor) {
+				if (_breaker.opEquals(descriptor)) {
 					_breaker.flush();
 				}
 				else if (descriptor in _servers) {
@@ -219,7 +219,7 @@ class Reactor {
 			mixin T;
 		}
 
-		return _starServer(tmp.classinfo, address);
+		return _startServer(tmp.classinfo, address);
 	}
 
 	Server startServer(alias T) (Address address, void delegate (Connection) block) if (!is (T : Connection)) {
@@ -237,7 +237,7 @@ class Reactor {
 		server.stop();
 
 		schedule({
-			_descriptors = _descriptors.filter!((a) { return a == cast (Descriptor) server; }).array;
+			_descriptors = _descriptors.filter!((a) { return a.opEquals(server); }).array;
 		});
 	}
 
@@ -262,11 +262,11 @@ class Reactor {
 	}
 
 	Connection watch(alias T) (Socket socket) if (!is (T : Connection)) {
-		return watch!(tmp)(new Descriptor(socket));
+		return watch!(T)(new Descriptor(socket));
 	}
 
 	Connection watch(alias T) (int fd) if (!is (T : Connection)) {
-		return watch!(tmp)(new Descriptor(fd));
+		return watch!(T)(new Descriptor(fd));
 	}
 
 	Timer addTimer (Duration time, void delegate () block) {
@@ -510,19 +510,19 @@ Server startServer(alias T) (Address address, void delegate (Connection) block) 
 	return _reactor.startServer!(T)(address, block);
 }
 
-Connection watch(T : Connection) (Descriptor descriptor) {
+Connection watch(alias T) (Descriptor descriptor) {
 	_ensureReactor();
 
 	return _reactor.watch!(T)(descriptor);
 }
 
-Connection watch(T : Connection) (Socket socket) {
+Connection watch(alias T) (Socket socket) {
 	_ensureReactor();
 
 	return _reactor.watch!(T)(socket);
 }
 
-Connection watch(T : Connection) (int fd) {
+Connection watch(alias T) (int fd) {
 	_ensureReactor();
 
 	return _reactor.watch!(T)(fd);

@@ -63,8 +63,8 @@ class Breaker {
 			return true;
 		}
 
-		if (auto desc = cast (Descriptor) other) {
-			return _read == descriptor || _write == descriptor;
+		if (auto descriptor = cast (Descriptor) other) {
+			return _read.opEquals(descriptor) || _write.opEquals(descriptor);
 		}
 
 		return false;

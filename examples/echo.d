@@ -1,7 +1,7 @@
 import std.stdio;
 import nucular.reactor;
 
-template EchoServer {
+template EchoServer () {
 	void receiveData (ubyte[] data) {
 		sendData(data);
 	}

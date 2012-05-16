@@ -103,7 +103,7 @@ class Descriptor {
 		}
 
 		if (auto descriptor = cast (Descriptor) other) {
-			return _fd == cast (int) other;
+			return _fd == cast (int) descriptor;
 		}
 
 		return false;
@@ -115,7 +115,7 @@ class Descriptor {
 		}
 
 		if (auto descriptor = cast (Descriptor) other) {
-			int fd = cast (int) other;
+			int fd = cast (int) descriptor;
 
 			return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
 		}
