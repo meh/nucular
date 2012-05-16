@@ -23,8 +23,6 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
-import std.stdio;
-
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -94,9 +92,17 @@ class Reactor {
 				continue;
 			}
 
-			Descriptor[] descriptors = (hasTimers && !isWritePending) ?
-				readable(_descriptors, minimumSleep()) :
-				readable(_descriptors);
+			Descriptor[] descriptors;
+
+			if (hasTimers) {
+				descriptors = readable(_descriptors, minimumSleep());
+			}
+			else if (isWritePending) {
+				descriptors = readable(_descriptors, (0).dur!"seconds");
+			}
+			else {
+				descriptors = readable(_descriptors);
+			}
 
 			if (!isRunning) {
 				continue;

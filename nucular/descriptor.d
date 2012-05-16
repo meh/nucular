@@ -44,7 +44,7 @@ class Descriptor {
 	}
 
 	ubyte[] read (size_t length) {
-		auto buffer = new ubyte[](length);
+		auto      buffer = new ubyte[](length);
 		ptrdiff_t result;
 
 		errnoEnforce((result = .read(_fd, cast (void*) buffer.ptr, length)) >= 0);
@@ -61,7 +61,7 @@ class Descriptor {
 	ptrdiff_t write (ubyte[] data) {
 		ptrdiff_t result;
 
-		errnoEnforce((result = .write(_fd, cast (void*) text.ptr, text.length)) >= 0);
+		errnoEnforce((result = .write(_fd, cast (void*) data.ptr, data.length)) >= 0);
 
 		return result;
 	}
