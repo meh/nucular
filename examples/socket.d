@@ -2,17 +2,17 @@ import std.stdio;
 import std.socket : TcpSocket;
 import nucular.reactor;
 
+template Watcher {
+	void notifyReadable () {
+		writeln("read me please, it hurts :(");
+	}
+}
+
 void main () {
 	foreach (sig; ["INT", "TERM"]) {
 		nucular.reactor.trap(sig, {
 			nucular.reactor.stop();
 		});
-	}
-
-	template Watcher {
-		void notifyReadable () {
-			writeln("read me please, it hurts :(");
-		}
 	}
 
 	nucular.reactor.run({

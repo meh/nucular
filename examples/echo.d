@@ -1,17 +1,17 @@
 import std.stdio;
 import nucular.reactor;
 
+template EchoServer {
+	void receiveData (ubyte[] data) {
+		sendData(data);
+	}
+}
+
 void main () {
 	foreach (sig; ["INT", "TERM"]) {
 		nucular.reactor.trap(sig, {
 			nucular.reactor.stop();
 		});
-	}
-
-	template EchoServer {
-		void receiveData (ubyte[] data) {
-			sendData(data);
-		}
 	}
 
 	nucular.reactor.run({
