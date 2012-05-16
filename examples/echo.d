@@ -3,8 +3,8 @@ import nucular.reactor;
 
 void main () {
 	foreach (sig; ["INT", "TERM"]) {
-		trap(sig, {
-			stop();
+		nucular.reactor.trap(sig, {
+			nucular.reactor.stop();
 		});
 	}
 
@@ -14,7 +14,7 @@ void main () {
 		}
 	}
 
-	run({
+	nucular.reactor.run({
 		(new InternetAddress(10000)).startServer!EchoServer;
 	});
 }

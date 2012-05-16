@@ -2,12 +2,12 @@ import std.stdio;
 import nucular.reactor;
 
 void main () {
-	run({
-		addTimer(11.dur!"seconds", {
-			stop();
+	nucular.reactor.run({
+		nucular.reactor.addTimer(11.dur!"seconds", {
+			nucular.reactor.stop();
 		});
 
-		addPeriodicTimer(2.dur!"seconds", {
+		nucular.reactor.addPeriodicTimer(2.dur!"seconds", {
 			static i = 1;
 
 			writeln(i++);

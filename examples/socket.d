@@ -4,8 +4,8 @@ import nucular.reactor;
 
 void main () {
 	foreach (sig; ["INT", "TERM"]) {
-		trap(sig, {
-			stop();
+		nucular.reactor.trap(sig, {
+			nucular.reactor.stop();
 		});
 	}
 
@@ -15,7 +15,7 @@ void main () {
 		}
 	}
 
-	run({
+	nucular.reactor.run({
 		auto socket = new TcpSocket(new InternetAddress("google.com", 80));
 
 		socket.watch!Watcher();
