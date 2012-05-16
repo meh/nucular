@@ -26,6 +26,7 @@ import std.array;
 import core.thread;
 import core.sync.mutex;
 import core.sync.condition;
+import std.parallelism;
 
 class ThreadPool {
 	struct Work {
@@ -120,6 +121,12 @@ class ThreadPool {
 			_spawnWorker();
 			_condition.notify();
 		}
+	}
+
+	void process (AbstractTask task) {
+		process({
+			task.job();
+		});
 	}
 
 	void processWith(T) (T data) {

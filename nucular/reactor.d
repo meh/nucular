@@ -29,6 +29,7 @@ import std.algorithm;
 import std.exception;
 import std.datetime;
 import std.socket;
+import std.parallelism;
 
 import nucular.threadpool;
 import nucular.timer;
@@ -202,6 +203,10 @@ class Reactor {
 		threadpool.process({
 			callback(operation());
 		});
+	}
+
+	void defer(T : AbstractTask) (T task) {
+		threadpool.process(task);
 	}
 
 	Server startServer(alias T) (Address address) if (is (T : Connection)) {
@@ -498,6 +503,12 @@ void defer(T) (T delegate () operation, void delegate (T) callback) {
 	_ensureReactor();
 
 	_reactor.defer(operation, callback);
+}
+
+void defer(T : AbstractTask) (T task) {
+	_ensureReactor();
+
+	_reactor.defer(task);
 }
 
 Server startServer(alias T) (Address address) {
