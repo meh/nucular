@@ -101,6 +101,10 @@ class Descriptor {
 		return _fd == cast (int) other;
 	}
 
+	equals_t opEquals (int other) {
+		return _fd == other;
+	}
+
 	int opCmp (Descriptor other) {
 		int fd = cast (int) other;
 

@@ -8,7 +8,7 @@ void main () {
 		});
 	}
 
-	class EchoServer : Connection {
+	template EchoServer {
 		void receiveData (ubyte[] data) {
 			sendData(data);
 		}
