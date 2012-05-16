@@ -97,34 +97,22 @@ class Descriptor {
 		}
 	}
 
-	bool opEquals (Object other) {
-		if (other is this) {
-			return true;
-		}
-
-		if (typeid(other) == typeid(this)) {
-			return _fd == cast (int) cast (Descriptor) other;
-		}
-
-		return false;
+	equals_t opEquals (Descriptor other) {
+		return _fd == cast (int) other;
 	}
 
-	int opCmp (Object other) {
-		if (typeid(other) == typeid(this)) {
-			int fd = cast (int) cast (Descriptor) other;
+	int opCmp (Descriptor other) {
+		int fd = cast (int) other;
 
-			return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
-		}
+		return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
+	}
 
-		return -1;
+	int opCmp (int other) {
+		return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
 	}
 
 	int opCast(T : int) () {
 		return _fd;
-	}
-
-	Object opCast(T : Object) () {
-		return this;
 	}
 
 	hash_t toHash () {

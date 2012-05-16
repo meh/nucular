@@ -92,6 +92,10 @@ class Server {
 		return _reactor;
 	}
 
+	string toString () {
+		return "Server(" ~ (cast (Descriptor) _connection).toString() ~ ")";
+	}
+
 private:
 	Reactor _reactor;
 

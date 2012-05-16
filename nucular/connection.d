@@ -217,10 +217,6 @@ class Connection {
 		return _descriptor;
 	}
 
-	Object opCast(T : Object) () {
-		return this;
-	}
-
 	string toString () {
 		return "Connection(" ~ _descriptor.toString() ~ ")";
 	}

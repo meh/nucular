@@ -58,16 +58,12 @@ class Breaker {
 		readable([_read], sleep);
 	}
 
-	bool opEquals (Object other) {
-		return _read == other || _write == other;
+	equals_t opEquals (const Descriptor descriptor) const {
+		return _read == descriptor || _write == descriptor;
 	}
 
 	Descriptor opCast(T : Descriptor) () {
 		return _read;
-	}
-
-	Object opCast(T : Object) () {
-		return this;
 	}
 
 	string toString () {
