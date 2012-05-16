@@ -204,22 +204,12 @@ class Reactor {
 	}
 
 	Server startServer(alias T) (Address address) if (is (T : Connection)) {
-		auto server = new Server(this, address);
-		server.handler = T.classinfo;
-
-		schedule({
-			auto descriptor = server.start();
-
-			_descriptors         ~= descriptor;
-			_servers[descriptor]  = server;
-		});
-
-		return server;
+		return _startServer(T.classinfo, address);
 	}
 
 	Server startServer(alias T) (Address address, void delegate (Connection) block) if (is (T : Connection)) {
-		auto server = startServer!(T)(address);
-		server.block = block;
+		auto server       = _startServer(T.classinfo, address);
+		     server.block = block;
 
 		return server;
 	}
@@ -229,7 +219,7 @@ class Reactor {
 			mixin T;
 		}
 
-		return startServer!(tmp)(address);
+		return _starServer(tmp.classinfo, address);
 	}
 
 	Server startServer(alias T) (Address address, void delegate (Connection) block) if (!is (T : Connection)) {
@@ -237,7 +227,10 @@ class Reactor {
 			mixin T;
 		}
 
-		return startServer!(tmp)(address, block);
+		auto server       = _startServer(tmp.classinfo, address);
+		     server.block = block;
+
+		return server;
 	}
 
 	void stopServer (Server server) {
@@ -249,15 +242,7 @@ class Reactor {
 	}
 
 	Connection watch(alias T) (Descriptor descriptor) if (is (T : Connection)) {
-		auto connection = cast (Connection) T.classinfo.create();
-		connection.watched(this, descriptor);
-
-		schedule({
-			_descriptors             ~= descriptor;
-			_connections[descriptor]  = connection;
-		});
-
-		return connection;
+		return _watch(T.classinfo, descriptor);
 	}
 
 	Connection watch(alias T) (Socket socket) if (is (T : Connection)) {
@@ -273,23 +258,15 @@ class Reactor {
 			mixin T;
 		}
 
-		return watch!(tmp)(descriptor);
+		return _watch(tmp.classinfo, descriptor);
 	}
 
 	Connection watch(alias T) (Socket socket) if (!is (T : Connection)) {
-		class tmp : Connection {
-			mixin T;
-		}
-
-		return watch!(tmp)(socket);
+		return watch!(tmp)(new Descriptor(socket));
 	}
 
 	Connection watch(alias T) (int fd) if (!is (T : Connection)) {
-		class tmp : Connection {
-			mixin T;
-		}
-
-		return watch!(tmp)(fd);
+		return watch!(tmp)(new Descriptor(fd));
 	}
 
 	Timer addTimer (Duration time, void delegate () block) {
@@ -432,6 +409,33 @@ class Reactor {
 
 	@property isWritePending (bool value) {
 		_is_write_pending = value;
+	}
+
+private:
+	Server _startServer (TypeInfo_Class klass, Address address) {
+		auto server         = new Server(this, address);
+		     server.handler = klass;
+
+		schedule({
+			auto descriptor = server.start();
+
+			_descriptors         ~= descriptor;
+			_servers[descriptor]  = server;
+		});
+
+		return server;
+	}
+
+	Connection _watch (TypeInfo_Class klass, Descriptor descriptor) {
+		auto connection = cast (Connection) klass.create();
+		     connection.watched(this, descriptor);
+
+		schedule({
+			_descriptors             ~= descriptor;
+			_connections[descriptor]  = connection;
+		});
+
+		return connection;
 	}
 
 private:
