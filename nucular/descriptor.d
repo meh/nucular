@@ -97,7 +97,7 @@ class Descriptor {
 		}
 	}
 
-	equals_t opEquals (Object other) {
+	override equals_t opEquals (Object other) {
 		if (this is other) {
 			return true;
 		}
@@ -109,25 +109,29 @@ class Descriptor {
 		return false;
 	}
 
-	int opCmp (Descriptor other) {
-		int fd = cast (int) other;
+	override int opCmp (Object other) {
+		if (this is other) {
+			return 0;
+		}
 
-		return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
-	}
+		if (auto descriptor = cast (Descriptor) other) {
+			int fd = cast (int) other;
 
-	int opCmp (int other) {
-		return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
+			return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
+		}
+
+		return 1;
 	}
 
 	int opCast(T : int) () {
 		return _fd;
 	}
 
-	hash_t toHash () {
+	override hash_t toHash () {
 		return _fd;
 	}
 
-	string toString () {
+	override string toString () {
 		return "Descriptor(" ~ _fd.to!string ~ ")";
 	}
 

@@ -58,7 +58,7 @@ class Breaker {
 		readable([_read], sleep);
 	}
 
-	equals_t opEquals (Object other) {
+	override equals_t opEquals (Object other) {
 		if (this is other) {
 			return true;
 		}
@@ -74,7 +74,7 @@ class Breaker {
 		return _read;
 	}
 
-	string toString () {
+	override string toString () {
 		return "Breaker(" ~ _read.toString() ~ ", " ~ _write.toString() ~ ")";
 	}
 
