@@ -97,12 +97,16 @@ class Descriptor {
 		}
 	}
 
-	equals_t opEquals (Descriptor other) {
-		return _fd == cast (int) other;
-	}
+	equals_t opEquals (Object other) {
+		if (this is other) {
+			return true;
+		}
 
-	equals_t opEquals (int other) {
-		return _fd == other;
+		if (auto descriptor = cast (Descriptor) other) {
+			return _fd == cast (int) other;
+		}
+
+		return false;
 	}
 
 	int opCmp (Descriptor other) {
