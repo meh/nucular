@@ -26,43 +26,48 @@ import std.conv;
 import std.exception;
 
 import nucular.descriptor;
+import nucular.available.result;
 
-Descriptor[] readable (Descriptor[] descriptors) {
-	fd_set set  = descriptors.toSet();
-	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+Result readable (Descriptor[] descriptors) {
+	fd_set read  = descriptors.toSet();
+	fd_set error = descriptors.toSet();
+	int    nfds  = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	errnoEnforce(select(nfds, &set, null, null, null) >= 0);
+	errnoEnforce(select(nfds, &read, null, &error, null) >= 0);
 
-	return set.toDescriptors(descriptors);
+	return Result(read.toDescriptors(descriptors), error.toDescriptors(descriptors));
 }
 
-Descriptor[] readable (Descriptor[] descriptors, Duration sleep) {
-	fd_set  set  = descriptors.toSet();
-	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
-	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
+Result readable (Descriptor[] descriptors, Duration sleep) {
+	fd_set  read  = descriptors.toSet();
+	fd_set  error = descriptors.toSet();
+	int     nfds  = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	timeval tv    = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
-	errnoEnforce(select(nfds, &set, null, null, &tv) >= 0);
+	errnoEnforce(select(nfds, &read, null, &error, &tv) >= 0);
 
-	return set.toDescriptors(descriptors);
+	return Result(read.toDescriptors(descriptors), error.toDescriptors(descriptors));
 }
 
-Descriptor[] writable (Descriptor[] descriptors) {
-	fd_set set  = descriptors.toSet();
-	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+Result writable (Descriptor[] descriptors) {
+	fd_set write = descriptors.toSet();
+	fd_set error = descriptors.toSet();
+	int    nfds  = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	errnoEnforce(select(nfds, null, &set, null, null) >= 0);
+	errnoEnforce(select(nfds, null, &write, &error, null) >= 0);
 
-	return set.toDescriptors(descriptors);
+	return Result(write.toDescriptors(descriptors), error.toDescriptors(descriptors));
 }
 
-Descriptor[] writable (Descriptor[] descriptors, Duration sleep) {
-	fd_set  set  = descriptors.toSet();
-	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
-	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
+Result writable (Descriptor[] descriptors, Duration sleep) {
+	fd_set  write = descriptors.toSet();
+	fd_set  error = descriptors.toSet();
+	int     nfds  = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	timeval tv    = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
-	errnoEnforce(select(nfds, null, &set, null, &tv) >= 0);
+	errnoEnforce(select(nfds, null, &write, &error, &tv) >= 0);
 
-	return set.toDescriptors(descriptors);
+	return Result(write.toDescriptors(descriptors), error.toDescriptors(descriptors));
 }
 
 private fd_set toSet (Descriptor[] descriptors) {

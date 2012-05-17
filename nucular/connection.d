@@ -21,6 +21,7 @@ module nucular.connection;
 import std.exception;
 import std.array;
 import core.sync.mutex;
+import core.stdc.errno;
 
 import nucular.reactor : Reactor;
 import nucular.descriptor;
@@ -70,6 +71,10 @@ class Connection {
 		return this;
 	}
 
+	~this () {
+		_descriptor.close();
+	}
+
 	void postInit () {
 		// this is just a placeholder
 	}
@@ -87,7 +92,7 @@ class Connection {
 	}
 
 	void closeConnection (bool after_writing = false) {
-		// TODO: implement connection closing
+		reactor.closeConnection(this, after_writing);
 	}
 
 	void closeConnectionAfterWriting () {
@@ -101,17 +106,33 @@ class Connection {
 	ubyte[] read () {
 		ubyte[] result;
 		ubyte[] tmp;
+		bool    close = false;
 
 		try {
 			while ((tmp = _descriptor.read(1024)) !is null) {
 				result ~= tmp;
 			}
-		} catch (ErrnoException e) { }
+		}
+		catch (ErrnoException e) {
+			if (result.empty) {
+				close = true;
+			}
+		}
+
+		if (_descriptor.isClosed || close) {
+			closeConnection();
+
+			return null;
+		}
 
 		return result;
 	}
 
 	bool write () {
+		if (_descriptor.isClosed) {
+			return true;
+		}
+
 		synchronized (_mutex) {
 			while (!_to_write.empty) {
 				ubyte[]   current = _to_write.front;

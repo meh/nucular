@@ -23,6 +23,8 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
+import std.stdio;
+
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -93,17 +95,19 @@ class Reactor {
 				continue;
 			}
 
-			Descriptor[] descriptors;
+			Result result;
 
 			if (hasTimers) {
-				descriptors = readable(_descriptors, minimumSleep());
+				result = readable(_descriptors, minimumSleep());
 			}
 			else if (isWritePending) {
-				descriptors = readable(_descriptors, (0).dur!"seconds");
+				result = readable(_descriptors, (0).dur!"seconds");
 			}
 			else {
-				descriptors = readable(_descriptors);
+				result = readable(_descriptors);
 			}
+
+			writeln(result);
 
 			if (!isRunning) {
 				continue;
@@ -115,9 +119,9 @@ class Reactor {
 				continue;
 			}
 
-			foreach (descriptor; descriptors) {
+			foreach (descriptor; result.descriptors) {
 				// FIXME: use == when they fix the bug
-				if (_breaker.opEquals(descriptor)) {
+				if ((cast (Descriptor) _breaker).opEquals(descriptor)) {
 					_breaker.flush();
 				}
 				else if (descriptor in _servers) {
@@ -144,7 +148,7 @@ class Reactor {
 				continue;
 			}
 
-			descriptors.clear();
+			Descriptor[] descriptors;
 
 			foreach (descriptor, connection; _connections) {
 				if (connection.isWritePending) {
@@ -158,14 +162,14 @@ class Reactor {
 				continue;
 			}
 
-			descriptors = writable(descriptors, (0).dur!"seconds");
+			result = writable(descriptors, (0).dur!"seconds");
 
 			if (!isRunning) {
 				continue;
 			}
 
 			isWritePending = false;
-			foreach (descriptor; descriptors) {
+			foreach (descriptor; result.descriptors) {
 				if (!_connections[descriptor].write() && !isWritePending) {
 					isWritePending = true;
 				}
@@ -244,7 +248,7 @@ class Reactor {
 
 		schedule({
 			// FIXME: use == when they fix the bug
-			_descriptors = _descriptors.filter!((a) { return a.opEquals(server); }).array;
+			_descriptors = _descriptors.filter!((a) { return !a.opEquals(cast (Descriptor) server); }).array;
 		});
 	}
 
@@ -274,6 +278,19 @@ class Reactor {
 
 	Connection watch(alias T) (int fd) if (!is (T : Connection)) {
 		return watch!(T)(new Descriptor(fd));
+	}
+
+	void closeConnection (Connection connection, bool after_writing = false) {
+		schedule({
+			_connections.remove(cast (Descriptor) connection);
+
+			// FIXME: use == when they fix the bug
+			_descriptors = _descriptors.filter!((a) { return !a.opEquals(cast (Descriptor) connection); }).array;
+
+			if (after_writing) {
+				_closing ~= connection;
+			}
+		});
 	}
 
 	Timer addTimer (Duration time, void delegate () block) {
@@ -392,6 +409,14 @@ class Reactor {
 		return !_scheduled.empty;
 	}
 
+	@property isWritePending () {
+		return _is_write_pending;
+	}
+
+	@property isWritePending (bool value) {
+		_is_write_pending = value;
+	}
+
 	@property backlog () {
 		return _backlog;
 	}
@@ -408,14 +433,6 @@ class Reactor {
 		_quantum = duration;
 
 		wakeUp();
-	}
-
-	@property isWritePending () {
-		return _is_write_pending;
-	}
-
-	@property isWritePending (bool value) {
-		_is_write_pending = value;
 	}
 
 private:
@@ -452,6 +469,7 @@ private:
 
 	Server[Descriptor]     _servers;
 	Connection[Descriptor] _connections;
+	Connection[]           _closing;
 
 	ThreadPool _threadpool;
 	Breaker    _breaker;

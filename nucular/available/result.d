@@ -16,40 +16,11 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-public import nucular.available.result;
+module nucular.available.result;
 
-version (poll) {
-	public import nucular.available.poll;
-}
-version (epoll) {
-	public import nucular.available.epoll;
-}
-else version (kqueue) {
-	public import nucular.available.kqueue;
-}
-else version (iocompletion) {
-	public import nucular.available.iocompletion;
-}
-else version (select) {
-	public import nucular.available.select;
-}
-else {
-	version (Windows) {
-		public import nucular.available.iocompletion;
-	}
-	else version (FreeBSD) {
-		public import nucular.available.kqueue;
-	}
-	else version (OpenBSD) {
-		public import nucular.available.kqueue;
-	}
-	else version (linux) {
-		public import nucular.available.epoll;
-	}
-	else version (Posix) {
-		public import nucular.available.select;
-	}
-	else {
-		static assert (0);
-	}
+import nucular.descriptor;
+
+struct Result {
+	Descriptor[] descriptors;
+	Descriptor[] errors;
 }

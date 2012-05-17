@@ -21,6 +21,7 @@ module nucular.descriptor;
 import std.conv;
 import std.exception;
 import std.socket;
+import core.stdc.errno;
 
 version (Posix) {
 	import core.sys.posix.fcntl;
@@ -47,11 +48,19 @@ class Descriptor {
 		auto      buffer = new ubyte[](length);
 		ptrdiff_t result;
 
-		errnoEnforce((result = .read(_fd, cast (void*) buffer.ptr, length)) >= 0);
+		result = .read(_fd, cast (void*) buffer.ptr, length);
 
 		if (result == 0) {
+			_closed = true;
+
 			return null;
 		}
+
+		if (result == EAGAIN || result == EWOULDBLOCK) {
+			return null;
+		}
+
+		errnoEnforce(result > 0);
 
 		buffer.length = result;
 
@@ -71,6 +80,10 @@ class Descriptor {
 	}
 
 	void close () {
+		if (isClosed) {
+			return;
+		}
+
 		.close(_fd);
 	}
 
@@ -95,6 +108,10 @@ class Descriptor {
 				errnoEnforce(fcntl(_fd, F_SETFL, old & ~O_NONBLOCK) >= 0);
 			}
 		}
+	}
+
+	@property isClosed () {
+		return _closed;
 	}
 
 	override equals_t opEquals (Object other) {
@@ -136,7 +153,8 @@ class Descriptor {
 	}
 
 private:
-	int _fd;
-
+	int    _fd;
 	Socket _socket;
+
+	bool _closed;
 }

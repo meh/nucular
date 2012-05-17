@@ -58,19 +58,6 @@ class Breaker {
 		readable([_read], sleep);
 	}
 
-	override equals_t opEquals (Object other) {
-		if (this is other) {
-			return true;
-		}
-
-		if (auto descriptor = cast (Descriptor) other) {
-			// FIXME: use == when they fix the bug
-			return _read.opEquals(descriptor) || _write.opEquals(descriptor);
-		}
-
-		return false;
-	}
-
 	Descriptor opCast(T : Descriptor) () {
 		return _read;
 	}
