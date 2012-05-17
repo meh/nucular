@@ -106,20 +106,12 @@ class Connection {
 	ubyte[] read () {
 		ubyte[] result;
 		ubyte[] tmp;
-		bool    close = false;
 
-		try {
-			while ((tmp = _descriptor.read(1024)) !is null) {
-				result ~= tmp;
-			}
-		}
-		catch (ErrnoException e) {
-			if (result.empty) {
-				close = true;
-			}
+		while ((tmp = _descriptor.read(1024)) !is null) {
+			result ~= tmp;
 		}
 
-		if (_descriptor.isClosed || close) {
+		if (_descriptor.isClosed) {
 			closeConnection();
 
 			return null;

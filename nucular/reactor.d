@@ -23,8 +23,6 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
-import std.stdio;
-
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -106,8 +104,6 @@ class Reactor {
 			else {
 				result = readable(_descriptors);
 			}
-
-			writeln(result);
 
 			if (!isRunning) {
 				continue;

@@ -56,7 +56,7 @@ class Descriptor {
 			return null;
 		}
 
-		if (result == EAGAIN || result == EWOULDBLOCK) {
+		if (result < 0 && (getErrno() == EAGAIN || getErrno() == EWOULDBLOCK)) {
 			return null;
 		}
 
