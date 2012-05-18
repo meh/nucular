@@ -18,8 +18,6 @@
 
 module nucular.protocols.line;
 
-import std.stdio;
-
 import std.algorithm;
 import std.array;
 
@@ -27,7 +25,12 @@ import nucular.connection;
 
 class Protocol : Connection {
 	void receiveData (ubyte[] data) {
-		_buffer ~= data;
+		if (_buffer.empty) {
+			_buffer = data;
+		}
+		else {
+			_buffer ~= data;
+		}
 
 		while (_buffer.canFind("\n")) {
 			auto result = _buffer.findSplit("\n");
