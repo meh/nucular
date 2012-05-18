@@ -107,8 +107,14 @@ class Connection {
 		ubyte[] result;
 		ubyte[] tmp;
 
-		while ((tmp = _descriptor.read(1024)) !is null) {
-			result ~= tmp;
+		try {
+			while ((tmp = _descriptor.read(1024)) !is null) {
+				result ~= tmp;
+			}
+		}
+		catch (ErrnoException e) {
+			_error = e;
+			_descriptor.close();
 		}
 
 		if (_descriptor.isClosed) {
@@ -218,6 +224,10 @@ class Connection {
 		return !_to_write.empty;
 	}
 
+	@property error () {
+		return _error;
+	}
+
 	@property server () {
 		return _server;
 	}
@@ -242,4 +252,5 @@ private:
 	Descriptor _descriptor;
 
 	ubyte[][] _to_write;
+	Exception _error;
 }

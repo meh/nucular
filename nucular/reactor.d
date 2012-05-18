@@ -23,6 +23,8 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
+import std.stdio;
+
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -93,16 +95,16 @@ class Reactor {
 				continue;
 			}
 
-			Result result;
+			Descriptor[] descriptors;
 
 			if (hasTimers) {
-				result = readable(_descriptors, minimumSleep());
+				descriptors = readable(_descriptors, minimumSleep());
 			}
 			else if (isWritePending) {
-				result = readable(_descriptors, (0).dur!"seconds");
+				descriptors = readable(_descriptors, (0).dur!"seconds");
 			}
 			else {
-				result = readable(_descriptors);
+				descriptors = readable(_descriptors);
 			}
 
 			if (!isRunning) {
@@ -115,7 +117,7 @@ class Reactor {
 				continue;
 			}
 
-			foreach (descriptor; result.descriptors) {
+			foreach (descriptor; descriptors) {
 				// FIXME: use == when they fix the bug
 				if ((cast (Descriptor) _breaker).opEquals(descriptor)) {
 					_breaker.flush();
@@ -146,8 +148,6 @@ class Reactor {
 				continue;
 			}
 
-			Descriptor[] descriptors;
-
 			foreach (descriptor, connection; _connections) {
 				if (connection.isWritePending) {
 					isWritePending = true;
@@ -160,14 +160,14 @@ class Reactor {
 				continue;
 			}
 
-			result = writable(descriptors, (0).dur!"seconds");
+			descriptors = writable(descriptors, (0).dur!"seconds");
 
 			if (!isRunning) {
 				continue;
 			}
 
 			isWritePending = false;
-			foreach (descriptor; result.descriptors) {
+			foreach (descriptor; descriptors) {
 				if (descriptor in _connections) {
 					if (!_connections[descriptor].write()) {
 						isWritePending = true;

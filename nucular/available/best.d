@@ -16,8 +16,6 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-public import nucular.available.result;
-
 version (poll) {
 	public import nucular.available.poll;
 }

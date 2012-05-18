@@ -84,6 +84,8 @@ class Descriptor {
 			return;
 		}
 
+		_closed = true;
+
 		.close(_fd);
 	}
 
