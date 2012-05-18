@@ -40,9 +40,15 @@ else {
 }
 
 class Connection {
-	Connection watched (Reactor reactor, Descriptor descriptor) {
+	Connection created (Reactor reactor) {
 		_reactor = reactor;
 		_mutex   = new Mutex;
+
+		return this;
+	}
+
+	Connection watched (Reactor reactor, Descriptor descriptor) {
+		created(reactor);
 
 		_descriptor = descriptor;
 
@@ -50,9 +56,9 @@ class Connection {
 	}
 
 	Connection accepted (Server server, Descriptor descriptor) {
-		_server  = server;
-		_reactor = server.reactor;
-		_mutex   = new Mutex;
+		created(server.reactor);
+
+		_server = server;
 
 		_descriptor = descriptor;
 
@@ -72,10 +78,34 @@ class Connection {
 	}
 
 	~this () {
-		_descriptor.close();
+		if (_descriptor) {
+			_descriptor.close();
+		}
+	}
+
+	Descriptor exchange (Connection to) {
+		auto old = _descriptor;
+		_descriptor = null;
+
+		reactor.exchangeConnection(this, to);
+
+		return _descriptor;
+	}
+
+	Descriptor exchange (Descriptor descriptor) {
+		auto old = _descriptor;
+		_descriptor = descriptor;
+
+		exchanged(descriptor);
+
+		return old;
 	}
 
 	void initialized () {
+		// this is just a placeholder
+	}
+
+	void exchanged (Descriptor descriptor) {
 		// this is just a placeholder
 	}
 

@@ -36,6 +36,7 @@ import std.parallelism;
 import nucular.threadpool;
 import nucular.timer;
 import nucular.periodictimer;
+import nucular.deferrable;
 import nucular.descriptor;
 import nucular.breaker;
 import nucular.server;
@@ -221,6 +222,18 @@ class Reactor {
 		threadpool.process(task);
 	}
 
+	Deferrable deferrable () {
+		return new Deferrable(this);
+	}
+
+	Deferrable deferrable (void delegate () callback) {
+		return deferrable().callback(callback);
+	}
+
+	Deferrable deferrable (void delegate () callback, void delegate () errback) {
+		return deferrable().callback(callback).errback(errback);
+	}
+
 	Server startServer(alias T) (Address address) if (is (T : Connection)) {
 		return _startServer(T.classinfo, address);
 	}
@@ -286,6 +299,14 @@ class Reactor {
 
 	Connection watch(alias T) (int fd) if (!is (T : Connection)) {
 		return watch!(T)(new Descriptor(fd));
+	}
+
+	void exchangeConnection (Connection from, Connection to) {
+		schedule({
+			to.exchange(cast (Descriptor) from);
+
+			_connections[cast (Descriptor) from] = to;
+		});
 	}
 
 	void closeConnection (Connection connection, bool after_writing = false) {
@@ -540,6 +561,24 @@ void defer(T : AbstractTask) (T task) {
 	_ensureReactor();
 
 	_reactor.defer(task);
+}
+
+Deferrable deferrable () {
+	_ensureReactor();
+
+	return _reactor.deferrable();
+}
+
+Deferrable deferrable (void delegate () callback) {
+	_ensureReactor();
+
+	return _reactor.deferrable(callback);
+}
+
+Deferrable deferrable (void delegate () callback, void delegate () errback) {
+	_ensureReactor();
+
+	return _reactor.deferrable(callback, errback);
 }
 
 Server startServer(alias T) (Address address) {
