@@ -75,7 +75,7 @@ class Connection {
 		_descriptor.close();
 	}
 
-	void postInit () {
+	void initialized () {
 		// this is just a placeholder
 	}
 

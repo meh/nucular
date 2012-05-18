@@ -125,6 +125,8 @@ class Reactor {
 					Connection connection = server.accept();
 					           descriptor = cast (Descriptor) connection;
 
+					connection.initialized();
+
 					schedule({
 						_descriptors             ~= descriptor;
 						_connections[descriptor]  = connection;
@@ -166,8 +168,18 @@ class Reactor {
 
 			isWritePending = false;
 			foreach (descriptor; result.descriptors) {
-				if (!_connections[descriptor].write() && !isWritePending) {
-					isWritePending = true;
+				if (descriptor in _connections) {
+					if (!_connections[descriptor].write()) {
+						isWritePending = true;
+					}
+				}
+				else if (descriptor in _closing) {
+					if (!_closing[descriptor].write()) {
+						isWritePending = true;
+					}
+					else {
+						closeConnection(_closing[descriptor]);
+					}
 				}
 			}
 		}
@@ -280,11 +292,16 @@ class Reactor {
 		schedule({
 			_connections.remove(cast (Descriptor) connection);
 
-			// FIXME: use == when they fix the bug
-			_descriptors = _descriptors.filter!((a) { return !a.opEquals(cast (Descriptor) connection); }).array;
-
 			if (after_writing) {
-				_closing ~= connection;
+				_closing[cast (Descriptor) connection] = connection;
+			}
+			else {
+				_closing.remove(cast (Descriptor) connection);
+
+				// FIXME: use == when they fix the bug
+				_descriptors = _descriptors.filter!((a) { return !a.opEquals(cast (Descriptor) connection); }).array;
+
+				connection.unbind();
 			}
 		});
 	}
@@ -465,7 +482,7 @@ private:
 
 	Server[Descriptor]     _servers;
 	Connection[Descriptor] _connections;
-	Connection[]           _closing;
+	Connection[Descriptor] _closing;
 
 	ThreadPool _threadpool;
 	Breaker    _breaker;
