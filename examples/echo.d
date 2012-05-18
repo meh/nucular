@@ -8,12 +8,6 @@ template EchoServer () {
 }
 
 void main () {
-	foreach (sig; ["INT", "TERM"]) {
-		nucular.reactor.trap(sig, {
-			nucular.reactor.stop();
-		});
-	}
-
 	nucular.reactor.run({
 		(new InternetAddress(10000)).startServer!EchoServer;
 	});

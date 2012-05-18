@@ -10,12 +10,6 @@ template Watcher () {
 }
 
 void main () {
-	foreach (sig; ["INT", "TERM"]) {
-		nucular.reactor.trap(sig, {
-			nucular.reactor.stop();
-		});
-	}
-
 	nucular.reactor.run({
 		auto socket = new TcpSocket(new InternetAddress("google.com", 80));
 
