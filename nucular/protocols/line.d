@@ -20,6 +20,7 @@ module nucular.protocols.line;
 
 import std.algorithm;
 import std.array;
+import std.exception;
 
 import nucular.connection;
 
@@ -47,12 +48,20 @@ class Protocol : Connection {
 		}
 	}
 
-	void receiveLine (string data) {
+	void receiveLine (string line) {
 		// this is just a place holder
 	}
 
-	void sendLine (string data) {
-		sendData(cast (ubyte[]) (data ~ "\r\n"));
+	void sendLine (string line) {
+		enforce(!line.canFind("\n") && !line.canFind("\r"), "the line cannot include line endings");
+
+		sendData(cast (ubyte[]) (line ~ "\r\n"));
+	}
+
+	void sendLines (string[] lines) {
+		foreach (line; lines) {
+			sendLine(line);
+		}
 	}
 
 private:
