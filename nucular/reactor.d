@@ -111,14 +111,16 @@ class Reactor
 				}
 
 				foreach (descriptor; descriptors) {
-					Connection connection = _connecting[descriptor];
+					if (descriptor in _connecting) {
+						Connection connection = _connecting[descriptor];
 
-					_connecting.remove(descriptor);
+						_connecting.remove(descriptor);
 
-					connection.connected();
+						connection.connected();
 
-					_descriptors             ~= descriptor;
-					_connections[descriptor]  = connection;
+						_descriptors             ~= descriptor;
+						_connections[descriptor]  = connection;
+					}
 				}
 			}
 
