@@ -19,28 +19,33 @@
 import std.stdio;
 import std.conv;
 import nucular.reactor;
-import nucular.protocols.socks;
+import line = nucular.protocols.line;
 
-template Sender ()
+class Sender : line.Protocol
 {
-	import std.stdio;
-
-	void initialized ()
-	{
-		writeln("initialized");
-	}
-
 	void connected ()
 	{
-		writeln("connected");
+		if (_message) {
+			sendLine(_message);
+		}
+
+		closeConnectionAfterWriting();
 	}
+
+	@property message (string data)
+	{
+		_message = data;
+	}
+
+private:
+	string _message;
 }
 
 void main (string[] argv)
 {
 	nucular.reactor.run({
-		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((conn) {
-
+		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((Sender conn) {
+			conn.message = argv[3];
 		});
 	});
 }

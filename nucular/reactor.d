@@ -110,8 +110,6 @@ class Reactor
 					descriptors = writable(_connecting.keys ~ cast (Descriptor) _breaker);
 				}
 
-				writeln(descriptors);
-
 				foreach (descriptor; descriptors) {
 					if (cast (Descriptor) _breaker == descriptor) {
 						_breaker.flush();
@@ -273,24 +271,14 @@ class Reactor
 		return deferrable().callback(callback).errback(errback);
 	}
 
-	Server startServer(alias T) (Address address, void delegate (Connection) block)
+	Server startServer(T : Connection) (Address address, void delegate (T) block)
 	{
-		static if (is (T : Connection)) {
-			return _startServer(T.classinfo, address, block);
-		}
-		else {
-			class tmp : Connection
-			{
-				mixin T;
-			}
-
-			return _startServer(tmp.classinfo, address, block);
-		}
+		return _startServer(T.classinfo, address, cast (void delegate (Connection)) block);
 	}
 
-	Server startServer(alias T) (Address address)
+	Server startServer(T : Connection) (Address address)
 	{
-		return startServer!(T)(address, defaultCreationCallback);
+		return startServer!(T)(address, cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	void stopServer (Server server)
@@ -302,62 +290,42 @@ class Reactor
 		});
 	}
 
-	Connection connect(alias T) (Address address, void delegate (Connection) block)
+	Connection connect(T : Connection) (Address address, void delegate (T) block)
 	{
-		static if (is (T : Connection)) {
-			return _connect(T.classinfo, address, block);
-		}
-		else {
-			class tmp : Connection
-			{
-				mixin T;
-			}
-
-			return _connect(tmp.classinfo, address, block);
-		}
+		return _connect(T.classinfo, address, cast (void delegate (Connection)) block);
 	}
 
-	Connection connect(alias T) (Address address)
+	Connection connect(T : Connection) (Address address)
 	{
-		return connect!(T)(address, defaultCreationCallback);
+		return connect!(T)(address, cast (void delegate (T)) defaultCreationCallback);
 	}
 
-	Connection watch(alias T) (Descriptor descriptor, void delegate (Connection) block)
+	Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
 	{
-		static if (is (T : Connection)) {
-			return _watch(T.classinfo, descriptor, block);
-		}
-		else {
-			class tmp : Connection
-			{
-				mixin T;
-			}
-
-			return _watch(tmp.classinfo, descriptor, block);
-		}
+		return _watch(T.classinfo, descriptor, cast (void delegate (Connection)) block);
 	}
 
-	Connection watch(alias T) (Descriptor descriptor)
+	Connection watch(T : Connection) (Descriptor descriptor)
 	{
-		return watch!(T)(descriptor, (a) { });
+		return watch!(T)(descriptor, cast (void delegate (T)) defaultCreationCallback);
 	}
 
-	Connection watch(alias T) (Socket socket, void delegate (Connection) block)
+	Connection watch(T : Connection) (Socket socket, void delegate (T) block)
 	{
 		return watch!(T)(new Descriptor(socket), block);
 	}
 
-	Connection watch(alias T) (Socket socket)
+	Connection watch(T : Connection) (Socket socket)
 	{
-		return watch!(T)(new Descriptor(socket), defaultCreationCallback);
+		return watch!(T)(new Descriptor(socket), cast (void delegate (T)) defaultCreationCallback);
 	}
 
-	Connection watch(alias T) (int fd, void delegate (Connection) block)
+	Connection watch(T : Connection) (int fd, void delegate (T) block)
 	{
 		return watch!(T)(new Descriptor(fd), block);
 	}
 
-	Connection watch(alias T) (int fd)
+	Connection watch(T : Connection) (int fd)
 	{
 		return watch!(T)(new Descriptor(fd), defaultCreationCallback);
 	}
@@ -706,39 +674,54 @@ Deferrable deferrable (void delegate () callback, void delegate () errback)
 	return implant.deferrable(callback, errback);
 }
 
-Server startServer(alias T) (Address address)
+Server startServer(T : Connection) (Address address)
 {
 	return implant.startServer!(T)(address);
 }
 
-Server startServer(alias T) (Address address, void delegate (Connection) block)
+Server startServer(T : Connection) (Address address, void delegate (T) block)
 {
 	return implant.startServer!(T)(address, block);
 }
 
-Connection connect(alias T) (Address address)
+Connection connect(T : Connection) (Address address)
 {
 	return implant.connect!(T)(address);
 }
 
-Connection connect(alias T) (Address address, void delegate (Connection) block)
+Connection connect(T : Connection) (Address address, void delegate (T) block)
 {
 	return implant.connect!(T)(address, block);
 }
 
-Connection watch(alias T) (Descriptor descriptor)
+Connection watch(T : Connection) (Descriptor descriptor)
 {
 	return implant.watch!(T)(descriptor);
 }
 
-Connection watch(alias T) (Socket socket)
+Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
+{
+	return implant.watch!(T)(descriptor, block);
+}
+
+Connection watch(T : Connection) (Socket socket)
 {
 	return implant.watch!(T)(socket);
 }
 
-Connection watch(alias T) (int fd)
+Connection watch(T : Connection) (Socket socket, void delegate (T) block)
+{
+	return implant.watch!(T)(socket, block);
+}
+
+Connection watch(T : Connection) (int fd)
 {
 	return implant.watch!(T)(fd);
+}
+
+Connection watch(T : Connection) (int fd, void delegate (T) block)
+{
+	return implant.watch!(T)(fd, block);
 }
 
 Timer addTimer (Duration time, void delegate () block)

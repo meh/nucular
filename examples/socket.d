@@ -1,10 +1,9 @@
+import std.stdio;
 import std.socket : TcpSocket;
 import nucular.reactor;
 
-template Watcher ()
+class Watcher : Connection
 {
-	import std.stdio;
-
 	void notifyReadable ()
 	{
 		writeln("read me please, it hurts :(");
