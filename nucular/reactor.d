@@ -23,8 +23,6 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
-import std.stdio;
-
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -42,8 +40,10 @@ import nucular.breaker;
 import nucular.server;
 import nucular.available.best;
 
-class Reactor {
-	this () {
+class Reactor
+{
+	this ()
+	{
 		_breaker    = new Breaker;
 		_mutex      = new Mutex;
 		_threadpool = new ThreadPool;
@@ -55,11 +55,13 @@ class Reactor {
 		_descriptors ~= cast (Descriptor) _breaker;
 	}
 
-	~this () {
+	~this ()
+	{
 		stop();
 	}
 
-	void run (void delegate () block) {
+	void run (void delegate () block)
+	{
 		schedule(block);
 
 		if (_running) {
@@ -186,7 +188,8 @@ class Reactor {
 		}
 	}
 
-	void schedule (void delegate () block) {
+	void schedule (void delegate () block)
+	{
 		synchronized (_mutex) {
 			_scheduled ~= block;
 		}
@@ -194,11 +197,13 @@ class Reactor {
 		wakeUp();
 	}
 
-	void nextTick (void delegate () block) {
+	void nextTick (void delegate () block)
+	{
 		schedule(block);
 	}
 
-	void stop () {
+	void stop ()
+	{
 		if (!isRunning) {
 			return;
 		}
@@ -208,53 +213,69 @@ class Reactor {
 		wakeUp();
 	}
 
-	void defer(T) (T delegate () operation) {
+	void defer(T) (T delegate () operation)
+	{
 		threadpool.process(operation);
 	}
 
-	void defer(T) (T delegate () operation, void delegate (T) callback) {
+	void defer(T) (T delegate () operation, void delegate (T) callback)
+	{
 		threadpool.process({
 			callback(operation());
 		});
 	}
 
-	void defer(T : AbstractTask) (T task) {
+	void defer(T : AbstractTask) (T task)
+	{
 		threadpool.process(task);
 	}
 
-	Deferrable deferrable () {
+	Deferrable deferrable ()
+	{
 		return new Deferrable(this);
 	}
 
-	Deferrable deferrable (void delegate () callback) {
+	Deferrable deferrable (void delegate () callback)
+	{
 		return deferrable().callback(callback);
 	}
 
-	Deferrable deferrable (void delegate () callback, void delegate () errback) {
+	Deferrable deferrable (void delegate () callback, void delegate () errback)
+	{
 		return deferrable().callback(callback).errback(errback);
 	}
 
-	Server startServer(alias T) (Address address) if (is (T : Connection)) {
+	Server startServer(alias T) (Address address)
+		if (is (T : Connection))
+	{
 		return _startServer(T.classinfo, address);
 	}
 
-	Server startServer(alias T) (Address address, void delegate (Connection) block) if (is (T : Connection)) {
+	Server startServer(alias T) (Address address, void delegate (Connection) block)
+		if (is (T : Connection))
+	{
 		auto server       = _startServer(T.classinfo, address);
 		     server.block = block;
 
 		return server;
 	}
 
-	Server startServer(alias T) (Address address) if (!is (T : Connection)) {
-		class tmp : Connection {
+	Server startServer(alias T) (Address address)
+		if (!is (T : Connection))
+	{
+		class tmp : Connection
+		{
 			mixin T;
 		}
 
 		return _startServer(tmp.classinfo, address);
 	}
 
-	Server startServer(alias T) (Address address, void delegate (Connection) block) if (!is (T : Connection)) {
-		class tmp : Connection {
+	Server startServer(alias T) (Address address, void delegate (Connection) block)
+		if (!is (T : Connection))
+	{
+		class tmp : Connection
+		{
 			mixin T;
 		}
 
@@ -264,7 +285,8 @@ class Reactor {
 		return server;
 	}
 
-	void stopServer (Server server) {
+	void stopServer (Server server)
+	{
 		server.stop();
 
 		schedule({
@@ -273,35 +295,49 @@ class Reactor {
 		});
 	}
 
-	Connection watch(alias T) (Descriptor descriptor) if (is (T : Connection)) {
+	Connection watch(alias T) (Descriptor descriptor)
+		if (is (T : Connection))
+	{
 		return _watch(T.classinfo, descriptor);
 	}
 
-	Connection watch(alias T) (Socket socket) if (is (T : Connection)) {
+	Connection watch(alias T) (Socket socket)
+		if (is (T : Connection))
+	{
 		return watch!(T)(new Descriptor(socket));
 	}
 
-	Connection watch(alias T) (int fd) if (is (T : Connection)) {
+	Connection watch(alias T) (int fd)
+		if (is (T : Connection))
+	{
 		return watch!(T)(new Descriptor(fd));
 	}
 
-	Connection watch(alias T) (Descriptor descriptor) if (!is (T : Connection)) {
-		class tmp : Connection {
+	Connection watch(alias T) (Descriptor descriptor)
+		if (!is (T : Connection))
+	{
+		class tmp : Connection
+		{
 			mixin T;
 		}
 
 		return _watch(tmp.classinfo, descriptor);
 	}
 
-	Connection watch(alias T) (Socket socket) if (!is (T : Connection)) {
+	Connection watch(alias T) (Socket socket)
+		if (!is (T : Connection))
+	{
 		return watch!(T)(new Descriptor(socket));
 	}
 
-	Connection watch(alias T) (int fd) if (!is (T : Connection)) {
+	Connection watch(alias T) (int fd)
+		if (!is (T : Connection))
+	{
 		return watch!(T)(new Descriptor(fd));
 	}
 
-	void exchangeConnection (Connection from, Connection to) {
+	void exchangeConnection (Connection from, Connection to)
+	{
 		schedule({
 			to.exchange(cast (Descriptor) from);
 
@@ -309,7 +345,8 @@ class Reactor {
 		});
 	}
 
-	void closeConnection (Connection connection, bool after_writing = false) {
+	void closeConnection (Connection connection, bool after_writing = false)
+	{
 		schedule({
 			_connections.remove(cast (Descriptor) connection);
 
@@ -327,7 +364,8 @@ class Reactor {
 		});
 	}
 
-	Timer addTimer (Duration time, void delegate () block) {
+	Timer addTimer (Duration time, void delegate () block)
+	{
 		auto timer = new Timer(this, time, block);
 
 		synchronized (_mutex) {
@@ -339,7 +377,8 @@ class Reactor {
 		return timer;
 	}
 
-	PeriodicTimer addPeriodicTimer (Duration time, void delegate () block) {
+	PeriodicTimer addPeriodicTimer (Duration time, void delegate () block)
+	{
 		auto timer = new PeriodicTimer(this, time, block);
 
 		synchronized (_mutex) {
@@ -351,7 +390,8 @@ class Reactor {
 		return timer;
 	}
 
-	void cancelTimer (Timer timer) {
+	void cancelTimer (Timer timer)
+	{
 		synchronized (_mutex) {
 			_timers = _timers.filter!((a) { return a != timer; }).array;
 		}
@@ -359,7 +399,8 @@ class Reactor {
 		wakeUp();
 	}
 
-	void cancelTimer (PeriodicTimer timer) {
+	void cancelTimer (PeriodicTimer timer)
+	{
 		synchronized (_mutex) {
 			_periodic_timers = _periodic_timers.filter!((a) { return a != timer; }).array;
 		}
@@ -367,7 +408,8 @@ class Reactor {
 		wakeUp();
 	}
 
-	void executeTimers () {
+	void executeTimers ()
+	{
 		if (!hasTimers) {
 			return;
 		}
@@ -402,11 +444,13 @@ class Reactor {
 		}
 	}
 
-	@property bool hasTimers () {
+	@property bool hasTimers ()
+	{
 		return !_timers.empty || !_periodic_timers.empty;
 	}
 
-	Duration minimumSleep () {
+	Duration minimumSleep ()
+	{
 		SysTime  now    = Clock.currTime();
 		Duration result = _timers.empty ? _periodic_timers.front.left(now) : _timers.front.left(now);
 
@@ -431,46 +475,56 @@ class Reactor {
 		return result;
 	}
 
-	void wakeUp () {
+	void wakeUp ()
+	{
 		_breaker.act();
 	}
 
-	@property isRunning () {
+	@property isRunning ()
+	{
 		return _running;
 	}
 
-	@property hasScheduled () {
+	@property hasScheduled ()
+	{
 		return !_scheduled.empty;
 	}
 
-	@property isWritePending () {
+	@property isWritePending ()
+	{
 		return _is_write_pending;
 	}
 
-	@property isWritePending (bool value) {
+	@property isWritePending (bool value)
+	{
 		_is_write_pending = value;
 	}
 
-	@property backlog () {
+	@property backlog ()
+	{
 		return _backlog;
 	}
 
-	@property backlog (int value) {
+	@property backlog (int value)
+	{
 		_backlog = value;
 	}
 
-	@property quantum () {
+	@property quantum ()
+	{
 		return _quantum;
 	}
 
-	@property quantum (Duration duration) {
+	@property quantum (Duration duration)
+	{
 		_quantum = duration;
 
 		wakeUp();
 	}
 
 private:
-	Server _startServer (TypeInfo_Class klass, Address address) {
+	Server _startServer (TypeInfo_Class klass, Address address)
+	{
 		auto server         = new Server(this, address);
 		     server.handler = klass;
 
@@ -484,7 +538,8 @@ private:
 		return server;
 	}
 
-	Connection _watch (TypeInfo_Class klass, Descriptor descriptor) {
+	Connection _watch (TypeInfo_Class klass, Descriptor descriptor)
+	{
 		auto connection = cast (Connection) klass.create();
 		     connection.watched(this, descriptor);
 
@@ -517,141 +572,124 @@ private:
 	void delegate ()[] _scheduled;
 }
 
-void trap (string name, void delegate () block) {
+void trap (string name, void delegate () block)
+{
 	// TODO: implement signal handling
 }
 
-void run (void delegate () block) {
-	_ensureReactor();
-
-	_reactor.run(block);
+void run (void delegate () block)
+{
+	instance.run(block);
 }
 
-void schedule (void delegate () block) {
-	_ensureReactor();
-
-	_reactor.schedule(block);
+void schedule (void delegate () block)
+{
+	instance.schedule(block);
 }
 
-void nextTick (void delegate () block) {
-	_ensureReactor();
-
-	_reactor.nextTick(block);
+void nextTick (void delegate () block)
+{
+	instance.nextTick(block);
 }
 
-void stop () {
-	_ensureReactor();
-
-	_reactor.stop();
+void stop ()
+{
+	instance.stop();
 }
 
 void defer(T) (T delegate () operation) {
 	_ensureReactor();
 
-	_reactor.defer(operation);
+	instance.defer(operation);
 }
 
-void defer(T) (T delegate () operation, void delegate (T) callback) {
-	_ensureReactor();
-
-	_reactor.defer(operation, callback);
+void defer(T) (T delegate () operation, void delegate (T) callback)
+{
+	instance.defer(operation, callback);
 }
 
-void defer(T : AbstractTask) (T task) {
-	_ensureReactor();
-
-	_reactor.defer(task);
+void defer(T : AbstractTask) (T task)
+{
+	instance.defer(task);
 }
 
-Deferrable deferrable () {
-	_ensureReactor();
-
-	return _reactor.deferrable();
+Deferrable deferrable ()
+{
+	return instance.deferrable();
 }
 
-Deferrable deferrable (void delegate () callback) {
-	_ensureReactor();
-
-	return _reactor.deferrable(callback);
+Deferrable deferrable (void delegate () callback)
+{
+	return instance.deferrable(callback);
 }
 
-Deferrable deferrable (void delegate () callback, void delegate () errback) {
-	_ensureReactor();
-
-	return _reactor.deferrable(callback, errback);
+Deferrable deferrable (void delegate () callback, void delegate () errback)
+{
+	return instance.deferrable(callback, errback);
 }
 
-Server startServer(alias T) (Address address) {
-	_ensureReactor();
-
-	return _reactor.startServer!(T)(address);
+Server startServer(alias T) (Address address)
+{
+	return instance.startServer!(T)(address);
 }
 
-Server startServer(alias T) (Address address, void delegate (Connection) block) {
-	_ensureReactor();
-
-	return _reactor.startServer!(T)(address, block);
+Server startServer(alias T) (Address address, void delegate (Connection) block)
+{
+	return instance.startServer!(T)(address, block);
 }
 
-Connection watch(alias T) (Descriptor descriptor) {
-	_ensureReactor();
-
-	return _reactor.watch!(T)(descriptor);
+Connection watch(alias T) (Descriptor descriptor)
+{
+	return instance.watch!(T)(descriptor);
 }
 
-Connection watch(alias T) (Socket socket) {
-	_ensureReactor();
-
-	return _reactor.watch!(T)(socket);
+Connection watch(alias T) (Socket socket)
+{
+	return instance.watch!(T)(socket);
 }
 
-Connection watch(alias T) (int fd) {
-	_ensureReactor();
-
-	return _reactor.watch!(T)(fd);
+Connection watch(alias T) (int fd)
+{
+	return instance.watch!(T)(fd);
 }
 
-Timer addTimer (Duration time, void delegate () block) {
-	_ensureReactor();
-
-	return _reactor.addTimer(time, block);
+Timer addTimer (Duration time, void delegate () block)
+{
+	return instance.addTimer(time, block);
 }
 
-PeriodicTimer addPeriodicTimer (Duration time, void delegate () block) {
-	_ensureReactor();
-
-	return _reactor.addPeriodicTimer(time, block);
+PeriodicTimer addPeriodicTimer (Duration time, void delegate () block)
+{
+	return instance.addPeriodicTimer(time, block);
 }
 
-void cancelTimer (Timer timer) {
-	_ensureReactor();
-
-	_reactor.cancelTimer(timer);
+void cancelTimer (Timer timer)
+{
+	instance.cancelTimer(timer);
 }
 
-void cancelTimer (PeriodicTimer timer) {
-	_ensureReactor();
-
-	_reactor.cancelTimer(timer);
+void cancelTimer (PeriodicTimer timer)
+{
+	instance.cancelTimer(timer);
 }
 
-@property quantum () {
-	_ensureReactor();
-
-	return _reactor.quantum;
+@property quantum ()
+{
+	return instance.quantum;
 }
 
-@property quantum (Duration duration) {
-	_ensureReactor();
-
-	_reactor.quantum = duration;
+@property quantum (Duration duration)
+{
+	instance.quantum = duration;
 }
 
-private:
-	Reactor _reactor;
-
-	private void _ensureReactor () {
-		if (!_reactor) {
-			_reactor = new Reactor();
-		}
+@property instance ()
+{
+	if (!_reactor) {
+		_reactor = new Reactor();
 	}
+
+	return _reactor;
+}
+
+private Reactor _reactor;

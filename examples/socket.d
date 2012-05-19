@@ -1,15 +1,18 @@
 import std.socket : TcpSocket;
 import nucular.reactor;
 
-template Watcher () {
+template Watcher ()
+{
 	import std.stdio;
 
-	void notifyReadable () {
+	void notifyReadable ()
+	{
 		writeln("read me please, it hurts :(");
 	}
 }
 
-void main () {
+void main ()
+{
 	nucular.reactor.run({
 		auto socket = new TcpSocket(new InternetAddress("google.com", 80));
 

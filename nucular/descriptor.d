@@ -34,17 +34,21 @@ else {
 	static assert(0);
 }
 
-class Descriptor {
-	this (int fd) {
+class Descriptor
+{
+	this (int fd)
+	{
 		_fd = fd;
 	}
 
-	this (Socket socket) {
+	this (Socket socket)
+	{
 		_fd     = socket.handle;
 		_socket = socket;
 	}
 
-	ubyte[] read (size_t length) {
+	ubyte[] read (size_t length)
+	{
 		auto      buffer = new ubyte[](length);
 		ptrdiff_t result;
 
@@ -67,7 +71,8 @@ class Descriptor {
 		return buffer;
 	}
 
-	ptrdiff_t write (ubyte[] data) {
+	ptrdiff_t write (ubyte[] data)
+	{
 		ptrdiff_t result;
 
 		errnoEnforce((result = .write(_fd, cast (void*) data.ptr, data.length)) >= 0);
@@ -75,11 +80,13 @@ class Descriptor {
 		return result;
 	}
 
-	ptrdiff_t write (string text) {
+	ptrdiff_t write (string text)
+	{
 		return write(cast (ubyte[]) text);
 	}
 
-	void close () {
+	void close ()
+	{
 		if (isClosed) {
 			return;
 		}
@@ -89,13 +96,15 @@ class Descriptor {
 		.close(_fd);
 	}
 
-	@property asynchronous () {
+	@property asynchronous ()
+	{
 		version (Posix) {
 			return (fcntl(_fd, F_GETFL, 0) & O_NONBLOCK) != 0;
 		}
 	}
 
-	@property asynchronous (bool value) {
+	@property asynchronous (bool value)
+	{
 		if (value) {
 			version (Posix) {
 				int old = fcntl(_fd, F_GETFL, 0);
@@ -112,11 +121,13 @@ class Descriptor {
 		}
 	}
 
-	@property isClosed () {
+	@property isClosed ()
+	{
 		return _closed;
 	}
 
-	override equals_t opEquals (Object other) {
+	override equals_t opEquals (Object other)
+	{
 		if (this is other) {
 			return true;
 		}
@@ -128,7 +139,8 @@ class Descriptor {
 		return false;
 	}
 
-	override int opCmp (Object other) {
+	override int opCmp (Object other)
+	{
 		if (this is other) {
 			return 0;
 		}
@@ -142,15 +154,18 @@ class Descriptor {
 		return 1;
 	}
 
-	int opCast(T : int) () {
+	int opCast(T : int) ()
+	{
 		return _fd;
 	}
 
-	override hash_t toHash () {
+	override hash_t toHash ()
+	{
 		return _fd;
 	}
 
-	override string toString () {
+	override string toString ()
+	{
 		return "Descriptor(" ~ _fd.to!string ~ ")";
 	}
 

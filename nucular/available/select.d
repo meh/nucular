@@ -27,7 +27,8 @@ import std.exception;
 
 import nucular.descriptor;
 
-Descriptor[] readable (Descriptor[] descriptors) {
+Descriptor[] readable (Descriptor[] descriptors)
+{
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
@@ -36,7 +37,8 @@ Descriptor[] readable (Descriptor[] descriptors) {
 	return set.toDescriptors(descriptors);
 }
 
-Descriptor[] readable (Descriptor[] descriptors, Duration sleep) {
+Descriptor[] readable (Descriptor[] descriptors, Duration sleep)
+{
 	fd_set  set  = descriptors.toSet();
 	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
@@ -46,7 +48,8 @@ Descriptor[] readable (Descriptor[] descriptors, Duration sleep) {
 	return set.toDescriptors(descriptors);
 }
 
-Descriptor[] writable (Descriptor[] descriptors) {
+Descriptor[] writable (Descriptor[] descriptors)
+{
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
@@ -55,7 +58,8 @@ Descriptor[] writable (Descriptor[] descriptors) {
 	return set.toDescriptors(descriptors);
 }
 
-Descriptor[] writable (Descriptor[] descriptors, Duration sleep) {
+Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
+{
 	fd_set  set  = descriptors.toSet();
 	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
@@ -65,7 +69,8 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep) {
 	return set.toDescriptors(descriptors);
 }
 
-private fd_set toSet (Descriptor[] descriptors) {
+private fd_set toSet (Descriptor[] descriptors)
+{
 	fd_set set;
 
 	FD_ZERO(&set);

@@ -39,15 +39,18 @@ else {
 	static assert(0);
 }
 
-class Connection {
-	Connection created (Reactor reactor) {
+class Connection
+{
+	Connection created (Reactor reactor)
+	{
 		_reactor = reactor;
 		_mutex   = new Mutex;
 
 		return this;
 	}
 
-	Connection watched (Reactor reactor, Descriptor descriptor) {
+	Connection watched (Reactor reactor, Descriptor descriptor)
+	{
 		created(reactor);
 
 		_descriptor = descriptor;
@@ -55,7 +58,8 @@ class Connection {
 		return this;
 	}
 
-	Connection accepted (Server server, Descriptor descriptor) {
+	Connection accepted (Server server, Descriptor descriptor)
+	{
 		created(server.reactor);
 
 		_server = server;
@@ -68,7 +72,8 @@ class Connection {
 		return this;
 	}
 
-	Connection connected (Reactor reactor, Descriptor descriptor) {
+	Connection connected (Reactor reactor, Descriptor descriptor)
+	{
 		watched(reactor, descriptor);
 
 		noDelay      = true;
@@ -77,13 +82,15 @@ class Connection {
 		return this;
 	}
 
-	~this () {
+	~this ()
+	{
 		if (_descriptor) {
 			_descriptor.close();
 		}
 	}
 
-	Descriptor exchange (Connection to) {
+	Descriptor exchange (Connection to)
+	{
 		auto old = _descriptor;
 		_descriptor = null;
 
@@ -92,7 +99,8 @@ class Connection {
 		return _descriptor;
 	}
 
-	Descriptor exchange (Descriptor descriptor) {
+	Descriptor exchange (Descriptor descriptor)
+	{
 		auto old = _descriptor;
 		_descriptor = descriptor;
 
@@ -101,19 +109,23 @@ class Connection {
 		return old;
 	}
 
-	void initialized () {
+	void initialized ()
+	{
 		// this is just a placeholder
 	}
 
-	void exchanged (Descriptor descriptor) {
+	void exchanged (Descriptor descriptor)
+	{
 		// this is just a placeholder
 	}
 
-	void receiveData (ubyte[] data) {
+	void receiveData (ubyte[] data)
+	{
 		// this is just a placeholder
 	}
 
-	void sendData (ubyte[] data) {
+	void sendData (ubyte[] data)
+	{
 		synchronized (_mutex) {
 			_to_write ~= data;
 		}
@@ -121,19 +133,23 @@ class Connection {
 		reactor.wakeUp();
 	}
 
-	void closeConnection (bool after_writing = false) {
+	void closeConnection (bool after_writing = false)
+	{
 		reactor.closeConnection(this, after_writing);
 	}
 
-	void closeConnectionAfterWriting () {
+	void closeConnectionAfterWriting ()
+	{
 		closeConnection(true);
 	}
 
-	void unbind () {
+	void unbind ()
+	{
 		// this is just a placeholder
 	}
 
-	ubyte[] read () {
+	ubyte[] read ()
+	{
 		ubyte[] result;
 		ubyte[] tmp;
 
@@ -156,7 +172,8 @@ class Connection {
 		return result;
 	}
 
-	bool write () {
+	bool write ()
+	{
 		if (_descriptor.isClosed) {
 			return true;
 		}
@@ -180,7 +197,8 @@ class Connection {
 		return true;
 	}
 
-	@property error () {
+	@property error ()
+	{
 		version (Posix) {
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
@@ -191,7 +209,8 @@ class Connection {
 		}
 	}
 
-	@property alive () {
+	@property isAlive ()
+	{
 		version (Posix) {
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
@@ -200,7 +219,8 @@ class Connection {
 		}
 	}
 
-	@property reuseAddr () {
+	@property reuseAddr ()
+	{
 		version (Posix) {
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
@@ -211,7 +231,8 @@ class Connection {
 		}
 	}
 
-	@property reuseAddr (bool enable) {
+	@property reuseAddr (bool enable)
+	{
 		version (Posix) {
 			int value = cast (int) enable;
 
@@ -219,7 +240,8 @@ class Connection {
 		}
 	}
 
-	@property noDelay () {
+	@property noDelay ()
+	{
 		version (Posix) {
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
@@ -230,7 +252,8 @@ class Connection {
 		}
 	}
 
-	@property noDelay (bool enable) {
+	@property noDelay (bool enable)
+	{
 		version (Posix) {
 			int value = cast (int) enable;
 
@@ -238,39 +261,48 @@ class Connection {
 		}
 	}
 
-	@property asynchronous () {
+	@property asynchronous ()
+	{
 		return _descriptor.asynchronous;
 	}
 
-	@property asynchronous (bool value) {
+	@property asynchronous (bool value)
+	{
 		_descriptor.asynchronous = value;
 	}
 
-	@property isWatcher () {
+	@property isWatcher ()
+	{
 		return _server is null;
 	}
 
-	@property isWritePending () {
+	@property isWritePending ()
+	{
 		return !_to_write.empty;
 	}
 
-	@property error () {
+	@property error ()
+	{
 		return _error;
 	}
 
-	@property server () {
+	@property server ()
+	{
 		return _server;
 	}
 
-	@property reactor () {
+	@property reactor ()
+	{
 		return _server.reactor;
 	}
 
-	Descriptor opCast(T : Descriptor) () {
+	Descriptor opCast(T : Descriptor) ()
+	{
 		return _descriptor;
 	}
 
-	string toString () {
+	string toString ()
+	{
 		return "Connection(" ~ _descriptor.toString() ~ ")";
 	}
 

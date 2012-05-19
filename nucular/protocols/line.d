@@ -24,8 +24,10 @@ import std.exception;
 
 import nucular.connection;
 
-class Protocol : Connection {
-	void receiveData (ubyte[] data) {
+class Protocol : Connection
+{
+	void receiveData (ubyte[] data)
+	{
 		if (_buffer.empty) {
 			_buffer = data;
 		}
@@ -48,17 +50,20 @@ class Protocol : Connection {
 		}
 	}
 
-	void receiveLine (string line) {
+	void receiveLine (string line)
+	{
 		// this is just a place holder
 	}
 
-	void sendLine (string line) {
+	void sendLine (string line)
+	{
 		enforce(!line.canFind("\n") && !line.canFind("\r"), "the line cannot include line endings");
 
 		sendData(cast (ubyte[]) (line ~ "\r\n"));
 	}
 
-	void sendLines (string[] lines) {
+	void sendLines (string[] lines)
+	{
 		foreach (line; lines) {
 			sendLine(line);
 		}

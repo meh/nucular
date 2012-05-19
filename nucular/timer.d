@@ -21,8 +21,10 @@ module nucular.timer;
 import std.datetime;
 import nucular.reactor : Reactor;
 
-class Timer {
-	this (Reactor reactor, Duration after, void delegate () block) {
+class Timer
+{
+	this (Reactor reactor, Duration after, void delegate () block)
+	{
 		_reactor = reactor;
 
 		_after = after;
@@ -32,7 +34,8 @@ class Timer {
 		_started_at = Clock.currTime();
 	}
 
-	void execute () {
+	void execute ()
+	{
 		if (_executed) {
 			return;
 		}
@@ -42,27 +45,33 @@ class Timer {
 		_block();
 	}
 
-	void cancel () {
+	void cancel ()
+	{
 		reactor.cancelTimer(this);
 	}
 
-	Duration left (SysTime now) {
+	Duration left (SysTime now)
+	{
 		return after - (now - startedAt);
 	}
 
-	Duration left () {
+	Duration left ()
+	{
 		return left(Clock.currTime());
 	}
 
-	@property after () {
+	@property after ()
+	{
 		return _after;
 	}
 
-	@property startedAt () {
+	@property startedAt ()
+	{
 		return _started_at;
 	}
 
-	@property reactor () {
+	@property reactor ()
+	{
 		return _reactor;
 	}
 

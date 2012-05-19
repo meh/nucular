@@ -26,8 +26,10 @@ import std.socket : socketPair;
 import nucular.descriptor;
 import nucular.available.best;
 
-class Breaker {
-	this () {
+class Breaker
+{
+	this ()
+	{
 		auto pair = socketPair();
 
 		_write = new Descriptor(pair[0]);
@@ -37,11 +39,13 @@ class Breaker {
 		_read.asynchronous = true;
 	}
 
-	void act () {
+	void act ()
+	{
 		_write.write("x");
 	}
 
-	void flush () {
+	void flush ()
+	{
 		try {
 			while (_read.read(1024)) {
 				continue;
@@ -50,19 +54,23 @@ class Breaker {
 		catch (ErrnoException e) { }
 	}
 
-	void wait () {
+	void wait ()
+	{
 		readable([_read]);
 	}
 
-	void wait (Duration sleep) {
+	void wait (Duration sleep)
+	{
 		readable([_read], sleep);
 	}
 
-	Descriptor opCast(T : Descriptor) () {
+	Descriptor opCast(T : Descriptor) ()
+	{
 		return _read;
 	}
 
-	override string toString () {
+	override string toString ()
+	{
 		return "Breaker(" ~ _read.toString() ~ ", " ~ _write.toString() ~ ")";
 	}
 

@@ -1,7 +1,8 @@
 import std.stdio;
 import nucular.reactor;
 
-void main () {
+void main ()
+{
 	nucular.reactor.run({
 		writeln("oh noes ;_;");
 

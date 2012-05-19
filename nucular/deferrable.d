@@ -21,64 +21,76 @@ module nucular.deferrable;
 import nucular.reactor : Reactor, Duration;
 import nucular.timer;
 
-class Deferrable {
-	this (Reactor reactor) {
+class Deferrable
+{
+	this (Reactor reactor)
+	{
 		_reactor = reactor;
 	}
 
-	~this () {
+	~this ()
+	{
 		cancelTimeout();
 	}
 
-	Deferrable callback(T) (T delegate () block) {
+	Deferrable callback(T) (T delegate () block)
+	{
 		_callbacks ~= cast (void delegate (void*)) block;
 
 		return this;
 	}
 
-	Deferrable callback(T) (T delegate (T data) block) {
+	Deferrable callback(T) (T delegate (T data) block)
+	{
 		_callbacks ~= cast (void delegate (void*)) block;
 
 		return this;
 	}
 
-	Deferrable errback(T) (T delegate () block) {
+	Deferrable errback(T) (T delegate () block)
+	{
 		_errbacks ~= cast (void delegate (void*)) block;
 
 		return this;
 	}
 
-	Deferrable errback(T) (T delegate (T data) block) {
+	Deferrable errback(T) (T delegate (T data) block)
+	{
 		_errbacks ~= cast (void delegate (void*)) block;
 
 		return this;
 	}
 
-	void succeed () {
+	void succeed ()
+	{
 		foreach (callback; _callbacks) {
 			callback(null);
 		}
 	}
 
-	void succeedWith(T) (T data) {
+	void succeedWith(T) (T data)
+	{
 		foreach (callback; _callbacks) {
 			callback(data);
 		}
 	}
 
-	void fail () {
+	void fail ()
+	{
 		foreach (errback; _errbacks) {
 			errback(null);
 		}
 	}
 
-	void failWith(T) (T data) {
+	void failWith(T) (T data)
+	{
 		foreach (errback; _errbacks) {
 			errback(data);
 		}
 	}
 
-	void cancelTimeout () {
+	void cancelTimeout ()
+	{
 		if (!_timer) {
 			return;
 		}
@@ -87,7 +99,8 @@ class Deferrable {
 		_timer = null;
 	}
 	
-	Timer timeout (Duration time) {
+	Timer timeout (Duration time)
+	{
 		_timer = reactor.addTimer(time, {
 			fail();
 		});
@@ -95,7 +108,8 @@ class Deferrable {
 		return _timer;
 	}
 
-	@property reactor () {
+	@property reactor ()
+	{
 		return _reactor;
 	}
 

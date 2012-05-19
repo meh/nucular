@@ -25,21 +25,25 @@ import nucular.reactor : Reactor;
 import nucular.descriptor;
 import nucular.connection;
 
-class Server {
-	this (Reactor reactor, Address address) {
+class Server
+{
+	this (Reactor reactor, Address address)
+	{
 		_reactor = reactor;
 
 		_address = address;
 	}
 
-	this (Reactor reactor, Descriptor descriptor) {
+	this (Reactor reactor, Descriptor descriptor)
+	{
 		_reactor = reactor;
 
 		_connection = (new Connection).watched(reactor, descriptor);
 		_address    = new UnknownAddress;
 	}
 
-	Descriptor start () {
+	Descriptor start ()
+	{
 		if (_connection) {
 			return cast (Descriptor) _connection;
 		}
@@ -58,7 +62,8 @@ class Server {
 		return cast (Descriptor) _connection;
 	}
 
-	void stop () {
+	void stop ()
+	{
 		if (!_running) {
 			return;
 		}
@@ -68,7 +73,8 @@ class Server {
 		reactor.stopServer(this);
 	}
 
-	Connection accept () {
+	Connection accept ()
+	{
 		auto connection = cast (Connection) _handler.create();
 		auto socket     = _socket.accept();
 		auto descriptor = new Descriptor(socket);
@@ -76,23 +82,28 @@ class Server {
 		return connection.accepted(this, descriptor);
 	}
 
-	@property handler (TypeInfo_Class handler) {
+	@property handler (TypeInfo_Class handler)
+	{
 		_handler = handler;
 	}
 
-	@property block (void delegate (Connection) block) {
+	@property block (void delegate (Connection) block)
+	{
 		_block = block;
 	}
 
-	@property running () {
+	@property running ()
+	{
 		return _running;
 	}
 
-	@property reactor () {
+	@property reactor ()
+	{
 		return _reactor;
 	}
 
-	string toString () {
+	string toString ()
+	{
 		return "Server(" ~ (cast (Descriptor) _connection).toString() ~ ")";
 	}
 

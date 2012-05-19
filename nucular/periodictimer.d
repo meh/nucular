@@ -21,8 +21,10 @@ module nucular.periodictimer;
 import std.datetime;
 import nucular.reactor : Reactor;
 
-class PeriodicTimer {
-	this (Reactor reactor, Duration every, void delegate () block) {
+class PeriodicTimer
+{
+	this (Reactor reactor, Duration every, void delegate () block)
+	{
 		_reactor = reactor;
 
 		_every = every;
@@ -31,41 +33,50 @@ class PeriodicTimer {
 		_started_at = _last_execution_at = Clock.currTime();
 	}
 
-	~this () {
+	~this ()
+	{
 		cancel();
 	}
 
-	void execute () {
+	void execute ()
+	{
 		_block();
 
 		_last_execution_at = Clock.currTime();
 	}
 
-	void cancel () {
+	void cancel ()
+	{
 		reactor.cancelTimer(this);
 	}
 
-	Duration left (SysTime now) {
+	Duration left (SysTime now)
+	{
 		return every - (now - lastExecutionAt);
 	}
 
-	Duration left () {
+	Duration left ()
+	{
 		return left(Clock.currTime());
 	}
 
-	@property every () {
+	@property every ()
+	{
 		return _every;
 	}
 
-	@property lastExecutionAt () {
+	@property lastExecutionAt ()
+	{
 		return _last_execution_at;
 	}
 
-	@property startedAt () {
+	@property startedAt ()
+	{
 		return _started_at;
 	}
 
-	@property reactor () {
+	@property reactor ()
+	{
 		return _reactor;
 	}
 

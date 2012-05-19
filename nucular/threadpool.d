@@ -28,17 +28,21 @@ import core.sync.mutex;
 import core.sync.condition;
 import std.parallelism;
 
-class ThreadPool {
-	struct Work {
+class ThreadPool
+{
+	struct Work
+	{
 		void delegate (void*) block;
 		void*                 data;
 	}
 
-	this (int min = 20) {
+	this (int min = 20)
+	{
 		this(min, min);
 	}
 
-	this (int min, int max) {
+	this (int min, int max)
+	{
 		_mutex     = new Mutex;
 		_condition = new Condition(_mutex);
 
@@ -51,11 +55,13 @@ class ThreadPool {
 		}
 	}
 
-	~this () {
+	~this ()
+	{
 		shutdown();
 	}
 
-	void resize (int min, int max = 0) {
+	void resize (int min, int max = 0)
+	{
 		if (max == 0) {
 			max = min;
 		}
@@ -68,21 +74,25 @@ class ThreadPool {
 		trim(true);
 	}
 
-	@property defaultBlock(T) (T block) {
+	@property defaultBlock(T) (T block)
+	{
 		_default_block = cast (void delegate (T)) block;
 	}
 
-	@property autoTrim (bool what) {
+	@property autoTrim (bool what)
+	{
 		_auto_trim = what;
 	}
 
-	@property backlog () {
+	@property backlog ()
+	{
 		synchronized (_mutex) {
 			return _todo.length;
 		}
 	}
 
-	void trim (bool force = false) {
+	void trim (bool force = false)
+	{
 		synchronized (_mutex) {
 			if ((force || _waiting > 0) && _spawned - _trim_requests > _min) {
 				_trim_requests--;
@@ -92,7 +102,8 @@ class ThreadPool {
 		}
 	}
 
-	void shutdown () {
+	void shutdown ()
+	{
 		synchronized (_mutex) {
 			if (_shutdown) {
 				return;
@@ -108,13 +119,15 @@ class ThreadPool {
 		}
 	}
 
-	void process () {
+	void process ()
+	{
 		enforce(_default_block, "there's no default callback");
 
 		process(cast (void delegate ()) _default_block);
 	}
 
-	void process (void delegate () block) {
+	void process (void delegate () block)
+	{
 		synchronized (_mutex) {
 			_todo ~= Work(cast (void delegate (void*)) block, null);
 
@@ -123,19 +136,22 @@ class ThreadPool {
 		}
 	}
 
-	void process (AbstractTask task) {
+	void process (AbstractTask task)
+	{
 		process({
 			task.job();
 		});
 	}
 
-	void processWith(T) (T data) {
+	void processWith(T) (T data)
+	{
 		enforce(_default_block, "there's no default callback");
 
 		processWith(data, _default_block);
 	}
 
-	void processWith(T) (T data, void delegate (T) block) {
+	void processWith(T) (T data, void delegate (T) block)
+	{
 		synchronized (_mutex) {
 			_todo ~= Work(cast (void delegate (void*)) block, cast (void*) data);
 
@@ -144,7 +160,8 @@ class ThreadPool {
 		}
 	}
 
-	ThreadPool opShl(T) (T rhs) {
+	ThreadPool opShl(T) (T rhs)
+	{
 		processWith(rhs);
 
 		return this;
@@ -152,7 +169,8 @@ class ThreadPool {
 
 private:
 	// must be called while locked
-	void _spawnWorker () {
+	void _spawnWorker ()
+	{
 		if (_waiting != 0 || _spawned >= _max) {
 			return;
 		}
