@@ -108,7 +108,7 @@ class Server
 		return _reactor;
 	}
 
-	string toString ()
+	override string toString ()
 	{
 		return "Server(" ~ (cast (Descriptor) _connection).toString() ~ ")";
 	}

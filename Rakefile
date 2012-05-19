@@ -5,7 +5,7 @@ NAME    = 'nucular'
 VERSION = '0.0.1'
 
 DC    = 'dmd'
-FLAGS = "-version=select #{ENV['FLAGS']}"
+FLAGS = "-version=select -w #{ENV['FLAGS']}"
 
 if ENV['DEBUG']
 	FLAGS << ' -debug'

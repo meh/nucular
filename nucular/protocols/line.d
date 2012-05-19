@@ -26,7 +26,7 @@ import nucular.connection;
 
 class Protocol : Connection
 {
-	void receiveData (ubyte[] data)
+	override void receiveData (ubyte[] data)
 	{
 		if (_buffer.empty) {
 			_buffer = data;

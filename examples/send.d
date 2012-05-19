@@ -23,7 +23,7 @@ import line = nucular.protocols.line;
 
 class Sender : line.Protocol
 {
-	void connected ()
+	override void connected ()
 	{
 		if (_message) {
 			sendLine(_message);
@@ -41,11 +41,19 @@ private:
 	string _message;
 }
 
-void main (string[] argv)
+int main (string[] argv)
 {
+	if (argv.length != 4) {
+		writeln("Usage: ", argv[0], " <host> <port> <message>");
+
+		return 0;
+	}
+
 	nucular.reactor.run({
-		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((Sender conn) {
+		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((conn) {
 			conn.message = argv[3];
 		});
 	});
+
+	return 0;
 }

@@ -4,7 +4,7 @@ import line = nucular.protocols.line;
 
 class LineServer : line.Protocol
 {
-	void receiveLine (string line)
+	override void receiveLine (string line)
 	{
 		sendLine(line);
 	}

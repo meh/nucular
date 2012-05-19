@@ -311,7 +311,7 @@ class Connection
 		return this;
 	}
 
-	string toString ()
+	override string toString ()
 	{
 		return "Connection(" ~ _descriptor.toString() ~ ")";
 	}
