@@ -297,7 +297,7 @@ class Connection
 
 	@property reactor ()
 	{
-		return _server.reactor;
+		return _reactor;
 	}
 
 	Descriptor opCast(T : Descriptor) ()
