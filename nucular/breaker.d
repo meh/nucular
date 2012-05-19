@@ -18,10 +18,7 @@
 
 module nucular.breaker;
 
-import core.memory;
 import core.time;
-import std.exception;
-import std.socket : socketPair;
 
 import nucular.descriptor;
 import nucular.available.best;
@@ -30,13 +27,22 @@ class Breaker
 {
 	this ()
 	{
-		auto pair = socketPair();
+		version (Posix) {
+			import core.sys.posix.unistd;
 
-		_write = new Descriptor(pair[0]);
+			int[2] pair;
+
+			pipe(pair);
+
+			_read  = new Descriptor(pair[0]);
+			_write = new Descriptor(pair[1]);
+		}
+		else {
+			static assert(0);
+		}
+
 		_write.asynchronous = true;
-
-		_read = new Descriptor(pair[1]);
-		_read.asynchronous = true;
+		_read.asynchronous  = true;
 	}
 
 	void act ()
@@ -46,12 +52,9 @@ class Breaker
 
 	void flush ()
 	{
-		try {
-			while (_read.read(1024)) {
-				continue;
-			}
+		while (_read.read(1024)) {
+			continue;
 		}
-		catch (ErrnoException e) { }
 	}
 
 	void wait ()

@@ -110,8 +110,13 @@ class Reactor
 					descriptors = writable(_connecting.keys ~ cast (Descriptor) _breaker);
 				}
 
+				writeln(descriptors);
+
 				foreach (descriptor; descriptors) {
-					if (descriptor in _connecting) {
+					if (cast (Descriptor) _breaker == descriptor) {
+						_breaker.flush();
+					}
+					else {
 						Connection connection = _connecting[descriptor];
 
 						_connecting.remove(descriptor);
