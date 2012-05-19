@@ -60,7 +60,7 @@ class Descriptor
 			return null;
 		}
 
-		if (result < 0 && (getErrno() == EAGAIN || getErrno() == EWOULDBLOCK)) {
+		if (result < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
 			return null;
 		}
 
@@ -157,6 +157,12 @@ class Descriptor
 	int opCast(T : int) ()
 	{
 		return _fd;
+	}
+
+	// FIXME: remove when the bug is fixed
+	Object opCast(T : Object) ()
+	{
+		return this;
 	}
 
 	override hash_t toHash ()

@@ -72,7 +72,7 @@ class Connection
 		return this;
 	}
 
-	Connection connected (Reactor reactor, Descriptor descriptor)
+	Connection connecting (Reactor reactor, Descriptor descriptor)
 	{
 		watched(reactor, descriptor);
 
@@ -104,7 +104,7 @@ class Connection
 		auto old = _descriptor;
 		_descriptor = descriptor;
 
-		exchanged(descriptor);
+		exchanged();
 
 		return old;
 	}
@@ -114,8 +114,12 @@ class Connection
 		// this is just a placeholder
 	}
 
-	void exchanged (Descriptor descriptor)
+	void exchanged ()
 	{
+		// this is just a placeholder
+	}
+
+	void connected () {
 		// this is just a placeholder
 	}
 
@@ -299,6 +303,12 @@ class Connection
 	Descriptor opCast(T : Descriptor) ()
 	{
 		return _descriptor;
+	}
+
+	// FIXME: remove when the bug is fixed
+	Object opCast(T : Object) ()
+	{
+		return this;
 	}
 
 	string toString ()

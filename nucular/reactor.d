@@ -18,7 +18,7 @@
 
 module nucular.reactor;
 
-public import std.socket : InternetAddress, Internet6Address;
+public import std.socket : InternetAddress, Internet6Address, parseAddress, getAddress;
 public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
@@ -52,6 +52,8 @@ class Reactor
 		_quantum = 100.dur!"msecs";
 		_running = false;
 
+		_default_creation_callback = (a) { };
+
 		_descriptors ~= cast (Descriptor) _breaker;
 	}
 
@@ -83,7 +85,7 @@ class Reactor
 				continue;
 			}
 
-			if (_descriptors.length == 1) {
+			if (noDescriptors && !isConnectionPending) {
 				if (!hasTimers) {
 					_breaker.wait();
 				}
@@ -100,10 +102,30 @@ class Reactor
 
 			Descriptor[] descriptors;
 
+			if (isConnectionPending) {
+				if (hasTimers || !noDescriptors) {
+					descriptors = writable(_connecting.keys, (0).dur!"seconds");
+				}
+				else {
+					descriptors = writable(_connecting.keys ~ cast (Descriptor) _breaker);
+				}
+
+				foreach (descriptor; descriptors) {
+					Connection connection = _connecting[descriptor];
+
+					_connecting.remove(descriptor);
+
+					connection.connected();
+
+					_descriptors             ~= descriptor;
+					_connections[descriptor]  = connection;
+				}
+			}
+
 			if (hasTimers) {
 				descriptors = readable(_descriptors, minimumSleep());
 			}
-			else if (isWritePending) {
+			else if (isWritePending || isConnectionPending) {
 				descriptors = readable(_descriptors, (0).dur!"seconds");
 			}
 			else {
@@ -121,8 +143,7 @@ class Reactor
 			}
 
 			foreach (descriptor; descriptors) {
-				// FIXME: use == when they fix the bug
-				if ((cast (Descriptor) _breaker).opEquals(descriptor)) {
+				if (cast (Descriptor) _breaker == descriptor) {
 					_breaker.flush();
 				}
 				else if (descriptor in _servers) {
@@ -245,44 +266,24 @@ class Reactor
 		return deferrable().callback(callback).errback(errback);
 	}
 
-	Server startServer(alias T) (Address address)
-		if (is (T : Connection))
-	{
-		return _startServer(T.classinfo, address);
-	}
-
 	Server startServer(alias T) (Address address, void delegate (Connection) block)
-		if (is (T : Connection))
 	{
-		auto server       = _startServer(T.classinfo, address);
-		     server.block = block;
+		static if (is (T : Connection)) {
+			return _startServer(T.classinfo, address, block);
+		}
+		else {
+			class tmp : Connection
+			{
+				mixin T;
+			}
 
-		return server;
+			return _startServer(tmp.classinfo, address, block);
+		}
 	}
 
 	Server startServer(alias T) (Address address)
-		if (!is (T : Connection))
 	{
-		class tmp : Connection
-		{
-			mixin T;
-		}
-
-		return _startServer(tmp.classinfo, address);
-	}
-
-	Server startServer(alias T) (Address address, void delegate (Connection) block)
-		if (!is (T : Connection))
-	{
-		class tmp : Connection
-		{
-			mixin T;
-		}
-
-		auto server       = _startServer(tmp.classinfo, address);
-		     server.block = block;
-
-		return server;
+		return startServer!(T)(address, defaultCreationCallback);
 	}
 
 	void stopServer (Server server)
@@ -290,50 +291,68 @@ class Reactor
 		server.stop();
 
 		schedule({
-			// FIXME: use == when they fix the bug
-			_descriptors = _descriptors.filter!((a) { return !a.opEquals(cast (Descriptor) server); }).array;
+			_descriptors = _descriptors.filter!((a) { return a != cast (Descriptor) server; }).array;
 		});
 	}
 
-	Connection watch(alias T) (Descriptor descriptor)
-		if (is (T : Connection))
+	Connection connect(alias T) (Address address, void delegate (Connection) block)
 	{
-		return _watch(T.classinfo, descriptor);
-	}
-
-	Connection watch(alias T) (Socket socket)
-		if (is (T : Connection))
-	{
-		return watch!(T)(new Descriptor(socket));
-	}
-
-	Connection watch(alias T) (int fd)
-		if (is (T : Connection))
-	{
-		return watch!(T)(new Descriptor(fd));
-	}
-
-	Connection watch(alias T) (Descriptor descriptor)
-		if (!is (T : Connection))
-	{
-		class tmp : Connection
-		{
-			mixin T;
+		static if (is (T : Connection)) {
+			return _connect(T.classinfo, address, block);
 		}
+		else {
+			class tmp : Connection
+			{
+				mixin T;
+			}
 
-		return _watch(tmp.classinfo, descriptor);
+			return _connect(tmp.classinfo, address, block);
+		}
+	}
+
+	Connection connect(alias T) (Address address)
+	{
+		return connect!(T)(address, defaultCreationCallback);
+	}
+
+	Connection watch(alias T) (Descriptor descriptor, void delegate (Connection) block)
+	{
+		static if (is (T : Connection)) {
+			return _watch(T.classinfo, descriptor, block);
+		}
+		else {
+			class tmp : Connection
+			{
+				mixin T;
+			}
+
+			return _watch(tmp.classinfo, descriptor, block);
+		}
+	}
+
+	Connection watch(alias T) (Descriptor descriptor)
+	{
+		return watch!(T)(descriptor, (a) { });
+	}
+
+	Connection watch(alias T) (Socket socket, void delegate (Connection) block)
+	{
+		return watch!(T)(new Descriptor(socket), block);
 	}
 
 	Connection watch(alias T) (Socket socket)
-		if (!is (T : Connection))
 	{
-		return watch!(T)(new Descriptor(socket));
+		return watch!(T)(new Descriptor(socket), defaultCreationCallback);
+	}
+
+	Connection watch(alias T) (int fd, void delegate (Connection) block)
+	{
+		return watch!(T)(new Descriptor(fd), block);
 	}
 
 	Connection watch(alias T) (int fd)
-		if (!is (T : Connection))
 	{
-		return watch!(T)(new Descriptor(fd));
+		return watch!(T)(new Descriptor(fd), defaultCreationCallback);
 	}
 
 	void exchangeConnection (Connection from, Connection to)
@@ -356,8 +375,7 @@ class Reactor
 			else {
 				_closing.remove(cast (Descriptor) connection);
 
-				// FIXME: use == when they fix the bug
-				_descriptors = _descriptors.filter!((a) { return !a.opEquals(cast (Descriptor) connection); }).array;
+				_descriptors = _descriptors.filter!((a) { return a != cast (Descriptor) connection; }).array;
 
 				connection.unbind();
 			}
@@ -490,6 +508,16 @@ class Reactor
 		return !_scheduled.empty;
 	}
 
+	@property noDescriptors ()
+	{
+		return _descriptors.length == 1;
+	}
+
+	@property isConnectionPending ()
+	{
+		return _connecting.length > 0;
+	}
+
 	@property isWritePending ()
 	{
 		return _is_write_pending;
@@ -522,11 +550,22 @@ class Reactor
 		wakeUp();
 	}
 
+	@property defaultCreationCallback (void delegate (Connection) block)
+	{
+		_default_creation_callback = block;
+	}
+
+	@property defaultCreationCallback ()
+	{
+		return _default_creation_callback;
+	}
+
 private:
-	Server _startServer (TypeInfo_Class klass, Address address)
+	Server _startServer (TypeInfo_Class klass, Address address, void delegate (Connection) block)
 	{
 		auto server         = new Server(this, address);
 		     server.handler = klass;
+		     server.block   = block;
 
 		schedule({
 			auto descriptor = server.start();
@@ -538,10 +577,39 @@ private:
 		return server;
 	}
 
-	Connection _watch (TypeInfo_Class klass, Descriptor descriptor)
+	Connection _connect (TypeInfo_Class klass, Address address, void delegate (Connection) callback)
 	{
 		auto connection = cast (Connection) klass.create();
-		     connection.watched(this, descriptor);
+
+		static if (is (address : Internet6Address)) {
+			auto socket = new TcpSocket(AddressFamily.INET6);
+		}
+		else {
+			auto socket = new TcpSocket();
+		}
+
+		auto descriptor = new Descriptor(socket);
+
+		connection.connecting(this, descriptor);
+		callback(connection);
+		connection.initialized();
+
+		socket.connect(address);
+
+		schedule({
+			_connecting[descriptor] = connection;
+		});
+
+		return connection;
+	}
+
+	Connection _watch (TypeInfo_Class klass, Descriptor descriptor, void delegate (Connection) callback)
+	{
+		auto connection = cast (Connection) klass.create();
+
+		connection.watched(this, descriptor);
+		callback(connection);
+		connection.initialized();
 
 		schedule({
 			_descriptors             ~= descriptor;
@@ -552,10 +620,13 @@ private:
 	}
 
 private:
+	void delegate ()[] _scheduled;
+
 	Timer[]         _timers;
 	PeriodicTimer[] _periodic_timers;
 	Descriptor[]    _descriptors;
 
+	Connection[Descriptor] _connecting;
 	Server[Descriptor]     _servers;
 	Connection[Descriptor] _connections;
 	Connection[Descriptor] _closing;
@@ -569,7 +640,7 @@ private:
 	bool     _running;
 	bool     _is_write_pending;
 
-	void delegate ()[] _scheduled;
+	void delegate (Connection) _default_creation_callback;
 }
 
 void trap (string name, void delegate () block)
@@ -579,111 +650,121 @@ void trap (string name, void delegate () block)
 
 void run (void delegate () block)
 {
-	instance.run(block);
+	implant.run(block);
 }
 
 void schedule (void delegate () block)
 {
-	instance.schedule(block);
+	implant.schedule(block);
 }
 
 void nextTick (void delegate () block)
 {
-	instance.nextTick(block);
+	implant.nextTick(block);
 }
 
 void stop ()
 {
-	instance.stop();
+	implant.stop();
 }
 
 void defer(T) (T delegate () operation) {
 	_ensureReactor();
 
-	instance.defer(operation);
+	implant.defer(operation);
 }
 
 void defer(T) (T delegate () operation, void delegate (T) callback)
 {
-	instance.defer(operation, callback);
+	implant.defer(operation, callback);
 }
 
 void defer(T : AbstractTask) (T task)
 {
-	instance.defer(task);
+	implant.defer(task);
 }
 
 Deferrable deferrable ()
 {
-	return instance.deferrable();
+	return implant.deferrable();
 }
 
 Deferrable deferrable (void delegate () callback)
 {
-	return instance.deferrable(callback);
+	return implant.deferrable(callback);
 }
 
 Deferrable deferrable (void delegate () callback, void delegate () errback)
 {
-	return instance.deferrable(callback, errback);
+	return implant.deferrable(callback, errback);
 }
 
 Server startServer(alias T) (Address address)
 {
-	return instance.startServer!(T)(address);
+	return implant.startServer!(T)(address);
 }
 
 Server startServer(alias T) (Address address, void delegate (Connection) block)
 {
-	return instance.startServer!(T)(address, block);
+	return implant.startServer!(T)(address, block);
+}
+
+Connection connect(alias T) (Address address)
+{
+	return implant.connect!(T)(address);
+}
+
+Connection connect(alias T) (Address address, void delegate (Connection) block)
+{
+	return implant.connect!(T)(address, block);
 }
 
 Connection watch(alias T) (Descriptor descriptor)
 {
-	return instance.watch!(T)(descriptor);
+	return implant.watch!(T)(descriptor);
 }
 
 Connection watch(alias T) (Socket socket)
 {
-	return instance.watch!(T)(socket);
+	return implant.watch!(T)(socket);
 }
 
 Connection watch(alias T) (int fd)
 {
-	return instance.watch!(T)(fd);
+	return implant.watch!(T)(fd);
 }
 
 Timer addTimer (Duration time, void delegate () block)
 {
-	return instance.addTimer(time, block);
+	return implant.addTimer(time, block);
 }
 
 PeriodicTimer addPeriodicTimer (Duration time, void delegate () block)
 {
-	return instance.addPeriodicTimer(time, block);
+	return implant.addPeriodicTimer(time, block);
 }
 
 void cancelTimer (Timer timer)
 {
-	instance.cancelTimer(timer);
+	implant.cancelTimer(timer);
 }
 
 void cancelTimer (PeriodicTimer timer)
 {
-	instance.cancelTimer(timer);
+	implant.cancelTimer(timer);
 }
 
 @property quantum ()
 {
-	return instance.quantum;
+	return implant.quantum;
 }
 
 @property quantum (Duration duration)
 {
-	instance.quantum = duration;
+	implant.quantum = duration;
 }
 
-@property instance ()
+@property implant ()
 {
 	if (!_reactor) {
 		_reactor = new Reactor();

@@ -79,7 +79,13 @@ class Server
 		auto socket     = _socket.accept();
 		auto descriptor = new Descriptor(socket);
 
-		return connection.accepted(this, descriptor);
+		connection.accepted(this, descriptor);
+		if (_block) {
+			_block(connection);
+		}
+		connection.initialized();
+
+		return connection;
 	}
 
 	@property handler (TypeInfo_Class handler)

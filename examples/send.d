@@ -17,25 +17,30 @@
  ****************************************************************************/
 
 import std.stdio;
+import std.conv;
 import nucular.reactor;
 import nucular.protocols.socks;
 
-class Reader : Connection
+template Sender ()
 {
-	override void connected ()
+	import std.stdio;
+
+	void initialized ()
 	{
-		sendData(cast (ubyte[]) "GET / HTTP/1.1\r\nConnection:close\r\nHost: google.com\r\n\r\n");
+		writeln("initialized");
 	}
 
-	override void receiveData (ubyte[] data)
+	void connected ()
 	{
-		writeln(cast (string) data);
+		writeln("connected");
 	}
 }
 
-void main ()
+void main (string[] argv)
 {
 	nucular.reactor.run({
-		(new InternetAddress("google.com", 80)).connectThrough!Reader(new InternetAddress("localhost", 9050));
+		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((conn) {
+
+		});
 	});
 }

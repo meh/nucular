@@ -69,6 +69,12 @@ class Breaker
 		return _read;
 	}
 
+	// FIXME: remove when the bug is fixed
+	Object opCast(T : Object) ()
+	{
+		return this;
+	}
+
 	override string toString ()
 	{
 		return "Breaker(" ~ _read.toString() ~ ", " ~ _write.toString() ~ ")";

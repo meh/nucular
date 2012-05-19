@@ -18,110 +18,71 @@
 
 module nucular.protocols.socks;
 
-import nucular.reactor : Reactor, instance;
 import std.socket;
+
+import nucular.reactor : Reactor, implant;
+import nucular.connection;
 
 class Proxy : Connection
 {
-	void connectionCompleted () {
+	Proxy initialize (Connection drop_to, in char[] username, in char[] password, in char[] ver)
+	{
+		_drop_to  = drop_to;
+		_username = username.dup;
+		_password = password.dup;
+		_version  = ver.dup;
 
+		return this;
 	}
 
-	void receiveData (ubyte[] data) {
-
+	override void connected ()
+	{
+		// TODO: initialize SOCKS handhsake
 	}
 
-	@property dropTo () {
-		return _drop_to;
+	override void receiveData (ubyte[] data)
+	{
+		// TODO: handle SOCKS stuff
 	}
 
-	@property dropTo (Connection value) {
-		_drop_to = value;
-	}
-
-private:
-	Connection _drop_to;
-}
-
-private template AdditionalData
-{
 	@property username ()
 	{
 		return _username;
 	}
 
-	@property password ()
-	{
+	@property password () {
 		return _password;
 	}
 
+	@property socksVersion ()
+	{
+		return _version;
+	}
+
+	@property dropTo ()
+	{
+		return _drop_to;
+	}
+
 private:
-	const char[] _username;
-	const char[] _password;
+	char[]     _username;
+	char[]     _password;
+	char[]     _version;
+	Connection _drop_to;
 }
 
-class ProxyAddress : InternetAddress
-{
-	this (in char[] addr, ushort port, in char[] username = null, in char[] password = null)
-	{
-		super(addr, port);
-
-		_username = username;
-		_password = password;
-	}
-
-	this (uint addr, ushort port, in char[] username = null, in char[] password = null)
-	{
-		super(addr, port);
-
-		_username = username;
-		_password = password;
-	}
-
-	mixin(AdditionalData);
-}
-
-class Proxy6Address : Internet6Address {
-	this (in char[] node, in char[] service, in char[] username = null, in char[] password = null)
-	{
-		super(node, service);
-
-		_username = username;
-		_password = password;
-	}
-
-	this (in char[] node, ushort port, in char[] username = null, in char[] password = null)
-	{
-		super(node, port);
-
-		_username = username;
-		_password = password;
-	}
-
-	this (ubyte[16] addr, ushort port, in char[] username = null, in char[] password = null)
-	{
-		super(addr, port);
-
-		_username = username;
-		_password = password;
-	}
-
-	mixin(AdditionalData);
-}
-
-Connection connectThrough(T : Address, T2 : Connection) (Reactor reactor, Address target)
-	if (is (through : ProxyAddress) || is (through : Proxy6Address))
+Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, in char[] username = null, in char[] password = null, in char[] ver = null)
 {
 	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
-	Connection proxy   = reactor.connect!Proxy(target);
 
-	proxy.dropTo = drop_to;
+	// FIXME: remove the useless cast when the bug is fixed
+	Proxy proxy = cast (Proxy) cast (Object) reactor.connect!Proxy(target);
+	      proxy.initialize(drop_to, username, password, ver);
 
 	return drop_to;
 }
 
-Connection connectThrough(T : Address, T2 : Connection) (Address target)
-	if (is (through : ProxyAddress) || is (through : Proxy6Address))
+Connection connectThrough(T : Connection) (Address target, Address through, in char[] username = null, in char[] password = null, in char[] ver = null)
 {
-	return instance.connectThrough!(T, T2)(target);
+	return connectThrough!(T)(implant, target, through, username, password, ver);
 }
