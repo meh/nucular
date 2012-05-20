@@ -630,136 +630,136 @@ void trap (string name, void delegate () block)
 
 void run (void delegate () block)
 {
-	implant.run(block);
+	instance.run(block);
 }
 
 void schedule (void delegate () block)
 {
-	implant.schedule(block);
+	instance.schedule(block);
 }
 
 void nextTick (void delegate () block)
 {
-	implant.nextTick(block);
+	instance.nextTick(block);
 }
 
 void stop ()
 {
-	implant.stop();
+	instance.stop();
 }
 
 void defer(T) (T delegate () operation) {
 	_ensureReactor();
 
-	implant.defer(operation);
+	instance.defer(operation);
 }
 
 void defer(T) (T delegate () operation, void delegate (T) callback)
 {
-	implant.defer(operation, callback);
+	instance.defer(operation, callback);
 }
 
 void defer(T : AbstractTask) (T task)
 {
-	implant.defer(task);
+	instance.defer(task);
 }
 
 Deferrable deferrable ()
 {
-	return implant.deferrable();
+	return instance.deferrable();
 }
 
 Deferrable deferrable (void delegate () callback)
 {
-	return implant.deferrable(callback);
+	return instance.deferrable(callback);
 }
 
 Deferrable deferrable (void delegate () callback, void delegate () errback)
 {
-	return implant.deferrable(callback, errback);
+	return instance.deferrable(callback, errback);
 }
 
 Server startServer(T : Connection) (Address address)
 {
-	return implant.startServer!(T)(address);
+	return instance.startServer!(T)(address);
 }
 
 Server startServer(T : Connection) (Address address, void delegate (T) block)
 {
-	return implant.startServer!(T)(address, block);
+	return instance.startServer!(T)(address, block);
 }
 
 Connection connect(T : Connection) (Address address)
 {
-	return implant.connect!(T)(address);
+	return instance.connect!(T)(address);
 }
 
 Connection connect(T : Connection) (Address address, void delegate (T) block)
 {
-	return implant.connect!(T)(address, block);
+	return instance.connect!(T)(address, block);
 }
 
 Connection watch(T : Connection) (Descriptor descriptor)
 {
-	return implant.watch!(T)(descriptor);
+	return instance.watch!(T)(descriptor);
 }
 
 Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
 {
-	return implant.watch!(T)(descriptor, block);
+	return instance.watch!(T)(descriptor, block);
 }
 
 Connection watch(T : Connection) (Socket socket)
 {
-	return implant.watch!(T)(socket);
+	return instance.watch!(T)(socket);
 }
 
 Connection watch(T : Connection) (Socket socket, void delegate (T) block)
 {
-	return implant.watch!(T)(socket, block);
+	return instance.watch!(T)(socket, block);
 }
 
 Connection watch(T : Connection) (int fd)
 {
-	return implant.watch!(T)(fd);
+	return instance.watch!(T)(fd);
 }
 
 Connection watch(T : Connection) (int fd, void delegate (T) block)
 {
-	return implant.watch!(T)(fd, block);
+	return instance.watch!(T)(fd, block);
 }
 
 Timer addTimer (Duration time, void delegate () block)
 {
-	return implant.addTimer(time, block);
+	return instance.addTimer(time, block);
 }
 
 PeriodicTimer addPeriodicTimer (Duration time, void delegate () block)
 {
-	return implant.addPeriodicTimer(time, block);
+	return instance.addPeriodicTimer(time, block);
 }
 
 void cancelTimer (Timer timer)
 {
-	implant.cancelTimer(timer);
+	instance.cancelTimer(timer);
 }
 
 void cancelTimer (PeriodicTimer timer)
 {
-	implant.cancelTimer(timer);
+	instance.cancelTimer(timer);
 }
 
 @property quantum ()
 {
-	return implant.quantum;
+	return instance.quantum;
 }
 
 @property quantum (Duration duration)
 {
-	implant.quantum = duration;
+	instance.quantum = duration;
 }
 
-@property implant ()
+@property instance ()
 {
 	if (!_reactor) {
 		_reactor = new Reactor();
