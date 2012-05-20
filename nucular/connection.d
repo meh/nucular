@@ -240,7 +240,9 @@ class Connection
 
 			errnoEnforce(getsockopt(cast (int) _descriptor, SOL_SOCKET, SO_ERROR, cast (char*) &result, &resultSize) == 0);
 
-			_error = new Errno(result);
+			if (result != 0) {
+				_error = new Errno(result);
+			}
 		}
 
 		return _error;
