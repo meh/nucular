@@ -28,6 +28,11 @@ class Receiver : line.Protocol
 		writeln(remoteAddress, " connected");
 	}
 
+	override void receiveLine (string line)
+	{
+		writeln(remoteAddress, ": ", line);
+	}
+
 	override void unbind ()
 	{
 		if (error) {

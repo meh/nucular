@@ -25,9 +25,6 @@ class Sender : line.Protocol
 {
 	override void connected ()
 	{
-		writeln(localAddress);
-		writeln(remoteAddress);
-
 		if (_message) {
 			sendLine(_message);
 		}
