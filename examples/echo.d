@@ -3,7 +3,7 @@ import nucular.reactor;
 
 class EchoServer : Connection
 {
-	void receiveData (ubyte[] data)
+	override void receiveData (ubyte[] data)
 	{
 		sendData(data);
 	}

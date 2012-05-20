@@ -119,10 +119,15 @@ class Reactor
 
 						_connecting.remove(descriptor);
 
-						connection.connected();
+						if (connection.error) {
+							connection.unbind();
+						}
+						else {
+							connection.connected();
 
-						_descriptors             ~= descriptor;
-						_connections[descriptor]  = connection;
+							_descriptors             ~= descriptor;
+							_connections[descriptor]  = connection;
+						}
 					}
 				}
 			}

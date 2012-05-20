@@ -18,6 +18,7 @@
 
 module nucular.connection;
 
+import std.conv;
 import std.exception;
 import std.array;
 import core.sync.mutex;
@@ -41,6 +42,32 @@ else {
 
 class Connection
 {
+	class Errno
+	{
+		this (int value)
+		{
+			_value = value;
+		}
+
+		@property message ()
+		{
+			return std.c.string.strerror(_value).to!string;
+		}
+
+		int opCast(T : int) ()
+		{
+			return _value;
+		}
+
+		override string toString ()
+		{
+			return "Errno(" ~ message ~ ")";
+		}
+
+	private:
+		int _value;
+	}
+
 	Connection created (Reactor reactor)
 	{
 		_reactor = reactor;
@@ -163,7 +190,7 @@ class Connection
 			}
 		}
 		catch (ErrnoException e) {
-			_error = e;
+			_error = new Errno(e.errno);
 			_descriptor.close();
 		}
 
@@ -203,14 +230,20 @@ class Connection
 
 	@property error ()
 	{
+		if (_error) {
+			return _error;
+		}
+
 		version (Posix) {
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
 
 			errnoEnforce(getsockopt(cast (int) _descriptor, SOL_SOCKET, SO_ERROR, cast (char*) &result, &resultSize) == 0);
 
-			return result;
+			_error = new Errno(result);
 		}
+
+		return _error;
 	}
 
 	@property isAlive ()
@@ -285,11 +318,6 @@ class Connection
 		return !_to_write.empty;
 	}
 
-	@property error ()
-	{
-		return _error;
-	}
-
 	@property server ()
 	{
 		return _server;
@@ -324,5 +352,5 @@ private:
 	Descriptor _descriptor;
 
 	ubyte[][] _to_write;
-	Exception _error;
+	Errno     _error;
 }

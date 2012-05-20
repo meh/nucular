@@ -32,6 +32,15 @@ class Sender : line.Protocol
 		closeConnectionAfterWriting();
 	}
 
+	override void unbind ()
+	{
+		if (error) {
+			writeln(error.message);
+		}
+
+		nucular.reactor.stop();
+	}
+
 	@property message (string data)
 	{
 		_message = data;
@@ -50,7 +59,8 @@ int main (string[] argv)
 	}
 
 	nucular.reactor.run({
-		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((conn) {
+		// FIXME: remove useless Sender in lambda signature when they fix the bug
+		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((Sender conn) {
 			conn.message = argv[3];
 		});
 	});
