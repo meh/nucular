@@ -20,7 +20,7 @@ module nucular.protocols.socks;
 
 import std.socket;
 
-import nucular.reactor : Reactor, implant;
+import nucular.reactor : Reactor, instance;
 import nucular.connection;
 
 class Proxy : Connection
@@ -84,5 +84,5 @@ Connection connectThrough(T : Connection) (Reactor reactor, Address target, Addr
 
 Connection connectThrough(T : Connection) (Address target, Address through, in char[] username = null, in char[] password = null, in char[] ver = null)
 {
-	return connectThrough!(T)(implant, target, through, username, password, ver);
+	return connectThrough!(T)(instance, target, through, username, password, ver);
 }

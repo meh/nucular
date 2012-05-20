@@ -126,6 +126,11 @@ class Descriptor
 		return _closed;
 	}
 
+	@property socket ()
+	{
+		return _socket;
+	}
+
 	override equals_t opEquals (Object other)
 	{
 		if (this is other) {

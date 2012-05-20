@@ -161,8 +161,6 @@ class Reactor
 					Connection connection = server.accept();
 					           descriptor = cast (Descriptor) connection;
 
-					connection.initialized();
-
 					schedule({
 						_descriptors             ~= descriptor;
 						_connections[descriptor]  = connection;

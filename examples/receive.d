@@ -21,51 +21,35 @@ import std.conv;
 import nucular.reactor;
 import line = nucular.protocols.line;
 
-class Sender : line.Protocol
+class Receiver : line.Protocol
 {
-	override void connected ()
+	override void initialized ()
 	{
-		writeln(localAddress);
-		writeln(remoteAddress);
-
-		if (_message) {
-			sendLine(_message);
-		}
-
-		closeConnectionAfterWriting();
+		writeln(remoteAddress, " connected");
 	}
 
 	override void unbind ()
 	{
 		if (error) {
-			writeln(error.message);
+			writeln(remoteAddress, " disconnected because: ", error.message);
 		}
-
-		nucular.reactor.stop();
+		else {
+			writeln(remoteAddress, " disconnected");
+		}
 	}
-
-	@property message (string data)
-	{
-		_message = data;
-	}
-
-private:
-	string _message;
 }
 
 int main (string[] argv)
 {
-	if (argv.length != 4) {
-		writeln("Usage: ", argv[0], " <host> <port> <message>");
+	if (argv.length != 3) {
+		writeln("Usage: ", argv[0], " <host> <port>");
 
 		return 0;
 	}
 
 	nucular.reactor.run({
 		// FIXME: remove useless Sender in lambda signature when they fix the bug
-		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((Sender conn) {
-			conn.message = argv[3];
-		});
+		(new InternetAddress(argv[1], argv[2].to!ushort)).startServer!Receiver;
 	});
 
 	return 0;

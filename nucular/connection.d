@@ -228,6 +228,16 @@ class Connection
 		return true;
 	}
 
+	@property remoteAddress ()
+	{
+		return _descriptor.socket ? _descriptor.socket.remoteAddress() : null;
+	}
+
+	@property localAddress ()
+	{
+		return _descriptor.socket ? _descriptor.socket.localAddress() : null;
+	}
+
 	@property error ()
 	{
 		if (_error) {
