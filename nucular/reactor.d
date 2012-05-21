@@ -207,10 +207,6 @@ class Reactor
 
 			descriptors = writable(descriptors, (0).dur!"seconds");
 
-			if (!isRunning) {
-				continue;
-			}
-
 			isWritePending = false;
 			foreach (descriptor; descriptors) {
 				if (descriptor in _connections) {
