@@ -157,6 +157,8 @@ class Connection
 
 	void sendData (ubyte[] data)
 	{
+		enforce(!isClosing, "you cannot write data when the connection is closing");
+
 		synchronized (_mutex) {
 			_to_write ~= data;
 		}
@@ -166,6 +168,12 @@ class Connection
 
 	void closeConnection (bool after_writing = false)
 	{
+		if (isClosing) {
+			return;
+		}
+
+		_closing = true;
+
 		reactor.closeConnection(this, after_writing);
 	}
 
@@ -179,23 +187,13 @@ class Connection
 		// this is just a placeholder
 	}
 
-	void shutdown(alias mode) ()
+	void shutdown ()
 	{
 		version (Posix) {
-			int value;
-
-			static if (mode == "read") {
-				value = SHUT_RD;
-			}
-			else if (mode == "write") {
-				value = SHUT_WR;
-			}
-			else {
-				value = SHUT_RDWR;
-			}
-
-			errnoEnforce(.shutdown(cast (int) _descriptor, value) == 0);
+			errnoEnforce(.shutdown(cast (int) _descriptor, 2) == 0);
 		}
+
+		_shutdown = true;
 	}
 
 	void close ()
@@ -209,7 +207,7 @@ class Connection
 		ubyte[] tmp;
 
 		try {
-			while ((tmp = _descriptor.read(1024)) !is null) {
+			while (!(tmp = _descriptor.read(1024)).empty) {
 				result ~= tmp;
 			}
 		}
@@ -282,13 +280,23 @@ class Connection
 		return _error;
 	}
 
+	@property isShutdown ()
+	{
+		return _shutdown;
+	}
+
+	@property isClosing ()
+	{
+		return _closing;
+	}
+
 	@property isEOF ()
 	{
 		if (_descriptor.isClosed) {
 			return true;
 		}
 
-		if (_descriptor.read(1) && _descriptor.isClosed) {
+		if (_descriptor.read(1).empty && _descriptor.isClosed) {
 			return true;
 		}
 
@@ -406,4 +414,6 @@ private:
 
 	ubyte[][] _to_write;
 	Errno     _error;
+	bool      _closing;
+	bool      _shutdown;
 }
