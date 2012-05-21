@@ -85,7 +85,7 @@ class Reactor
 				continue;
 			}
 
-			if (noDescriptors && !isConnectionPending) {
+			if (noDescriptors && !isConnectPending && !isClosePending) {
 				if (!hasTimers) {
 					_breaker.wait();
 				}
@@ -102,7 +102,7 @@ class Reactor
 
 			Descriptor[] descriptors;
 
-			if (isConnectionPending) {
+			if (isConnectPending) {
 				if (hasTimers || !noDescriptors) {
 					descriptors = writable(_connecting.keys, (0).dur!"seconds");
 				}
@@ -120,6 +120,7 @@ class Reactor
 						_connecting.remove(descriptor);
 
 						if (connection.error) {
+							connection.close();
 							connection.unbind();
 						}
 						else {
@@ -132,10 +133,18 @@ class Reactor
 				}
 			}
 
+			if (isClosePending) {
+				foreach (descriptor, connection; _closing) {
+					if (!connection.isWritePending && connection.isEOF) {
+						closeConnection(connection);
+					}
+				}
+			}
+
 			if (hasTimers) {
 				descriptors = readable(_descriptors, minimumSleep());
 			}
-			else if (isWritePending || isConnectionPending) {
+			else if (isWritePending || isConnectPending || isClosePending) {
 				descriptors = readable(_descriptors, (0).dur!"seconds");
 			}
 			else {
@@ -182,8 +191,12 @@ class Reactor
 
 			foreach (descriptor, connection; _connections) {
 				if (connection.isWritePending) {
-					isWritePending = true;
+					descriptors ~= descriptor;
+				}
+			}
 
+			foreach (descriptor, connection; _closing) {
+				if (connection.isWritePending) {
 					descriptors ~= descriptor;
 				}
 			}
@@ -201,7 +214,7 @@ class Reactor
 			isWritePending = false;
 			foreach (descriptor; descriptors) {
 				if (descriptor in _connections) {
-					if (!_connections[descriptor].write()) {
+					if (!_connections[descriptor].write() && !isWritePending) {
 						isWritePending = true;
 					}
 				}
@@ -210,7 +223,7 @@ class Reactor
 						isWritePending = true;
 					}
 					else {
-						closeConnection(_closing[descriptor]);
+						_closing[descriptor].shutdown!"write";
 					}
 				}
 			}
@@ -346,15 +359,17 @@ class Reactor
 	{
 		schedule({
 			_connections.remove(cast (Descriptor) connection);
+			_descriptors = _descriptors.filter!((a) { return a != cast (Descriptor) connection; }).array;
 
 			if (after_writing) {
 				_closing[cast (Descriptor) connection] = connection;
+
+				connection.shutdown!"read";
 			}
 			else {
 				_closing.remove(cast (Descriptor) connection);
 
-				_descriptors = _descriptors.filter!((a) { return a != cast (Descriptor) connection; }).array;
-
+				connection.close();
 				connection.unbind();
 			}
 		});
@@ -491,9 +506,14 @@ class Reactor
 		return _descriptors.length == 1;
 	}
 
-	@property isConnectionPending ()
+	@property isConnectPending ()
 	{
 		return _connecting.length > 0;
+	}
+
+	@property isClosePending ()
+	{
+		return _closing.length > 0;
 	}
 
 	@property isWritePending ()

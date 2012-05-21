@@ -179,6 +179,30 @@ class Connection
 		// this is just a placeholder
 	}
 
+	void shutdown(alias mode) ()
+	{
+		version (Posix) {
+			int value;
+
+			static if (mode == "read") {
+				value = SHUT_RD;
+			}
+			else if (mode == "write") {
+				value = SHUT_WR;
+			}
+			else {
+				value = SHUT_RDWR;
+			}
+
+			errnoEnforce(.shutdown(cast (int) _descriptor, value) == 0);
+		}
+	}
+
+	void close ()
+	{
+		_descriptor.close();
+	}
+
 	ubyte[] read ()
 	{
 		ubyte[] result;
@@ -240,7 +264,7 @@ class Connection
 
 	@property error ()
 	{
-		if (_error) {
+		if (_error || _descriptor.isClosed) {
 			return _error;
 		}
 
@@ -258,8 +282,25 @@ class Connection
 		return _error;
 	}
 
+	@property isEOF ()
+	{
+		if (_descriptor.isClosed) {
+			return true;
+		}
+
+		if (_descriptor.read(1) && _descriptor.isClosed) {
+			return true;
+		}
+
+		return false;
+	}
+
 	@property isAlive ()
 	{
+		if (_descriptor.isClosed) {
+			return false;
+		}
+
 		version (Posix) {
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
