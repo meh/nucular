@@ -135,7 +135,7 @@ class Reactor
 
 			if (isClosePending) {
 				foreach (descriptor, connection; _closing) {
-					if (connection.isShutdown && connection.isEOF) {
+					if (!connection.isWritePending && connection.isEOF) {
 						closeConnection(connection);
 					}
 				}
@@ -196,7 +196,7 @@ class Reactor
 			}
 
 			foreach (descriptor, connection; _closing) {
-				if (connection.isWritePending || !connection.isShutdown) {
+				if (connection.isWritePending) {
 					descriptors ~= descriptor;
 				}
 			}
@@ -217,10 +217,8 @@ class Reactor
 				else if (descriptor in _closing) {
 					Connection connection = _closing[descriptor];
 
-					if (connection.isWritePending) {
-						if (!_closing[descriptor].write()) {
-							isWritePending = true;
-						}
+					if (!_closing[descriptor].write()) {
+						isWritePending = true;
 					}
 					else {
 						connection.shutdown();

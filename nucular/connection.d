@@ -192,8 +192,6 @@ class Connection
 		version (Posix) {
 			errnoEnforce(.shutdown(cast (int) _descriptor, 2) == 0);
 		}
-
-		_shutdown = true;
 	}
 
 	void close ()
@@ -209,6 +207,10 @@ class Connection
 		try {
 			while (!(tmp = _descriptor.read(1024)).empty) {
 				result ~= tmp;
+
+				if (tmp.length != 1024) {
+					break;
+				}
 			}
 		}
 		catch (ErrnoException e) {
@@ -218,8 +220,6 @@ class Connection
 
 		if (_descriptor.isClosed) {
 			closeConnection();
-
-			return null;
 		}
 
 		return result;
@@ -278,11 +278,6 @@ class Connection
 		}
 
 		return _error;
-	}
-
-	@property isShutdown ()
-	{
-		return _shutdown;
 	}
 
 	@property isClosing ()
@@ -415,5 +410,4 @@ private:
 	ubyte[][] _to_write;
 	Errno     _error;
 	bool      _closing;
-	bool      _shutdown;
 }
