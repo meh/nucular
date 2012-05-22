@@ -25,12 +25,21 @@ import nucular.connection;
 
 class Proxy : Connection
 {
-	Proxy initialize (Connection drop_to, in char[] username, in char[] password, in char[] ver)
+	Proxy initialize (Connection drop_to, in char[] username = null, in char[] password = null, in char[] ver = null)
 	{
 		_drop_to  = drop_to;
-		_username = username.dup;
-		_password = password.dup;
-		_version  = ver.dup;
+
+		if (username) {
+			_username = username.dup;
+		}
+
+		if (password) {
+			_password = password.dup;
+		}
+
+		if (ver) {
+			_version  = ver.dup;
+		}
 
 		return this;
 	}

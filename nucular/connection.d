@@ -205,7 +205,7 @@ class Connection
 		ubyte[] tmp;
 
 		try {
-			while (!(tmp = _descriptor.read(1024)).empty) {
+			while ((tmp = _descriptor.read(1024)) !is null) {
 				result ~= tmp;
 
 				if (tmp.length != 1024) {
@@ -291,7 +291,7 @@ class Connection
 			return true;
 		}
 
-		if (_descriptor.read(1).empty && _descriptor.isClosed) {
+		if (!_descriptor.read(1) && _descriptor.isClosed) {
 			return true;
 		}
 
@@ -366,7 +366,7 @@ class Connection
 
 	@property isWatcher ()
 	{
-		return _server is null;
+		return !_server;
 	}
 
 	@property isWritePending ()

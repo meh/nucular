@@ -179,7 +179,7 @@ class Reactor
 					Connection connection = _connections[descriptor];
 					ubyte[]    data       = connection.read();
 
-					if (!data.empty) {
+					if (data) {
 						connection.receiveData(data);
 					}
 				}
