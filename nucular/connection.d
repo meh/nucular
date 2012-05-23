@@ -116,22 +116,17 @@ class Connection
 		}
 	}
 
-	Descriptor exchange (Connection to)
+	Connection exchange (Connection to)
 	{
-		auto old = _descriptor;
-		_descriptor = null;
+		reactor.exchangeConnections(this, to);
 
-		reactor.exchangeConnection(this, to);
-
-		return _descriptor;
+		return to;
 	}
 
 	Descriptor exchange (Descriptor descriptor)
 	{
 		auto old = _descriptor;
 		_descriptor = descriptor;
-
-		exchanged();
 
 		return old;
 	}
@@ -141,7 +136,7 @@ class Connection
 		// this is just a placeholder
 	}
 
-	void exchanged ()
+	void exchanged (Connection other)
 	{
 		// this is just a placeholder
 	}
@@ -397,7 +392,12 @@ class Connection
 
 	override string toString ()
 	{
-		return "Connection(" ~ _descriptor.toString() ~ ")";
+		if (_descriptor) {
+			return "Connection(" ~ _descriptor.toString() ~ ")";
+		}
+		else {
+			return "Connection()";
+		}
 	}
 
 private:

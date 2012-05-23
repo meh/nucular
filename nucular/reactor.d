@@ -23,6 +23,8 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
+import std.stdio : writeln;
+
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -344,12 +346,25 @@ class Reactor
 		return watch!(T)(new Descriptor(fd), defaultCreationCallback);
 	}
 
-	void exchangeConnection (Connection from, Connection to)
+	void exchangeConnections (Connection from, Connection to)
 	{
 		schedule({
-			to.exchange(cast (Descriptor) from);
+			Descriptor fromDescriptor = cast (Descriptor) from;
+			Descriptor toDescriptor   = cast (Descriptor) to;
 
-			_connections[cast (Descriptor) from] = to;
+			to.exchange(fromDescriptor);
+			from.exchange(toDescriptor);
+
+			to.exchanged(from);
+			from.exchanged(to);
+
+			if (fromDescriptor) {
+				_connections[fromDescriptor] = to;
+			}
+
+			if (toDescriptor) {
+				_connections[toDescriptor] = from;
+			}
 		});
 	}
 

@@ -36,6 +36,6 @@ class Reader : Connection
 void main ()
 {
 	nucular.reactor.run({
-		(new InternetAddress("google.com", 80)).connectThrough!Reader(new InternetAddress("localhost", 9050));
+		(new ProxiedAddress("google.com", 80)).connectThrough!Reader(new InternetAddress("localhost", 9050));
 	});
 }

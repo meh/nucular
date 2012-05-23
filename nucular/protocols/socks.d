@@ -18,10 +18,12 @@
 
 module nucular.protocols.socks;
 
+import std.stdio : writeln;
+
+import std.exception;
 import std.socket;
 import std.conv;
 import std.array;
-import std.algorithm;
 
 version (Posix) {
 	import core.sys.posix.arpa.inet;
@@ -35,6 +37,12 @@ class ProxiedAddress : UnknownAddress
 	this (char[] host, ushort port)
 	{
 		_host = host;
+		_port = port;
+	}
+
+	this (string host, ushort port)
+	{
+		_host = cast (char[]) host;
 		_port = port;
 	}
 
@@ -76,6 +84,15 @@ abstract class SOCKS : Connection
 		return this;
 	}
 
+	override void exchanged (Connection other)
+	{
+		other.connected();
+
+		if (_data) {
+			other.receiveData(_data);
+		}
+	}
+
 	override void receiveData (ubyte[] data)
 	{
 		_data ~= data;
@@ -103,7 +120,7 @@ abstract class SOCKS : Connection
 	}
 
 protected:
-	abstract void parseResponse (ubyte[] data);
+	abstract void parseResponse (ref ubyte[] data);
 
 private:
 	Address    _target;
@@ -115,12 +132,40 @@ private:
 	ubyte[] _data;
 }
 
+class SOCKSError : Error
+{
+	this (string message)
+	{
+		super(message);
+	}
+
+	this (SOCKS5.Reply code)
+	{
+		string message;
+
+		final switch (code) {
+			case SOCKS5.Reply.Succeeded:               throw new Error("there were no errors, why did you call this?");
+			case SOCKS5.Reply.GeneralError:            message = "general SOCKS server failure"; break;
+			case SOCKS5.Reply.ConnectionNotAllowed:    message = "connection not allowed by ruleset"; break;
+			case SOCKS5.Reply.NetworkUnreachable:      message = "network unreachable"; break;
+			case SOCKS5.Reply.HostUnreachable:         message = "host unreachable"; break;
+			case SOCKS5.Reply.ConnectionRefused:       message = "connection refused"; break;
+			case SOCKS5.Reply.TTLExpired:              message = "TTL expired"; break;
+			case SOCKS5.Reply.CommandNotSupported:     message = "command not supported"; break;
+			case SOCKS5.Reply.AddressTypeNotSupported: message = "address type not supported"; break;
+		}
+
+		super(message);
+	}
+}
+
 class SOCKS5 : SOCKS
 {
 	enum State {
 		MethodNegotiation,
 		Connecting,
-		Authenticating
+		Authenticating,
+		Finished
 	}
 
 	enum Method {
@@ -139,7 +184,7 @@ class SOCKS5 : SOCKS
 	}
 	
 	enum NetworkType {
-		IPv4,
+		IPv4     = 0x01,
 		HostName = 0x03,
 		IPv6
 	}
@@ -172,32 +217,34 @@ class SOCKS5 : SOCKS
 
 	void sendRequest (Type type, Address address)
 	{
-		ubyte[] portToData (ushort port)
+		ubyte[] toData(T) (T data)
 		{
-			return cast (ubyte[]) [port >> 8, port & 0x00ff];
-		}
+			ubyte[] result;
 
-		ubyte[] ipv4ToData (uint port)
-		{
-			return cast (ubyte[]) [];
+			for (int i = 0; i < T.sizeof; i++) {
+				result  ~= cast (ubyte) (data & 0xff);
+				data   >>= 8;
+			}
+
+			return result;
 		}
 
 		if (auto target = cast (ProxiedAddress) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.HostName, target.toHostNameString().length] ~ cast (ubyte[]) target.toHostNameString() ~ portToData(target.port()));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.HostName, target.toHostNameString().length] ~ cast (ubyte[]) target.toHostNameString() ~ toData(target.port()));
 		}
 		else if (auto target = cast (InternetAddress) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv4] ~ ipv4ToData(target.addr()) ~ portToData(target.port()));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv4] ~ toData(target.addr()) ~ toData(target.port()));
 		}
 		else if (auto target = cast (Internet6Address) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ portToData(target.port()));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ toData(target.port()));
 		}
 		else {
-			throw new Error("address unsupported");
+			throw new SOCKSError(Reply.AddressTypeNotSupported);
 		}
 	}
 
 protected:
-	override void parseResponse (ubyte[] data)
+	override void parseResponse (ref ubyte[] data)
 	{
 		final switch (_state) {
 			case State.MethodNegotiation:
@@ -205,16 +252,18 @@ protected:
 					return;
 				}
 
-				// ignore the version number
-				data.popFront();
-
+				auto ver    = cast (int) data.front; data.popFront();
 				auto method = cast (Method) data.front; data.popFront();
+
+				if (ver != 5) {
+					throw new SOCKSError("SOCKS version 5 not supported");
+				}
 
 				switch (method) {
 					case Method.NoAuthenticationRequired: sendConnectRequest(); break;
 					case Method.UsernameAndPassword:      sendAuthentication(); break;
 
-					default: throw new Error("proxy did not accept method");
+					default: throw new Exception("proxy did not accept method");
 				}
 			break;
 
@@ -227,19 +276,73 @@ protected:
 				auto status = cast (Reply) data.front; data.popFront();
 
 				if (ver != 5) {
-					throw new Error("SOCKS version 5 not supported");
+					throw new SOCKSError("SOCKS version 5 not supported");
 				}
 
 				if (status != Reply.Succeeded) {
-					throw new Error("access denied by proxy");
+					throw new SOCKSError("access denied by proxy");
 				}
 
 				sendConnectRequest();
 			break;
 
 			case State.Connecting:
+				if (data.length < 2) {
+					return;
+				}
 
+				auto ver    = cast (int) data[0];
+				auto status = cast (Reply) data[1];
+
+				if (ver != 5) {
+					throw new Exception("SOCKS version 5 not supported");
+				}
+
+				if (status != Reply.Succeeded) {
+					throw new SOCKSError(status);
+				}
+
+				if (data.length < 3) {
+					return;
+				}
+
+				auto type = cast (NetworkType) data[3];
+				int  size = 4;
+
+				if (type == NetworkType.IPv4) {
+					size += 4;
+				}
+				else if (type == NetworkType.IPv6 && data.length) {
+					size += 16;
+				}
+				else if (type == NetworkType.HostName) {
+					if (data.length < 6) {
+						return;
+					}
+					else {
+						size += data[4];
+					}
+				}
+				else {
+					assert(0);
+				}
+
+				size += 2;
+
+				if (data.length < size) {
+					return;
+				}
+
+				_state = State.Finished;
+
+				foreach (_; 0 .. size) {
+					data.popFront();
+				}
+
+				exchange(dropTo);
 			break;
+
+			case State.Finished: break;
 		}
 	}
 
@@ -254,6 +357,7 @@ protected:
 	{
 		_state = State.Connecting;
 		
+		sendRequest(Type.Connect, target);
 	}
 
 private:
@@ -262,12 +366,12 @@ private:
 
 Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, in char[] username = null, in char[] password = null, in string ver = "5")
 {
-	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
+	auto drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
 
 	if (ver == "5") {
 		// FIXME: remove the useless cast when the bug is fixed
-		SOCKS proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS5(target);
-					proxy.initialize(target, drop_to, username, password);
+		(cast (SOCKS) cast (Object) reactor.connect!SOCKS5(through)).initialize(
+			target, drop_to, username, password);
 	}
 	else {
 		throw new Error("version unsupported");
