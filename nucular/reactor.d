@@ -32,6 +32,7 @@ import std.exception;
 import std.datetime;
 import std.socket;
 import std.parallelism;
+import std.string;
 
 import nucular.threadpool;
 import nucular.timer;
@@ -168,14 +169,18 @@ class Reactor
 					_breaker.flush();
 				}
 				else if (descriptor in _servers) {
-					Server server         = _servers[descriptor];
-					Connection connection = server.accept();
-					           descriptor = cast (Descriptor) connection;
+					if (auto server = cast (TCPServer) _servers[descriptor]) {
+						Connection connection = server.accept();
+											 descriptor = cast (Descriptor) connection;
 
-					schedule({
-						_descriptors             ~= descriptor;
-						_connections[descriptor]  = connection;
-					});
+						schedule({
+							_descriptors             ~= descriptor;
+							_connections[descriptor]  = connection;
+						});
+					}
+					else {
+						assert(0);
+					}
 				}
 				else if (descriptor in _connections) {
 					Connection connection = _connections[descriptor];
@@ -289,7 +294,7 @@ class Reactor
 
 	Server startServer(T : Connection) (Address address, void delegate (T) block)
 	{
-		return _startServer(T.classinfo, address, cast (void delegate (Connection)) block);
+		return _startServer(T.classinfo, address, "tcp", cast (void delegate (Connection)) block);
 	}
 
 	Server startServer(T : Connection) (Address address)
@@ -570,11 +575,17 @@ class Reactor
 	}
 
 private:
-	Server _startServer (TypeInfo_Class klass, Address address, void delegate (Connection) block)
+	Server _startServer (TypeInfo_Class klass, Address address, string type, void delegate (Connection) block)
 	{
-		auto server         = new Server(this, address);
-		     server.handler = klass;
-		     server.block   = block;
+		Server server;
+
+		switch (type.toLower()) {
+			case "tcp": server = cast (Server) new TCPServer(this, address); break;
+			default: throw new Error("unsupported server protocol");
+		}
+
+		server.handler = klass;
+		server.block   = block;
 
 		schedule({
 			auto descriptor = server.start();

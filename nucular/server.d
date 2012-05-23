@@ -25,7 +25,7 @@ import nucular.reactor : Reactor;
 import nucular.descriptor;
 import nucular.connection;
 
-class Server
+abstract class Server
 {
 	this (Reactor reactor, Address address)
 	{
@@ -42,7 +42,64 @@ class Server
 		_address    = new UnknownAddress;
 	}
 
-	Descriptor start ()
+	abstract Descriptor start ();
+
+	void stop ()
+	{
+		if (!_running) {
+			return;
+		}
+
+		_running = false;
+
+		reactor.stopServer(this);
+	}
+
+	@property block (void delegate (Connection) block)
+	{
+		_block = block;
+	}
+
+	@property handler (TypeInfo_Class handler)
+	{
+		_handler = handler;
+	}
+
+	@property running ()
+	{
+		return _running;
+	}
+
+	@property reactor ()
+	{
+		return _reactor;
+	}
+
+protected:
+	Reactor _reactor;
+
+	Address    _address;
+	Connection _connection;
+
+	TypeInfo_Class             _handler;
+	void delegate (Connection) _block;
+
+	bool _running;
+}
+
+class TCPServer : Server
+{
+	this (Reactor reactor, Address address)
+	{
+		super(reactor, address);
+	}
+
+	this (Reactor reactor, Descriptor descriptor)
+	{
+		super(reactor, descriptor);
+	}
+
+	override Descriptor start ()
 	{
 		if (_connection) {
 			return cast (Descriptor) _connection;
@@ -62,17 +119,6 @@ class Server
 		return cast (Descriptor) _connection;
 	}
 
-	void stop ()
-	{
-		if (!_running) {
-			return;
-		}
-
-		_running = false;
-
-		reactor.stopServer(this);
-	}
-
 	Connection accept ()
 	{
 		auto connection = cast (Connection) _handler.create();
@@ -88,40 +134,11 @@ class Server
 		return connection;
 	}
 
-	@property handler (TypeInfo_Class handler)
-	{
-		_handler = handler;
-	}
-
-	@property block (void delegate (Connection) block)
-	{
-		_block = block;
-	}
-
-	@property running ()
-	{
-		return _running;
-	}
-
-	@property reactor ()
-	{
-		return _reactor;
-	}
-
 	override string toString ()
 	{
 		return "Server(" ~ (cast (Descriptor) _connection).toString() ~ ")";
 	}
 
 private:
-	Reactor _reactor;
-
-	Address    _address;
-	Connection _connection;
-	Socket     _socket;
-
-	TypeInfo_Class             _handler;
-	void delegate (Connection) _block;
-
-	bool _running;
+	TcpSocket _socket;
 }
