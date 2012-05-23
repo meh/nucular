@@ -24,6 +24,7 @@ import std.exception;
 import std.socket;
 import std.conv;
 import std.array;
+import std.string;
 
 version (Posix) {
 	import core.sys.posix.arpa.inet;
@@ -139,6 +140,20 @@ class SOCKSError : Error
 		super(message);
 	}
 
+	this (SOCKS4.Reply code)
+	{
+		string message;
+
+		final switch (code) {
+			case SOCKS4.Reply.Granted:                throw new Error("there were no errors, why did you call this?");
+			case SOCKS4.Reply.Rejected:               message = "rejected or failed request"; break;
+			case SOCKS4.Reply.IdentdNotRunning:       message = "identd isn't running"; break;
+			case SOCKS4.Reply.IdentdNotAuthenticated: message = "identd failed the authentication"; break;
+		}
+
+		super(message);
+	}
+
 	this (SOCKS5.Reply code)
 	{
 		string message;
@@ -159,6 +174,77 @@ class SOCKSError : Error
 	}
 }
 
+class SOCKS4 : SOCKS
+{
+	enum Type {
+		StreamConnection = 0x01,
+		PortBinding
+	}
+
+	enum Reply {
+		Granted = 0x5a,
+		Rejected,
+		IdentdNotRunning,
+		IdentdNotAuthenticated
+	}
+
+	void sendPacket (ubyte[] data)
+	{
+		sendData([cast (ubyte) 4] ~ data);
+	}
+
+	void sendRequest (Type type, Address address)
+	{
+		if (auto target = cast (InternetAddress) address) {
+			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ toData(target.port()) ~ toData(target.addr()) ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
+		}
+		else {
+			throw new SOCKSError("address not supported");
+		}
+	}
+
+	override void connected ()
+	{
+		sendRequest(Type.StreamConnection, target);
+	}
+
+protected:
+	override void parseResponse (ref ubyte[] data)
+	{
+		if (data.length < 8) {
+			return;
+		}
+
+		// drop null byte
+		data.popFront();
+
+		auto status = cast (Reply) data.front; data.popFront();
+
+		if (status != Reply.Granted) {
+			throw new SOCKSError(status);
+		}
+
+		foreach (_; 0 .. 6) {
+			data.popFront();
+		}
+
+		exchange(dropTo);
+	}
+}
+
+class SOCKS4a : SOCKS4
+{
+	override void sendRequest (Type type, Address address)
+	{
+		if (auto target = cast (ProxiedAddress) address) {
+			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ toData(target.port()) ~ cast (ubyte[]) [0, 0, 0, 42] ~ cast (ubyte[]) username ~ [cast (ubyte) 0] ~ cast (ubyte[]) target.toHostNameString() ~ [cast (ubyte) 0]);
+		}
+		else {
+			super.sendRequest(type, address);
+		}
+	}
+}
+
 class SOCKS5 : SOCKS
 {
 	enum State {
@@ -172,7 +258,11 @@ class SOCKS5 : SOCKS
 		NoAuthenticationRequired,
 		GSSAPI,
 		UsernameAndPassword,
-		IANAAssigned,
+		ChallengeHandshakeAuthenticationProtocol,
+		ChallengeResponseAuthenticationMethod = 0x05,
+		SecureSocketsLayer,
+		NDSAuthentication,
+		MultiAuthenticationFramework,
 		
 		NoAcceptable = 0xFF
 	}
@@ -366,16 +456,24 @@ private:
 
 Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, in char[] username = null, in char[] password = null, in string ver = "5")
 {
-	auto drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
+	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
+	SOCKS      proxy;
 
-	if (ver == "5") {
+	if (ver == "4") {
+		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS4(through);
+	}
+	else if (ver == "4a") {
+		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS4a(through);
+	}
+	else if (ver == "5") {
 		// FIXME: remove the useless cast when the bug is fixed
-		(cast (SOCKS) cast (Object) reactor.connect!SOCKS5(through)).initialize(
-			target, drop_to, username, password);
+		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS5(through);
 	}
 	else {
 		throw new Error("version unsupported");
 	}
+
+	proxy.initialize(target, drop_to, username, password);
 
 	return drop_to;
 }
@@ -384,3 +482,16 @@ Connection connectThrough(T : Connection) (Address target, Address through, in c
 {
 	return connectThrough!(T)(instance, target, through, username, password, ver);
 }
+
+private:
+	ubyte[] toData(T) (T data)
+	{
+		ubyte[] result;
+
+		for (int i = 0; i < T.sizeof; i++) {
+			result  ~= cast (ubyte) (data & 0xff);
+			data   >>= 8;
+		}
+
+		return result;
+	}
