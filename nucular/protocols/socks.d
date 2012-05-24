@@ -35,15 +35,9 @@ import nucular.connection;
 
 class ProxiedAddress : UnknownAddress
 {
-	this (char[] host, ushort port)
-	{
-		_host = host;
-		_port = port;
-	}
-
 	this (string host, ushort port)
 	{
-		_host = cast (char[]) host;
+		_host = host;
 		_port = port;
 	}
 
@@ -59,27 +53,27 @@ class ProxiedAddress : UnknownAddress
 
 	override string toHostNameString ()
 	{
-		return cast (string) _host;
+		return _host;
 	}
 
 private:
-	char[] _host;
+	string _host;
 	ushort _port;
 }
 
 abstract class SOCKS : Connection
 {
-	SOCKS initialize (Address target, Connection drop_to, in char[] username = null, in char[] password = null)
+	SOCKS initialize (Address target, Connection drop_to, string username = null, string password = null)
 	{
 		_target   = target;
 		_drop_to  = drop_to;
 
 		if (username) {
-			_username = username.dup;
+			_username = username;
 		}
 
 		if (password) {
-			_password = password.dup;
+			_password = password;
 		}
 
 		return this;
@@ -89,7 +83,7 @@ abstract class SOCKS : Connection
 	{
 		other.connected();
 
-		if (_data) {
+		if (!_data.empty) {
 			other.receiveData(_data);
 		}
 	}
@@ -127,8 +121,8 @@ private:
 	Address    _target;
 	Connection _drop_to;
 
-	char[] _username;
-	char[] _password;
+	string _username;
+	string _password;
 
 	ubyte[] _data;
 }
@@ -454,7 +448,7 @@ private:
 	State _state;
 }
 
-Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, in char[] username = null, in char[] password = null, in string ver = "5")
+Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, string username = null, string password = null, in string ver = "5")
 {
 	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
 	SOCKS      proxy;
@@ -478,7 +472,7 @@ Connection connectThrough(T : Connection) (Reactor reactor, Address target, Addr
 	return drop_to;
 }
 
-Connection connectThrough(T : Connection) (Address target, Address through, in char[] username = null, in char[] password = null, in string ver = "5")
+Connection connectThrough(T : Connection) (Address target, Address through, string username = null, string password = null, in string ver = "5")
 {
 	return connectThrough!(T)(instance, target, through, username, password, ver);
 }
