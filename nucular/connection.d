@@ -369,6 +369,16 @@ class Connection
 		return !_to_write.empty;
 	}
 
+	@property type ()
+	{
+		return _type;
+	}
+
+	@property type (string value)
+	{
+		_type = value;
+	}
+
 	@property server ()
 	{
 		return _server;
@@ -406,6 +416,7 @@ private:
 	Mutex   _mutex;
 
 	Descriptor _descriptor;
+	string     _type;
 
 	ubyte[][] _to_write;
 	Errno     _error;

@@ -20,6 +20,8 @@ module nucular.server;
 
 import std.exception;
 import std.socket;
+import std.conv;
+import std.string;
 
 import nucular.reactor : Reactor;
 import nucular.descriptor;
@@ -65,6 +67,11 @@ abstract class Server
 		_handler = handler;
 	}
 
+	@property address ()
+	{
+		return _address;
+	}
+
 	@property running ()
 	{
 		return _running;
@@ -94,11 +101,6 @@ class TCPServer : Server
 		super(reactor, address);
 	}
 
-	this (Reactor reactor, Descriptor descriptor)
-	{
-		super(reactor, descriptor);
-	}
-
 	override Descriptor start ()
 	{
 		if (_connection) {
@@ -111,7 +113,7 @@ class TCPServer : Server
 		_connection.asynchronous = true;
 		_connection.reuseAddr    = true;
 
-		_socket.bind(_address);
+		_socket.bind(address);
 		_socket.listen(reactor.backlog);
 
 		_running = true;
@@ -141,4 +143,150 @@ class TCPServer : Server
 
 private:
 	TcpSocket _socket;
+}
+
+class UDPServer : Server
+{
+	this (Reactor reactor, Address address)
+	{
+		super(reactor, address);
+	}
+
+	override Descriptor start ()
+	{
+		if (_connection) {
+			return cast (Descriptor) _connection;
+		}
+
+		_socket = new UdpSocket;
+
+		_connection = (new Connection).watched(reactor, new Descriptor(_socket));
+		_connection.asynchronous = true;
+		_connection.reuseAddr    = true;
+
+		_socket.bind(address);
+
+		_running = true;
+
+		return cast (Descriptor) _connection;
+	}
+
+	override string toString ()
+	{
+		return "Server(" ~ (cast (Descriptor) _connection).toString() ~ ")";
+	}
+
+private:
+	UdpSocket _socket;
+}
+
+version (Posix) {
+	import core.sys.posix.unistd;
+	import core.sys.posix.fcntl;
+	import core.sys.posix.sys.stat;
+
+	class UNIXServer : Server
+	{
+		this (Reactor reactor, Address address)
+		{
+			if (!is (address : UnixAddress)) {
+				throw new Error("you can only bind to an UnixAddress");
+			}
+
+			super(reactor, address);
+		}
+
+		override Descriptor start ()
+		{
+			if (_connection) {
+				return cast (Descriptor) _connection;
+			}
+
+			_socket = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+
+			_connection = (new Connection).watched(reactor, new Descriptor(_socket));
+			_connection.asynchronous = true;
+
+			_socket.bind(address);
+			_socket.listen(reactor.backlog);
+
+			_running = true;
+
+			return cast (Descriptor) _connection;
+		}
+
+		Connection accept ()
+		{
+			auto connection = cast (Connection) _handler.create();
+			auto socket     = _socket.accept();
+			auto descriptor = new Descriptor(socket);
+
+			connection.accepted(this, descriptor);
+			if (_block) {
+				_block(connection);
+			}
+			connection.initialized();
+
+			return connection;
+		}
+
+	private:
+		Socket     _socket;
+		Connection _client;
+	}
+
+	class NamedPipeAddress : UnknownAddress
+	{
+		this (string path, mode_t permissions = octal!600)
+		{
+			_path        = path;
+			_permissions = permissions;
+		}
+
+		@property path ()
+		{
+			return _path;
+		}
+
+		@property permissions ()
+		{
+			return _permissions;
+		}
+
+	private:
+		string _path;
+		mode_t _permissions;
+	}
+
+	class FIFOServer : Server
+	{
+		this (Reactor reactor, Address address)
+		{
+			if (!is (address : NamedPipeAddress)) {
+				throw new Error("you can only bind to an UnixAddress");
+			}
+
+			super(reactor, address);
+		}
+
+		override Descriptor start ()
+		{
+			if (_connection) {
+				return cast (Descriptor) _connection;
+			}
+
+			int  result;
+			auto pipe = cast (NamedPipeAddress) address;
+
+			errnoEnforce((result = .mkfifo(pipe.path.toStringz(), pipe.permissions)) == 0);
+			errnoEnforce((result = .open(pipe.path.toStringz(), O_RDONLY)) >= 0);
+
+			_connection = (new Connection).watched(reactor, new Descriptor(result));
+			_connection.asynchronous = true;
+
+			_running = true;
+
+			return cast (Descriptor) _connection;
+		}
+	}
 }

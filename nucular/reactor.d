@@ -23,6 +23,10 @@ public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
+version (Posix) {
+	public import nucular.server : NamedPipeAddress;
+}
+
 import std.stdio : writeln;
 
 import core.sync.mutex;
@@ -167,9 +171,13 @@ class Reactor
 			foreach (descriptor; descriptors) {
 				if (cast (Descriptor) _breaker == descriptor) {
 					_breaker.flush();
+
+					continue;
 				}
 				else if (descriptor in _servers) {
-					if (auto server = cast (TCPServer) _servers[descriptor]) {
+					auto current = _servers[descriptor];
+
+					if (auto server = cast (TCPServer) current) {
 						Connection connection = server.accept();
 											 descriptor = cast (Descriptor) connection;
 
@@ -177,16 +185,39 @@ class Reactor
 							_descriptors             ~= descriptor;
 							_connections[descriptor]  = connection;
 						});
+
+						continue;
 					}
-					else {
+
+					if (auto server = cast (UDPServer) _servers[descriptor]) {
 						assert(0);
 					}
+
+					version (Posix) {
+						if (auto server = cast (UNIXServer) current) {
+							Connection connection = server.accept();
+												 descriptor = cast (Descriptor) connection;
+
+							schedule({
+								_descriptors             ~= descriptor;
+								_connections[descriptor]  = connection;
+							});
+
+							continue;
+						}
+
+						if (auto server = cast (FIFOServer) current) {
+							assert(0);
+						}
+					}
+
+					assert(0);
 				}
 				else if (descriptor in _connections) {
 					Connection connection = _connections[descriptor];
 					ubyte[]    data       = connection.read();
 
-					if (data) {
+					if (!data.empty) {
 						connection.receiveData(data);
 					}
 				}
@@ -292,14 +323,24 @@ class Reactor
 		return deferrable().callback(callback).errback(errback);
 	}
 
+	Server startServer(T : Connection) (Address address, string type, void delegate (T) block)
+	{
+		return _startServer(T.classinfo, address, type, cast (void delegate (Connection)) block);
+	}
+
+	Server startServer(T : Connection) (Address address, string type)
+	{
+		return startServer!(T)(address, type, cast (void delegate (T)) defaultCreationCallback);
+	}
+
 	Server startServer(T : Connection) (Address address, void delegate (T) block)
 	{
-		return _startServer(T.classinfo, address, "tcp", cast (void delegate (Connection)) block);
+		return startServer!(T)(address, "tcp", block);
 	}
 
 	Server startServer(T : Connection) (Address address)
 	{
-		return startServer!(T)(address, cast (void delegate (T)) defaultCreationCallback);
+		return startServer!(T)(address, "tcp", cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	void stopServer (Server server)
@@ -311,14 +352,24 @@ class Reactor
 		});
 	}
 
+	Connection connect(T : Connection) (Address address, string type, void delegate (T) block)
+	{
+		return _connect(T.classinfo, address, type, cast (void delegate (Connection)) block);
+	}
+
+	Connection connect(T : Connection) (Address address, string type)
+	{
+		return connect!(T)(address, type, cast (void delegate (T)) defaultCreationCallback);
+	}
+
 	Connection connect(T : Connection) (Address address, void delegate (T) block)
 	{
-		return _connect(T.classinfo, address, cast (void delegate (Connection)) block);
+		return connect!(T)(address, "tcp", block);
 	}
 
 	Connection connect(T : Connection) (Address address)
 	{
-		return connect!(T)(address, cast (void delegate (T)) defaultCreationCallback);
+		return connect!(T)(address, "tcp");
 	}
 
 	Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
@@ -580,7 +631,14 @@ private:
 		Server server;
 
 		switch (type.toLower()) {
-			case "tcp": server = cast (Server) new TCPServer(this, address); break;
+			case "tcp": server  = cast (Server) new TCPServer(this, address); break;
+			case "udp": server  = cast (Server) new UDPServer(this, address); break;
+			
+			version (Posix) {
+				case "unix": server = cast (Server) new UNIXServer(this, address); break;
+				case "fifo": server = cast (Server) new FIFOServer(this, address); break;
+			}
+
 			default: throw new Error("unsupported server protocol");
 		}
 
@@ -597,15 +655,23 @@ private:
 		return server;
 	}
 
-	Connection _connect (TypeInfo_Class klass, Address address, void delegate (Connection) callback)
+	Connection _connect (TypeInfo_Class klass, Address address, string type, void delegate (Connection) callback)
 	{
-		auto connection = cast (Connection) klass.create();
+		Connection connection = cast (Connection) klass.create();
+		Socket     socket;
 
-		static if (is (address : Internet6Address)) {
-			auto socket = new TcpSocket(AddressFamily.INET6);
+		connection.type = type.toLower();
+
+		if (connection.type == "tcp") {
+			static if (is (address : Internet6Address)) {
+				socket = new TcpSocket(AddressFamily.INET6);
+			}
+			else {
+				socket = new TcpSocket();
+			}
 		}
 		else {
-			auto socket = new TcpSocket();
+			assert(0);
 		}
 
 		auto descriptor = new Descriptor(socket);
@@ -616,9 +682,14 @@ private:
 
 		socket.connect(address);
 
-		schedule({
-			_connecting[descriptor] = connection;
-		});
+		if (connection.type == "tcp") {
+			schedule({
+				_connecting[descriptor] = connection;
+			});
+		}
+		else {
+			assert(0);
+		}
 
 		return connection;
 	}
@@ -719,6 +790,16 @@ Deferrable deferrable (void delegate () callback, void delegate () errback)
 	return instance.deferrable(callback, errback);
 }
 
+Server startServer(T : Connection) (Address address, string type)
+{
+	return instance.startServer!(T)(address, type);
+}
+
+Server startServer(T : Connection) (Address address, string type, void delegate (T) block)
+{
+	return instance.startServer!(T)(address, type, block);
+}
+
 Server startServer(T : Connection) (Address address)
 {
 	return instance.startServer!(T)(address);
@@ -727,6 +808,16 @@ Server startServer(T : Connection) (Address address)
 Server startServer(T : Connection) (Address address, void delegate (T) block)
 {
 	return instance.startServer!(T)(address, block);
+}
+
+Connection connect(T : Connection) (Address address, string type)
+{
+	return instance.connect!(T)(address, type);
+}
+
+Connection connect(T : Connection) (Address address, string type, void delegate (T) block)
+{
+	return instance.connect!(T)(address, type, block);
 }
 
 Connection connect(T : Connection) (Address address)
