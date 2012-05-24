@@ -24,10 +24,11 @@ public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 
 version (Posix) {
-	public import nucular.server : NamedPipeAddress;
-}
+	public import nucular.server : UnixAddress, NamedPipeAddress;
 
-import std.stdio : writeln;
+	import core.sys.posix.unistd;
+	import core.sys.posix.fcntl;
+}
 
 import core.sync.mutex;
 import std.array;
@@ -189,8 +190,14 @@ class Reactor
 						continue;
 					}
 
-					if (auto server = cast (UDPServer) _servers[descriptor]) {
-						assert(0);
+					if (auto server = cast (UDPServer) current) {
+						Connection      connection = server.connection;
+						Connection.Data data       = connection.receiveFrom(512);
+						Address         tmp        = connection.defaultTarget;
+
+						connection.defaultTarget = data.address;
+						connection.receiveData(data.content);
+						connection.defaultTarget = tmp;
 					}
 
 					version (Posix) {
@@ -207,7 +214,12 @@ class Reactor
 						}
 
 						if (auto server = cast (FIFOServer) current) {
-							assert(0);
+							Connection connection = server.connection;
+							ubyte[] data          = server.read();
+
+							if (!data.empty) {
+								connection.receiveData(data);
+							}
 						}
 					}
 
@@ -323,24 +335,24 @@ class Reactor
 		return deferrable().callback(callback).errback(errback);
 	}
 
-	Server startServer(T : Connection) (Address address, string type, void delegate (T) block)
+	Server startServer(T : Connection) (Address address, string protocol, void delegate (T) block)
 	{
-		return _startServer(T.classinfo, address, type, cast (void delegate (Connection)) block);
+		return _startServer(T.classinfo, address, protocol, cast (void delegate (Connection)) block);
 	}
 
-	Server startServer(T : Connection) (Address address, string type)
+	Server startServer(T : Connection) (Address address, string protocol)
 	{
-		return startServer!(T)(address, type, cast (void delegate (T)) defaultCreationCallback);
+		return startServer!(T)(address, protocol, cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	Server startServer(T : Connection) (Address address, void delegate (T) block)
 	{
-		return startServer!(T)(address, "tcp", block);
+		return startServer!(T)(address, address.toProtocol(), block);
 	}
 
 	Server startServer(T : Connection) (Address address)
 	{
-		return startServer!(T)(address, "tcp", cast (void delegate (T)) defaultCreationCallback);
+		return startServer!(T)(address, address.toProtocol(), cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	void stopServer (Server server)
@@ -352,14 +364,14 @@ class Reactor
 		});
 	}
 
-	Connection connect(T : Connection) (Address address, string type, void delegate (T) block)
+	Connection connect(T : Connection) (Address address, string protocol, void delegate (T) block)
 	{
-		return _connect(T.classinfo, address, type, cast (void delegate (Connection)) block);
+		return _connect(T.classinfo, address, protocol, cast (void delegate (Connection)) block);
 	}
 
-	Connection connect(T : Connection) (Address address, string type)
+	Connection connect(T : Connection) (Address address, string protocol)
 	{
-		return connect!(T)(address, type, cast (void delegate (T)) defaultCreationCallback);
+		return connect!(T)(address, protocol, cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	Connection connect(T : Connection) (Address address, void delegate (T) block)
@@ -626,11 +638,11 @@ class Reactor
 	}
 
 private:
-	Server _startServer (TypeInfo_Class klass, Address address, string type, void delegate (Connection) block)
+	Server _startServer (TypeInfo_Class klass, Address address, string protocol, void delegate (Connection) block)
 	{
 		Server server;
 
-		switch (type.toLower()) {
+		switch (protocol.toLower()) {
 			case "tcp": server  = cast (Server) new TCPServer(this, address); break;
 			case "udp": server  = cast (Server) new UDPServer(this, address); break;
 			
@@ -655,41 +667,62 @@ private:
 		return server;
 	}
 
-	Connection _connect (TypeInfo_Class klass, Address address, string type, void delegate (Connection) callback)
+	Connection _connect (TypeInfo_Class klass, Address address, string protocol, void delegate (Connection) callback)
 	{
 		Connection connection = cast (Connection) klass.create();
-		Socket     socket;
+		Descriptor descriptor;
 
-		connection.type = type.toLower();
+		connection.protocol = protocol;
 
-		if (connection.type == "tcp") {
-			static if (is (address : Internet6Address)) {
-				socket = new TcpSocket(AddressFamily.INET6);
-			}
-			else {
-				socket = new TcpSocket();
+		final switch (connection.protocol) {
+			case "tcp":
+				if (cast (Internet6Address) address) {
+					descriptor = new Descriptor(new TcpSocket(AddressFamily.INET6));
+				}
+				else {
+					descriptor = new Descriptor(new TcpSocket());
+				}
+			break;
+
+			case "udp":
+				if (cast (Internet6Address) address) {
+					descriptor = new Descriptor(new UdpSocket(AddressFamily.INET6));
+				}
+				else {
+					descriptor = new Descriptor(new UdpSocket());
+				}
+			break;
+
+			version (Posix) {
+				case "unix":
+					descriptor = new Descriptor(new Socket(AddressFamily.UNIX, SocketType.STREAM));
+				break;
+
+				case "fifo":
+					if (auto pipe = cast (NamedPipeAddress) address) {
+						int result;
+
+						errnoEnforce((result = .open(pipe.path.toStringz(), O_RDONLY)) >= 0);
+
+						descriptor = new Descriptor(result);
+					}
+				break;
 			}
 		}
-		else {
-			assert(0);
-		}
 
-		auto descriptor = new Descriptor(socket);
+		enforce(descriptor, "unsupported client protocol");
 
 		connection.connecting(this, descriptor);
 		callback(connection);
 		connection.initialized();
 
-		socket.connect(address);
+		if (descriptor.socket) {
+			descriptor.socket.connect(address);
+		}
 
-		if (connection.type == "tcp") {
-			schedule({
-				_connecting[descriptor] = connection;
-			});
-		}
-		else {
-			assert(0);
-		}
+		schedule({
+			_connecting[descriptor] = connection;
+		});
 
 		return connection;
 	}
@@ -790,14 +823,14 @@ Deferrable deferrable (void delegate () callback, void delegate () errback)
 	return instance.deferrable(callback, errback);
 }
 
-Server startServer(T : Connection) (Address address, string type)
+Server startServer(T : Connection) (Address address, string protocol)
 {
-	return instance.startServer!(T)(address, type);
+	return instance.startServer!(T)(address, protocol);
 }
 
-Server startServer(T : Connection) (Address address, string type, void delegate (T) block)
+Server startServer(T : Connection) (Address address, string protocol, void delegate (T) block)
 {
-	return instance.startServer!(T)(address, type, block);
+	return instance.startServer!(T)(address, protocol, block);
 }
 
 Server startServer(T : Connection) (Address address)
@@ -810,14 +843,14 @@ Server startServer(T : Connection) (Address address, void delegate (T) block)
 	return instance.startServer!(T)(address, block);
 }
 
-Connection connect(T : Connection) (Address address, string type)
+Connection connect(T : Connection) (Address address, string protocol)
 {
-	return instance.connect!(T)(address, type);
+	return instance.connect!(T)(address, protocol);
 }
 
-Connection connect(T : Connection) (Address address, string type, void delegate (T) block)
+Connection connect(T : Connection) (Address address, string protocol, void delegate (T) block)
 {
-	return instance.connect!(T)(address, type, block);
+	return instance.connect!(T)(address, protocol, block);
 }
 
 Connection connect(T : Connection) (Address address)
@@ -899,4 +932,18 @@ void cancelTimer (PeriodicTimer timer)
 	return _reactor;
 }
 
-private Reactor _reactor;
+private:
+	Reactor _reactor;
+
+	string toProtocol (Address address)
+	{
+		if (cast (UnixAddress) address) {
+			return "unix";
+		}
+		else if (cast (NamedPipeAddress) address) {
+			return "fifo";
+		}
+		else {
+			return "tcp";
+		}
+	}

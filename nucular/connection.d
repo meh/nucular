@@ -21,6 +21,9 @@ module nucular.connection;
 import std.conv;
 import std.exception;
 import std.array;
+import std.socket;
+import std.string;
+
 import core.sync.mutex;
 import core.stdc.errno;
 
@@ -42,6 +45,22 @@ else {
 
 class Connection
 {
+	struct Data {
+		ubyte[] content;
+		Address address;
+
+		this (ubyte[] data)
+		{
+			content = data;
+		}
+
+		this (Address addr, ubyte[] data)
+		{
+			content = data;
+			address = addr;
+		}
+	}
+
 	class Errno
 	{
 		this (int value)
@@ -154,8 +173,26 @@ class Connection
 	{
 		enforce(!isClosing, "you cannot write data when the connection is closing");
 
+		if (protocol == "udp") {
+			enforce(defaultTarget, "there is no default target");
+
+			sendDataTo(defaultTarget, data);
+		}
+		else {
+			synchronized (_mutex) {
+				_to_write ~= Data(data);
+			}
+		}
+
+		reactor.wakeUp();
+	}
+
+	void sendDataTo (Address address, ubyte[] data)
+	{
+		enforce(!isClosing, "you cannot write data when the connection is closing");
+
 		synchronized (_mutex) {
-			_to_write ~= data;
+			_to_write ~= Data(address, data);
 		}
 
 		reactor.wakeUp();
@@ -197,9 +234,10 @@ class Connection
 	ubyte[] read ()
 	{
 		ubyte[] result;
-		ubyte[] tmp;
 
 		try {
+			ubyte[] tmp;
+
 			while ((tmp = _descriptor.read(1024)) !is null) {
 				result ~= tmp;
 
@@ -228,11 +266,18 @@ class Connection
 
 		synchronized (_mutex) {
 			while (!_to_write.empty) {
-				ubyte[]   current = _to_write.front;
+				Data      current = _to_write.front;
 				ptrdiff_t written;
 
-				if ((written = _descriptor.write(current)) != current.length) {
-					_to_write[0] = current[written .. current.length];
+				if (current.address) {
+					written = sendTo(current.address, current.content);
+				}
+				else {
+					written = _descriptor.write(current.content);
+				}
+
+				if (written != current.content.length) {
+					_to_write[0].content = current.content[written .. $];
 
 					return false;
 				}
@@ -245,14 +290,41 @@ class Connection
 		return true;
 	}
 
+	Data receiveFrom (int length)
+	{
+		ubyte[] data;
+		Address address;
+
+		_descriptor.socket.receiveFrom(data, SocketFlags.NONE, address);
+
+		return Data(address, data);
+	}
+
+	ptrdiff_t sendTo (Address address, ubyte[] data)
+	{
+		return _descriptor.socket.sendTo(data, SocketFlags.NONE, address);
+	}
+
 	@property remoteAddress ()
 	{
-		return _descriptor.socket ? _descriptor.socket.remoteAddress() : null;
+		if (defaultTarget) {
+			return defaultTarget;
+		}
+
+		if (_descriptor.socket) {
+			return _descriptor.socket.remoteAddress();
+		}
+
+		return null;
 	}
 
 	@property localAddress ()
 	{
-		return _descriptor.socket ? _descriptor.socket.localAddress() : null;
+		if (_descriptor.socket) {
+			return _descriptor.socket.localAddress();
+		}
+
+		return null;
 	}
 
 	@property error ()
@@ -369,14 +441,24 @@ class Connection
 		return !_to_write.empty;
 	}
 
-	@property type ()
+	@property protocol ()
 	{
-		return _type;
+		return _protocol;
 	}
 
-	@property type (string value)
+	@property protocol (string value)
 	{
-		_type = value;
+		_protocol = value.toLower();
+	}
+
+	@property defaultTarget ()
+	{
+		return _default_target;
+	}
+
+	@property defaultTarget (Address address)
+	{
+		_default_target = address;
 	}
 
 	@property server ()
@@ -416,9 +498,10 @@ private:
 	Mutex   _mutex;
 
 	Descriptor _descriptor;
-	string     _type;
+	string     _protocol;
+	Address    _default_target;
 
-	ubyte[][] _to_write;
-	Errno     _error;
-	bool      _closing;
+	Data[] _to_write;
+	Errno  _error;
+	bool   _closing;
 }
