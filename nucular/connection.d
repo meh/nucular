@@ -87,30 +87,27 @@ class Connection
 		int _value;
 	}
 
-	Connection created (Reactor reactor)
+	Connection created (Reactor reactor, Descriptor descriptor = null)
 	{
-		_reactor = reactor;
-		_mutex   = new Mutex;
+		_reactor    = reactor;
+		_mutex      = new Mutex;
+		_descriptor = descriptor;
 
 		return this;
 	}
 
 	Connection watched (Reactor reactor, Descriptor descriptor)
 	{
-		created(reactor);
-
-		_descriptor = descriptor;
+		created(reactor, descriptor);
 
 		return this;
 	}
 
 	Connection accepted (Server server, Descriptor descriptor)
 	{
-		created(server.reactor);
+		created(server.reactor, descriptor);
 
 		_server = server;
-
-		_descriptor = descriptor;
 
 		reuseAddr    = true;
 		asynchronous = true;
@@ -305,26 +302,30 @@ class Connection
 		return _descriptor.socket.sendTo(data, SocketFlags.NONE, address);
 	}
 
+	void addresses (Descriptor descriptor = null)
+	{
+		if (!descriptor) {
+			descriptor = _descriptor;
+		}
+
+		if (descriptor && descriptor.socket) {
+			_remote_address = descriptor.socket.remoteAddress();
+			_local_address  = descriptor.socket.localAddress();
+		}
+	}
+
 	@property remoteAddress ()
 	{
 		if (defaultTarget) {
 			return defaultTarget;
 		}
 
-		if (_descriptor.socket) {
-			return _descriptor.socket.remoteAddress();
-		}
-
-		return null;
+		return _remote_address;
 	}
 
 	@property localAddress ()
 	{
-		if (_descriptor.socket) {
-			return _descriptor.socket.localAddress();
-		}
-
-		return null;
+		return _local_address;
 	}
 
 	@property error ()
@@ -500,6 +501,8 @@ private:
 	Descriptor _descriptor;
 	string     _protocol;
 	Address    _default_target;
+	Address    _remote_address;
+	Address    _local_address;
 
 	Data[] _to_write;
 	Errno  _error;

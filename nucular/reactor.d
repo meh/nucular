@@ -18,7 +18,7 @@
 
 module nucular.reactor;
 
-public import std.socket : InternetAddress, Internet6Address, parseAddress, getAddress;
+public import std.socket : Address, InternetAddress, Internet6Address, parseAddress, getAddress;
 public import core.time : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
@@ -132,6 +132,7 @@ class Reactor
 							connection.unbind();
 						}
 						else {
+							connection.addresses();
 							connection.connected();
 
 							_descriptors             ~= descriptor;

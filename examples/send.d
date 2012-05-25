@@ -17,52 +17,104 @@
  ****************************************************************************/
 
 import std.stdio;
+import std.getopt;
+import std.regex : ctRegex, match;
 import std.conv;
+import core.thread;
+
 import nucular.reactor;
 import line = nucular.protocols.line;
 
-class Sender : line.Protocol
+class RawSender : Connection
 {
-	override void connected ()
+	override void receiveData (ubyte[] data)
 	{
-		if (_message) {
-			sendLine(_message);
-		}
-
-		closeConnectionAfterWriting();
+		writeln(data);
 	}
-
-	override void unbind ()
-	{
-		if (error) {
-			writeln(error.message);
-		}
-
-		nucular.reactor.stop();
-	}
-
-	@property message (string data)
-	{
-		_message = data;
-	}
-
-private:
-	string _message;
 }
 
-int main (string[] argv)
+class LineSender : line.Protocol
 {
-	if (argv.length != 4) {
-		writeln("Usage: ", argv[0], " <host> <port> <message>");
+	override void receiveLine (string line)
+	{
+		writeln(line);
+	}
+}
 
-		return 0;
+int main (string[] args)
+{
+	string protocol = "tcp";
+	string target   = "localhost:10000";
+	bool   ipv4     = true;
+	bool   ipv6     = false;
+	bool   line     = false;
+
+	getopt(args, config.noPassThrough,
+		"protocol|p", &protocol,
+		"t",          &target,
+		"4",          &ipv4,
+		"6",          &ipv6,
+		"line|L",     &line);
+
+	Address address;
+
+	switch (protocol) {
+		case "tcp":
+		case "udp":
+			if (auto m = target.match(ctRegex!`^(.*?):(\d+)$`)) {
+				string host = m.captures[1];
+				ushort port = m.captures[2].to!ushort;
+
+				address = ipv6 ? new Internet6Address(host, port) : new InternetAddress(host, port);
+			}
+			break;
+
+		version (Posix) {
+			case "unix":
+				address = new UnixAddress(target);
+				break;
+
+			case "fifo":
+				if (auto m = target.match(ctRegex!`^(.*?):(\d+)$`)) {
+					string path       = m.captures[1];
+					int    permission = toImpl!int(m.captures[2], 8);
+
+					address = new NamedPipeAddress(path, permission);
+				}
+				break;
+		}
+		
+		default:
+			writeln("unsupported protocol");
+			return 1;
 	}
 
 	nucular.reactor.run({
-		// FIXME: remove useless Sender in lambda signature when they fix the bug
-		(new InternetAddress(argv[1], argv[2].to!ushort)).connect!Sender((Sender conn) {
-			conn.message = argv[3];
-		});
+		Connection connection;
+
+		if (line) {
+			connection = address.connect!LineSender;
+		}
+		else {
+			connection = address.connect!RawSender;
+		}
+
+		(new Thread({
+			char[] data;
+
+			while (stdin.readln(data)) {
+				if (line) {
+					auto sender = cast (LineSender) cast (Object) connection;
+					sender.sendLine(cast (string) data[0 .. data.length - 1]);
+				}
+				else {
+					auto sender = cast (RawSender) cast (Object) connection;
+					sender.sendData(cast (ubyte[]) data);
+				}
+			}
+
+			nucular.reactor.stop();
+		})).start();
 	});
 
 	return 0;

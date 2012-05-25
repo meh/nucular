@@ -136,6 +136,7 @@ class TCPServer : Server
 
 		connection.protocol = "tcp";
 		connection.accepted(this, descriptor);
+		connection.addresses();
 		if (_block) {
 			_block(connection);
 		}
@@ -185,6 +186,7 @@ class UDPServer : Server
 
 		_client.protocol = "udp";
 		_client.accepted(this, cast (Descriptor) _connection);
+		_client.addresses();
 		if (_block) {
 			_block(_client);
 		}
@@ -293,6 +295,7 @@ version (Posix) {
 
 			connection.protocol = "unix";
 			connection.accepted(this, descriptor);
+			connection.addresses();
 			if (_block) {
 				_block(connection);
 			}
@@ -382,6 +385,7 @@ version (Posix) {
 
 			_client.protocol = "fifo";
 			_client.accepted(this, cast (Descriptor) _connection);
+			_client.addresses();
 			if (_block) {
 				_block(_client);
 			}
