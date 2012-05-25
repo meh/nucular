@@ -34,7 +34,7 @@ class RawEcho : Connection
 
 	override void receiveData (ubyte[] data)
 	{
-		writeln(remoteAddress, "sent: ", data);
+		writeln(remoteAddress, " sent: ", data);
 
 		sendData(data);
 	}

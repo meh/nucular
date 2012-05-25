@@ -297,10 +297,13 @@ class Connection
 
 	Data receiveFrom (ulong length)
 	{
-		ubyte[] data = new ubyte[length];
-		Address address;
+		ubyte[]   data = new ubyte[length];
+		Address   address;
+		ptrdiff_t result;
 
-		errnoEnforce(_descriptor.socket.receiveFrom(data, SocketFlags.NONE, address) != Socket.ERROR);
+		errnoEnforce((result = _descriptor.socket.receiveFrom(data, SocketFlags.NONE, address)) != Socket.ERROR);
+
+		data.length = result;
 
 		return Data(address, data);
 	}

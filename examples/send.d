@@ -101,7 +101,7 @@ int main (string[] args)
 					}
 					else {
 						auto sender = cast (RawSender) cast (Object) connection;
-						sender.sendData(cast (ubyte[]) data);
+						sender.sendData(cast (ubyte[]) data[0 .. data.length - 1]);
 					}
 				}
 			}
