@@ -18,8 +18,6 @@
 
 module nucular.protocols.socks;
 
-import std.stdio : writeln;
-
 import std.exception;
 import std.socket;
 import std.conv;
