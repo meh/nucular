@@ -32,8 +32,6 @@ version (Posix) {
 	import core.sys.posix.fcntl;
 }
 
-import std.stdio : writeln;
-
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
