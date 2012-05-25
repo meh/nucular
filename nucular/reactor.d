@@ -222,6 +222,8 @@ class Reactor
 							if (!data.empty) {
 								connection.receiveData(data);
 							}
+							
+							continue;
 						}
 					}
 
@@ -704,7 +706,7 @@ private:
 					if (auto pipe = cast (NamedPipeAddress) address) {
 						int result;
 
-						errnoEnforce((result = .open(pipe.path.toStringz(), O_RDONLY)) >= 0);
+						errnoEnforce((result = .open(pipe.path.toStringz(), (pipe.isReading ? O_RDONLY : O_WRONLY) | O_NONBLOCK)) >= 0);
 
 						descriptor = new Descriptor(result);
 					}
@@ -718,7 +720,7 @@ private:
 		callback(connection);
 		connection.initialized();
 
-		if (descriptor.socket) {
+		if (descriptor.isSocket) {
 			descriptor.socket.connect(address);
 		}
 

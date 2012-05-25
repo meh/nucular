@@ -316,6 +316,31 @@ version (Posix) {
 			_permissions = permissions;
 		}
 
+		this (string path, bool read)
+		{
+			this(path);
+
+			_reading = true;
+		}
+
+		this (string path, mode_t permissions, bool read)
+		{
+			this(path, permissions);
+
+			_reading = true;
+		}
+
+
+		@property isReading ()
+		{
+			return _reading;
+		}
+
+		@property isWriting ()
+		{
+			return !isReading;
+		}
+
 		@property path ()
 		{
 			return _path;
@@ -329,6 +354,7 @@ version (Posix) {
 	private:
 		string _path;
 		mode_t _permissions;
+		bool   _reading;
 	}
 
 	class FIFOServer : Server
@@ -359,7 +385,7 @@ version (Posix) {
 			auto pipe = cast (NamedPipeAddress) address;
 
 			errnoEnforce((result = .mkfifo(pipe.path.toStringz(), pipe.permissions)) == 0);
-			errnoEnforce((result = .open(pipe.path.toStringz(), O_RDONLY)) >= 0);
+			errnoEnforce((result = .open(pipe.path.toStringz(), O_RDONLY | O_NONBLOCK)) >= 0);
 
 			_connection = (new Connection).watched(reactor, new Descriptor(result));
 			_connection.protocol     = "fifo";

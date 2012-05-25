@@ -109,7 +109,10 @@ class Connection
 
 		_server = server;
 
-		reuseAddr    = true;
+		if (isSocket) {
+			reuseAddr = true;
+		}
+
 		asynchronous = true;
 
 		return this;
@@ -120,7 +123,7 @@ class Connection
 		watched(reactor, descriptor);
 
 		if (protocol == "tcp") {
-			noDelay      = true;
+			noDelay = true;
 		}
 
 		asynchronous = true;
@@ -251,7 +254,7 @@ class Connection
 			_descriptor.close();
 		}
 
-		if (_descriptor.isClosed) {
+		if (isClosed) {
 			closeConnection();
 		}
 
@@ -260,7 +263,7 @@ class Connection
 
 	bool write ()
 	{
-		if (_descriptor.isClosed) {
+		if (isClosed) {
 			return true;
 		}
 
@@ -311,7 +314,7 @@ class Connection
 			descriptor = _descriptor;
 		}
 
-		if (descriptor && descriptor.socket) {
+		if (descriptor && descriptor.isSocket) {
 			_remote_address = descriptor.socket.remoteAddress();
 			_local_address  = descriptor.socket.localAddress();
 		}
@@ -333,7 +336,7 @@ class Connection
 
 	@property error ()
 	{
-		if (_error || _descriptor.isClosed) {
+		if (_error || isClosed || !isSocket) {
 			return _error;
 		}
 
@@ -358,20 +361,25 @@ class Connection
 
 	@property isEOF ()
 	{
-		if (_descriptor.isClosed) {
+		if (isClosed) {
 			return true;
 		}
 
-		if (!_descriptor.read(1) && _descriptor.isClosed) {
+		if (!_descriptor.read(1) && isClosed) {
 			return true;
 		}
 
 		return false;
 	}
 
+	@property isClosed ()
+	{
+		return _descriptor.isClosed;
+	}
+
 	@property isAlive ()
 	{
-		if (_descriptor.isClosed) {
+		if (isClosed) {
 			return false;
 		}
 
@@ -381,6 +389,11 @@ class Connection
 
 			return !getsockopt(cast (int) _descriptor, SOL_SOCKET, SO_TYPE, cast (char*) &result, &resultSize);
 		}
+	}
+
+	@property isSocket ()
+	{
+		return _descriptor.isSocket;
 	}
 
 	@property reuseAddr ()

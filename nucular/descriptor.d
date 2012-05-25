@@ -126,6 +126,11 @@ class Descriptor
 		return _closed;
 	}
 
+	@property isSocket ()
+	{
+		return !!_socket;
+	}
+
 	@property socket ()
 	{
 		return _socket;
