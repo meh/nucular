@@ -123,12 +123,7 @@ int main (string[] args)
 	}
 
 	nucular.reactor.run({
-		if (line) {
-			address.startServer!LineEcho;
-		}
-		else {
-			address.startServer!RawEcho;
-		}
+		Server server = line ? address.startServer!LineEcho : address.startServer!RawEcho;
 	});
 
 	return 0;

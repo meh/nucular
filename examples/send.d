@@ -90,14 +90,7 @@ int main (string[] args)
 	}
 
 	nucular.reactor.run({
-		Connection connection;
-
-		if (line) {
-			connection = address.connect!LineSender;
-		}
-		else {
-			connection = address.connect!RawSender;
-		}
+		Connection connection = line ? address.connect!LineSender : address.connect!RawSender;
 
 		(new Thread({
 			char[] data;
