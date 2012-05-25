@@ -20,6 +20,7 @@ import std.stdio;
 import std.getopt;
 import std.regex : ctRegex, match;
 import std.conv;
+import std.array;
 import core.thread;
 
 import nucular.reactor;
@@ -43,20 +44,22 @@ class LineSender : line.Protocol
 
 int main (string[] args)
 {
-	string protocol = "tcp";
-	string target   = "localhost:10000";
-	bool   ipv4     = true;
-	bool   ipv6     = false;
-	bool   line     = false;
+	Address address;
+	string  protocol = "tcp";
+	string  target   = "localhost:10000";
+	bool    ipv4     = true;
+	bool    ipv6     = false;
+	bool    line     = false;
 
 	getopt(args, config.noPassThrough,
 		"protocol|p", &protocol,
-		"t",          &target,
 		"4",          &ipv4,
 		"6",          &ipv6,
-		"line|L",     &line);
+		"line|l",     &line);
 
-	Address address;
+	if (args.length >= 2) {
+		target = args.back;
+	}
 
 	switch (protocol) {
 		case "tcp":
@@ -75,12 +78,7 @@ int main (string[] args)
 				break;
 
 			case "fifo":
-				if (auto m = target.match(ctRegex!`^(.*?):(\d+)$`)) {
-					string path       = m.captures[1];
-					int    permission = toImpl!int(m.captures[2], 8);
-
-					address = new NamedPipeAddress(path, permission);
-				}
+				address = new NamedPipeAddress(target);
 				break;
 		}
 		

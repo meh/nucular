@@ -310,7 +310,7 @@ version (Posix) {
 
 	class NamedPipeAddress : UnknownAddress
 	{
-		this (string path, mode_t permissions = octal!600)
+		this (string path, mode_t permissions = octal!666)
 		{
 			_path        = path;
 			_permissions = permissions;

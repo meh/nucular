@@ -378,12 +378,12 @@ class Reactor
 
 	Connection connect(T : Connection) (Address address, void delegate (T) block)
 	{
-		return connect!(T)(address, "tcp", block);
+		return connect!(T)(address, address.toProtocol(), block);
 	}
 
 	Connection connect(T : Connection) (Address address)
 	{
-		return connect!(T)(address, "tcp");
+		return connect!(T)(address, address.toProtocol());
 	}
 
 	Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)

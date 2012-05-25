@@ -119,7 +119,10 @@ class Connection
 	{
 		watched(reactor, descriptor);
 
-		noDelay      = true;
+		if (protocol == "tcp") {
+			noDelay      = true;
+		}
+
 		asynchronous = true;
 
 		return this;

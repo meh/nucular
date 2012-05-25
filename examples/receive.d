@@ -20,6 +20,7 @@ import std.stdio;
 import std.getopt;
 import std.regex;
 import std.conv;
+import std.array;
 
 import nucular.reactor;
 import line = nucular.protocols.line;
@@ -76,20 +77,22 @@ class LineEcho : line.Protocol
 
 int main (string[] args)
 {
-	string protocol = "tcp";
-	string listen   = "localhost:10000";
-	bool   ipv4     = true;
-	bool   ipv6     = false;
-	bool   line     = false;
+	Address address;
+	string  protocol = "tcp";
+	string  listen   = "localhost:10000";
+	bool    ipv4     = true;
+	bool    ipv6     = false;
+	bool    line     = false;
 
 	getopt(args, config.noPassThrough,
 		"protocol|p", &protocol,
-		"l",          &listen,
 		"4",          &ipv4,
 		"6",          &ipv6,
-		"line|L",     &line);
+		"line|l",     &line);
 
-	Address address;
+	if (args.length >= 2) {
+		listen = args.back;
+	}
 
 	switch (protocol) {
 		case "tcp":
@@ -108,9 +111,9 @@ int main (string[] args)
 				break;
 
 			case "fifo":
-				if (auto m = listen.match(ctRegex!`^(.*?):(\d+)$`)) {
+				if (auto m = listen.match(r"^(.+?)(?::(\d+))?$")) {
 					string path       = m.captures[1];
-					int    permission = toImpl!int(m.captures[2], 8);
+					int    permission = m.captures[2].empty ? octal!666 : toImpl!int(m.captures[2], 8);
 
 					address = new NamedPipeAddress(path, permission);
 				}
