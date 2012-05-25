@@ -27,8 +27,6 @@ import std.string;
 import core.sync.mutex;
 import core.stdc.errno;
 
-import std.stdio : writeln;
-
 import nucular.reactor : Reactor;
 import nucular.descriptor;
 import nucular.server;
@@ -311,7 +309,7 @@ class Connection
 	ptrdiff_t sendTo (Address address, ubyte[] data)
 	{
 		ptrdiff_t result;
-		
+
 		errnoEnforce((result = _descriptor.socket.sendTo(data, SocketFlags.NONE, address)) != Socket.ERROR);
 
 		return result;

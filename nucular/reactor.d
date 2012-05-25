@@ -182,8 +182,8 @@ class Reactor
 					auto current = _servers[descriptor];
 
 					if (auto server = cast (TCPServer) current) {
-						Connection connection = server.accept();
-											 descriptor = cast (Descriptor) connection;
+						auto connection = server.accept();
+						     descriptor = cast (Descriptor) connection;
 
 						schedule({
 							_descriptors             ~= descriptor;
@@ -194,9 +194,15 @@ class Reactor
 					}
 
 					if (auto server = cast (UDPServer) current) {
-						Connection      connection = server.connection;
-						Connection.Data data       = connection.receiveFrom(512);
-						Address         tmp        = connection.defaultTarget;
+						auto connection = server.connection;
+						auto data       = connection.receiveFrom(512);
+						auto tmp        = connection.defaultTarget;
+
+						if (cast (Descriptor) connection !in _connections) {
+							schedule({
+								_connections[cast (Descriptor) connection] = connection;
+							});
+						}
 
 						connection.defaultTarget = data.address;
 						connection.receiveData(data.content);
@@ -207,8 +213,8 @@ class Reactor
 
 					version (Posix) {
 						if (auto server = cast (UNIXServer) current) {
-							Connection connection = server.accept();
-												 descriptor = cast (Descriptor) connection;
+							auto connection = server.accept();
+							     descriptor = cast (Descriptor) connection;
 
 							schedule({
 								_descriptors             ~= descriptor;
@@ -219,8 +225,14 @@ class Reactor
 						}
 
 						if (auto server = cast (FIFOServer) current) {
-							Connection connection = server.connection;
-							ubyte[] data          = server.read();
+							auto    connection = server.connection;
+							ubyte[] data       = server.read();
+
+							if (cast (Descriptor) connection !in _connections) {
+								schedule({
+									_connections[cast (Descriptor) connection] = connection;
+								});
+							}
 
 							if (!data.empty) {
 								connection.receiveData(data);
@@ -372,6 +384,7 @@ class Reactor
 
 		schedule({
 			_descriptors = _descriptors.filter!((a) { return a != cast (Descriptor) server; }).array;
+			_connections.remove(cast (Descriptor) server.connection);
 		});
 	}
 

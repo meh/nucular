@@ -63,6 +63,11 @@ abstract class Server
 		reactor.stopServer(this);
 	}
 
+	Connection connection ()
+	{
+		return _connection;
+	}
+
 	@property block (void delegate (Connection) block)
 	{
 		_block = block;
@@ -181,7 +186,7 @@ class UDPServer : Server
 		return cast (Descriptor) _connection;
 	}
 
-	@property connection ()
+	override Connection connection ()
 	{
 		if (_client) {
 			return _client;
@@ -411,7 +416,7 @@ version (Posix) {
 			return _connection.read();
 		}
 
-		@property connection ()
+		override Connection connection ()
 		{
 			if (_client) {
 				return _client;
