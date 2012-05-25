@@ -85,7 +85,7 @@ int main (string[] args)
 		}
 		
 		default:
-			writeln("unsupported protocol");
+			writeln("! unsupported protocol");
 			return 1;
 	}
 
@@ -95,15 +95,20 @@ int main (string[] args)
 		(new Thread({
 			char[] data;
 
-			while (stdin.readln(data)) {
-				if (line) {
-					auto sender = cast (LineSender) cast (Object) connection;
-					sender.sendLine(cast (string) data[0 .. data.length - 1]);
+			try {
+				while (stdin.readln(data)) {
+					if (line) {
+						auto sender = cast (LineSender) cast (Object) connection;
+						sender.sendLine(cast (string) data[0 .. data.length - 1]);
+					}
+					else {
+						auto sender = cast (RawSender) cast (Object) connection;
+						sender.sendData(cast (ubyte[]) data);
+					}
 				}
-				else {
-					auto sender = cast (RawSender) cast (Object) connection;
-					sender.sendData(cast (ubyte[]) data);
-				}
+			}
+			catch (Exception e) {
+				writeln("! ", e.msg);
 			}
 
 			nucular.reactor.stop();

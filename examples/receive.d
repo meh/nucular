@@ -118,7 +118,7 @@ int main (string[] args)
 		}
 		
 		default:
-			writeln("unsupported protocol");
+			writeln("! unsupported protocol");
 			return 1;
 	}
 
