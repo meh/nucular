@@ -200,6 +200,8 @@ class Reactor
 						connection.defaultTarget = data.address;
 						connection.receiveData(data.content);
 						connection.defaultTarget = tmp;
+
+						continue;
 					}
 
 					version (Posix) {
@@ -721,6 +723,10 @@ private:
 		connection.initialized();
 
 		if (descriptor.isSocket) {
+			if (connection.protocol == "udp") {
+				connection.defaultTarget = address;
+			}
+
 			descriptor.socket.connect(address);
 		}
 

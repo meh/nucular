@@ -186,7 +186,6 @@ class UDPServer : Server
 
 		_client.protocol = "udp";
 		_client.accepted(this, cast (Descriptor) _connection);
-		_client.addresses();
 		if (_block) {
 			_block(_client);
 		}
@@ -330,7 +329,6 @@ version (Posix) {
 			_reading = true;
 		}
 
-
 		@property isReading ()
 		{
 			return _reading;
@@ -411,7 +409,6 @@ version (Posix) {
 
 			_client.protocol = "fifo";
 			_client.accepted(this, cast (Descriptor) _connection);
-			_client.addresses();
 			if (_block) {
 				_block(_client);
 			}

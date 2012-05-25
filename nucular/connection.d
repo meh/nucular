@@ -27,6 +27,8 @@ import std.string;
 import core.sync.mutex;
 import core.stdc.errno;
 
+import std.stdio : writeln;
+
 import nucular.reactor : Reactor;
 import nucular.descriptor;
 import nucular.server;
@@ -293,19 +295,23 @@ class Connection
 		return true;
 	}
 
-	Data receiveFrom (int length)
+	Data receiveFrom (ulong length)
 	{
-		ubyte[] data;
+		ubyte[] data = new ubyte[length];
 		Address address;
 
-		_descriptor.socket.receiveFrom(data, SocketFlags.NONE, address);
+		errnoEnforce(_descriptor.socket.receiveFrom(data, SocketFlags.NONE, address) != Socket.ERROR);
 
 		return Data(address, data);
 	}
 
 	ptrdiff_t sendTo (Address address, ubyte[] data)
 	{
-		return _descriptor.socket.sendTo(data, SocketFlags.NONE, address);
+		ptrdiff_t result;
+		
+		errnoEnforce((result = _descriptor.socket.sendTo(data, SocketFlags.NONE, address)) != Socket.ERROR);
+
+		return result;
 	}
 
 	void addresses (Descriptor descriptor = null)
