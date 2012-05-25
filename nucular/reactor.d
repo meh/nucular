@@ -55,9 +55,8 @@ class Reactor
 {
 	this ()
 	{
-		_breaker    = new Breaker;
-		_mutex      = new Mutex;
-		_threadpool = new ThreadPool;
+		_breaker = new Breaker;
+		_mutex   = new Mutex;
 
 		_backlog = 100;
 		_quantum = 100.dur!"msecs";
@@ -615,6 +614,15 @@ class Reactor
 	@property isWritePending (bool value)
 	{
 		_is_write_pending = value;
+	}
+
+	@property threadpool ()
+	{
+		if (_threadpool) {
+			return _threadpool;
+		}
+
+		return _threadpool = new ThreadPool;
 	}
 
 	@property backlog ()
