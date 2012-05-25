@@ -23,6 +23,7 @@ public import core.time          : dur, Duration;
 public import nucular.connection : Connection;
 public import nucular.descriptor : Descriptor;
 public import nucular.server     : Server;
+public import nucular.signal     : trap;
 
 version (Posix) {
 	public import nucular.server : UnixAddress, NamedPipeAddress;
@@ -48,6 +49,7 @@ import nucular.descriptor;
 import nucular.breaker;
 import nucular.server;
 import nucular.available.best;
+import nucular.signal;
 
 class Reactor
 {
@@ -775,11 +777,6 @@ private:
 	bool     _is_write_pending;
 
 	void delegate (Connection) _default_creation_callback;
-}
-
-void trap (string name, void delegate () block)
-{
-	// TODO: implement signal handling
 }
 
 void run (void delegate () block)
