@@ -394,6 +394,7 @@ version (Posix) {
 			_connection = (new Connection).watched(reactor, new Descriptor(result));
 			_connection.protocol     = "fifo";
 			_connection.asynchronous = true;
+			_connection.isWritable   = false;
 
 			_running = true;
 
@@ -424,7 +425,8 @@ version (Posix) {
 
 			_client = cast (Connection) _handler.create();
 
-			_client.protocol = "fifo";
+			_client.protocol   = "fifo";
+			_client.isWritable = false;
 			_client.accepted(this, cast (Descriptor) _connection);
 			if (_block) {
 				_block(_client);

@@ -93,6 +93,9 @@ class Connection
 		_mutex      = new Mutex;
 		_descriptor = descriptor;
 
+		_readable = true;
+		_writable = true;
+
 		return this;
 	}
 
@@ -176,6 +179,10 @@ class Connection
 	{
 		enforce(!isClosing, "you cannot write data when the connection is closing");
 
+		if (!isWritable) {
+			return;
+		}
+
 		if (protocol == "udp") {
 			enforce(defaultTarget, "there is no default target");
 
@@ -236,6 +243,10 @@ class Connection
 
 	ubyte[] read ()
 	{
+		if (isClosed || !isReadable) {
+			return null;
+		}
+
 		ubyte[] result;
 
 		try {
@@ -263,7 +274,7 @@ class Connection
 
 	bool write ()
 	{
-		if (isClosed) {
+		if (isClosed || !isWritable) {
 			return true;
 		}
 
@@ -403,6 +414,26 @@ class Connection
 		return _descriptor.isSocket;
 	}
 
+	@property isWritable ()
+	{
+		return _writable;
+	}
+
+	@property isWritable (bool value)
+	{
+		_writable = value;
+	}
+
+	@property isReadable ()
+	{
+		return _readable;
+	}
+
+	@property isReadable (bool value)
+	{
+		_readable = value;
+	}
+
 	@property reuseAddr ()
 	{
 		version (Posix) {
@@ -530,4 +561,6 @@ private:
 	Data[] _to_write;
 	Errno  _error;
 	bool   _closing;
+	bool   _readable;
+	bool   _writable;
 }

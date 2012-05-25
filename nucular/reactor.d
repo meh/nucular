@@ -32,6 +32,8 @@ version (Posix) {
 	import core.sys.posix.fcntl;
 }
 
+import std.stdio : writeln;
+
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -83,6 +85,8 @@ class Reactor
 		_running = true;
 
 		while (isRunning) {
+			writeln("lol");
+
 			while (hasScheduled) {
 				_scheduled.front()();
 
@@ -752,6 +756,16 @@ private:
 		if (descriptor.isSocket) {
 			if (connection.protocol == "udp") {
 				connection.defaultTarget = address;
+			}
+			else if (connection.protocol == "fifo") {
+				auto pipe = cast (NamedPipeAddress) address;
+
+				if (pipe.isReading) {
+					connection.isWritable = false;
+				}
+				else {
+					connection.isReadable = false;
+				}
 			}
 
 			descriptor.socket.connect(address);
