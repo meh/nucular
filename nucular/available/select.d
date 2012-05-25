@@ -21,6 +21,8 @@ module nucular.available.select;
 import core.time;
 import core.sys.posix.sys.select;
 import core.sys.posix.sys.time;
+import core.stdc.errno;
+
 import std.algorithm;
 import std.conv;
 import std.exception;
@@ -32,7 +34,13 @@ Descriptor[] readable (Descriptor[] descriptors)
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	errnoEnforce(select(nfds, &set, null, null, null) >= 0);
+	try {
+		errnoEnforce(select(nfds, &set, null, null, null) >= 0);
+	} catch (ErrnoException e) {
+		if (e.errno != EINTR) {
+			throw e;
+		}
+	}
 
 	return set.toDescriptors(descriptors);
 }
@@ -43,7 +51,13 @@ Descriptor[] readable (Descriptor[] descriptors, Duration sleep)
 	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
-	errnoEnforce(select(nfds, &set, null, null, &tv) >= 0);
+	try {
+		errnoEnforce(select(nfds, &set, null, null, &tv) >= 0);
+	} catch (ErrnoException e) {
+		if (e.errno != EINTR) {
+			throw e;
+		}
+	}
 
 	return set.toDescriptors(descriptors);
 }
@@ -53,7 +67,13 @@ Descriptor[] writable (Descriptor[] descriptors)
 	fd_set set  = descriptors.toSet();
 	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 
-	errnoEnforce(select(nfds, null, &set, null, null) >= 0);
+	try {
+		errnoEnforce(select(nfds, null, &set, null, null) >= 0);
+	} catch (ErrnoException e) {
+		if (e.errno != EINTR) {
+			throw e;
+		}
+	}
 
 	return set.toDescriptors(descriptors);
 }
@@ -64,7 +84,13 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
 	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
-	errnoEnforce(select(nfds, null, &set, null, &tv) >= 0);
+	try {
+		errnoEnforce(select(nfds, null, &set, null, &tv) >= 0);
+	} catch (ErrnoException e) {
+		if (e.errno != EINTR) {
+			throw e;
+		}
+	}
 
 	return set.toDescriptors(descriptors);
 }

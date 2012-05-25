@@ -127,6 +127,8 @@ int main (string[] args)
 
 	nucular.reactor.run({
 		Server server = line ? address.startServer!LineEcho(protocol) : address.startServer!RawEcho(protocol);
+
+		nucular.reactor.stopOn("INT", "TERM");
 	});
 
 	return 0;

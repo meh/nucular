@@ -45,11 +45,16 @@ abstract class Server
 		_address    = new UnknownAddress;
 	}
 
+	~this ()
+	{
+		stop();
+	}
+
 	abstract Descriptor start ();
 
 	void stop ()
 	{
-		if (!_running) {
+		if (!isRunning) {
 			return;
 		}
 
@@ -73,7 +78,7 @@ abstract class Server
 		return _address;
 	}
 
-	@property running ()
+	@property isRunning ()
 	{
 		return _running;
 	}
@@ -234,7 +239,7 @@ version (Posix) {
 
 		@property string path () const
 		{
-			return to!string(_addr.sun_path.ptr);
+			return (cast (char*) _addr.sun_path.ptr).to!string;
 		}
 
 		override string toString () const
@@ -256,14 +261,6 @@ version (Posix) {
 			}
 
 			super(reactor, address);
-
-		}
-
-		~this ()
-		{
-			auto socket = cast (UnixAddress) address;
-
-			remove(socket.path);
 		}
 
 		override Descriptor start ()
@@ -284,6 +281,17 @@ version (Posix) {
 			_running = true;
 
 			return cast (Descriptor) _connection;
+		}
+
+		override void stop ()
+		{
+			if (!isRunning) {
+				return;
+			}
+
+			remove((cast (UnixAddress) address).path);
+
+			super.stop();
 		}
 
 		Connection accept ()
@@ -366,13 +374,6 @@ version (Posix) {
 			super(reactor, address);
 		}
 
-		~this ()
-		{
-			auto pipe = cast (NamedPipeAddress) address;
-
-			remove(pipe.path);
-		}
-
 		override Descriptor start ()
 		{
 			if (_connection) {
@@ -392,6 +393,17 @@ version (Posix) {
 			_running = true;
 
 			return cast (Descriptor) _connection;
+		}
+
+		override void stop ()
+		{
+			if (!isRunning) {
+				return;
+			}
+
+			remove((cast (NamedPipeAddress) address).path);
+
+			super.stop();
 		}
 
 		ubyte[] read ()

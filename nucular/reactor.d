@@ -306,6 +306,10 @@ class Reactor
 			return;
 		}
 
+		foreach (server; _servers) {
+			server.stop();
+		}
+
 		_running = false;
 
 		wakeUp();
@@ -797,6 +801,15 @@ void nextTick (void delegate () block)
 void stop ()
 {
 	instance.stop();
+}
+
+void stopOn (string[] signals ...)
+{
+	foreach (signal; signals) {
+		trap(signal, {
+			stop();
+		});
+	}
 }
 
 void defer(T) (T delegate () operation) {

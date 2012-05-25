@@ -60,7 +60,7 @@ void trap (string name, void delegate (string) block)
 		return;
 	}
 
-	if (_callbacks[name.toSignal()].empty) {
+	if (name.toSignal() !in _callbacks) {
 		signal(name.toSignal(), &signalHandler);
 	}
 
