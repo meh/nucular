@@ -85,8 +85,6 @@ class Reactor
 		_running = true;
 
 		while (isRunning) {
-			writeln("lol");
-
 			while (hasScheduled) {
 				_scheduled.front()();
 
@@ -110,6 +108,8 @@ class Reactor
 						executeTimers();
 					}
 				}
+
+				_breaker.flush();
 
 				continue;
 			}
@@ -739,7 +739,7 @@ private:
 					if (auto pipe = cast (NamedPipeAddress) address) {
 						int result;
 
-						errnoEnforce((result = .open(pipe.path.toStringz(), (pipe.isReading ? O_RDONLY : O_WRONLY) | O_NONBLOCK)) >= 0);
+						errnoEnforce((result = .open(pipe.path.toStringz(), (pipe.isReadable ? O_RDONLY : O_WRONLY) | O_NONBLOCK)) >= 0);
 
 						descriptor = new Descriptor(result);
 					}
@@ -760,7 +760,7 @@ private:
 			else if (connection.protocol == "fifo") {
 				auto pipe = cast (NamedPipeAddress) address;
 
-				if (pipe.isReading) {
+				if (pipe.isReadable) {
 					connection.isWritable = false;
 				}
 				else {

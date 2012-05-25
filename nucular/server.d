@@ -332,24 +332,24 @@ version (Posix) {
 		{
 			this(path);
 
-			_reading = true;
+			_readable = true;
 		}
 
 		this (string path, mode_t permissions, bool read)
 		{
 			this(path, permissions);
 
-			_reading = true;
+			_readable = true;
 		}
 
-		@property isReading ()
+		@property isReadable ()
 		{
-			return _reading;
+			return _readable;
 		}
 
-		@property isWriting ()
+		@property isWritable ()
 		{
-			return !isReading;
+			return !isReadable;
 		}
 
 		@property path ()
@@ -365,7 +365,7 @@ version (Posix) {
 	private:
 		string _path;
 		mode_t _permissions;
-		bool   _reading;
+		bool   _readable;
 	}
 
 	class FIFOServer : Server
