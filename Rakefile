@@ -29,8 +29,8 @@ file 'libnucular.a' => OBJECTS do |t|
 end
 
 EXAMPLES.each {|name|
-	file name => ['libnucular.a', "#{name}.o"] do
-		sh "#{DC} #{FLAGS} #{name}.o libnucular.a -of#{name}"
+	file name => 'libnucular.a' do
+		sh "#{DC} #{FLAGS} #{name}.d libnucular.a -of#{name}"
 	end
 }
 
