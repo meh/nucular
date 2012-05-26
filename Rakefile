@@ -11,7 +11,7 @@ end
 EXAMPLES = FileList['examples/*.d'].ext('')
 
 SOURCES = FileList['nucular/**/*.d',
-#	'vendor/pegged/pegged/*.d', 'vendor/pegged/pegged/utils/*.d'
+	'vendor/pegged/pegged/*.d', 'vendor/pegged/pegged/utils/*.d'
 ]
 
 OBJECTS = SOURCES.ext('o')
