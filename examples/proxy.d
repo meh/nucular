@@ -30,9 +30,16 @@ void main ()
 {
 	nucular.reactor.run({
 		(new ProxiedAddress("automation.whatismyip.com", 80)).
-			connectThrough!Reader(new InternetAddress("localhost", 9050)).
+			connectThrough!Reader(new InternetAddress("localhost", 9051)).
 				errback((Exception e){
-					writeln(e.msg);
+					if (e) {
+						writeln("! connection failed because: ", e.msg);
+					}
+					else {
+						writeln("! connection to the proxy failed");
+					}
+
+					nucular.reactor.stop();
 				});
 	});
 }

@@ -96,13 +96,18 @@ abstract class SOCKS : Connection
 			parseResponse(_data);
 		}
 		catch (Exception e) {
-			if (_deferrable.hasErrback) {
-				_deferrable.failWith(e);
+			if (deferrable.hasErrback) {
+				deferrable.failWith(e);
 			}
 			else {
 				throw e;
 			}
 		}
+	}
+
+	override void unbind ()
+	{
+		deferrable.fail();
 	}
 
 	@property target ()
