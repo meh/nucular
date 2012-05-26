@@ -29,6 +29,7 @@ version (Posix) {
 }
 
 import nucular.reactor : Reactor, instance;
+import nucular.deferrable;
 import nucular.connection;
 
 class ProxiedAddress : UnknownAddress
@@ -63,8 +64,9 @@ abstract class SOCKS : Connection
 {
 	SOCKS initialize (Address target, Connection drop_to, string username = null, string password = null)
 	{
-		_target   = target;
-		_drop_to  = drop_to;
+		_target     = target;
+		_drop_to    = drop_to;
+		_deferrable = reactor.deferrable(drop_to);
 
 		if (username) {
 			_username = username;
@@ -90,7 +92,17 @@ abstract class SOCKS : Connection
 	{
 		_data ~= data;
 
-		parseResponse(_data);
+		try {
+			parseResponse(_data);
+		}
+		catch (Exception e) {
+			if (_deferrable.hasErrback) {
+				_deferrable.failWith(e);
+			}
+			else {
+				throw e;
+			}
+		}
 	}
 
 	@property target ()
@@ -112,12 +124,18 @@ abstract class SOCKS : Connection
 		return _drop_to;
 	}
 
+	@property deferrable ()
+	{
+		return _deferrable;
+	}
+
 protected:
 	abstract void parseResponse (ref ubyte[] data);
 
 private:
-	Address    _target;
-	Connection _drop_to;
+	Address               _target;
+	Connection            _drop_to;
+	Deferrable!Connection _deferrable;
 
 	string _username;
 	string _password;
@@ -220,6 +238,7 @@ protected:
 			data.popFront();
 		}
 
+		deferrable.succeed();
 		exchange(dropTo);
 	}
 }
@@ -446,7 +465,7 @@ private:
 	State _state;
 }
 
-Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, string username = null, string password = null, in string ver = "5")
+Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, string username = null, string password = null, in string ver = "5")
 {
 	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
 	SOCKS      proxy;
@@ -467,10 +486,10 @@ Connection connectThrough(T : Connection) (Reactor reactor, Address target, Addr
 
 	proxy.initialize(target, drop_to, username, password);
 
-	return drop_to;
+	return proxy.deferrable;
 }
 
-Connection connectThrough(T : Connection) (Address target, Address through, string username = null, string password = null, in string ver = "5")
+Deferrable!Connection connectThrough(T : Connection) (Address target, Address through, string username = null, string password = null, in string ver = "5")
 {
 	return connectThrough!(T)(instance, target, through, username, password, ver);
 }

@@ -18,14 +18,23 @@
 
 module nucular.deferrable;
 
+import std.array;
+
 import nucular.reactor : Reactor, Duration;
 import nucular.timer;
 
-class Deferrable
+class Deferrable(T)
 {
 	this (Reactor reactor)
 	{
 		_reactor = reactor;
+	}
+
+	this (Reactor reactor, T data)
+	{
+		this(reactor);
+
+		_data = data;
 	}
 
 	~this ()
@@ -40,7 +49,7 @@ class Deferrable
 		return this;
 	}
 
-	Deferrable callback(T) (T delegate (T data) block)
+	Deferrable callback(T) (void delegate (T data) block)
 	{
 		_callbacks ~= cast (void delegate (void*)) block;
 
@@ -54,7 +63,7 @@ class Deferrable
 		return this;
 	}
 
-	Deferrable errback(T) (T delegate (T data) block)
+	Deferrable errback(T) (void delegate (T data) block)
 	{
 		_errbacks ~= cast (void delegate (void*)) block;
 
@@ -71,7 +80,7 @@ class Deferrable
 	void succeedWith(T) (T data)
 	{
 		foreach (callback; _callbacks) {
-			callback(data);
+			(cast (void delegate (T)) callback)(data);
 		}
 	}
 
@@ -85,7 +94,7 @@ class Deferrable
 	void failWith(T) (T data)
 	{
 		foreach (errback; _errbacks) {
-			errback(data);
+			(cast (void delegate (T)) errback)(data);
 		}
 	}
 
@@ -108,6 +117,21 @@ class Deferrable
 		return _timer;
 	}
 
+	@property hasCallback ()
+	{
+		return !_callbacks.empty;
+	}
+
+	@property hasErrback ()
+	{
+		return !_errbacks.empty;
+	}
+
+	@property data ()
+	{
+		return _data;
+	}
+
 	@property reactor ()
 	{
 		return _reactor;
@@ -115,6 +139,7 @@ class Deferrable
 
 private:
 	Reactor _reactor;
+	T       _data;
 
 	void delegate (void*)[] _callbacks;
 	void delegate (void*)[] _errbacks;

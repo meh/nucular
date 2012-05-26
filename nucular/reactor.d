@@ -345,19 +345,24 @@ class Reactor
 		threadpool.process(task);
 	}
 
-	Deferrable deferrable ()
+	Deferrable!T deferrable(T) ()
 	{
-		return new Deferrable(this);
+		return new Deferrable!T(this);
 	}
 
-	Deferrable deferrable (void delegate () callback)
+	Deferrable!T deferrable(T) (T data)
 	{
-		return deferrable().callback(callback);
+		return new Deferrable!T(this, data);
 	}
 
-	Deferrable deferrable (void delegate () callback, void delegate () errback)
+	Deferrable!T deferrable(T) (void delegate () callback)
 	{
-		return deferrable().callback(callback).errback(errback);
+		return deferrable!T.callback(callback);
+	}
+
+	Deferrable!T deferrable(T) (void delegate () callback, void delegate () errback)
+	{
+		return deferrable!T.callback(callback).errback(errback);
 	}
 
 	Server startServer(T : Connection) (Address address, string protocol, void delegate (T) block)
@@ -861,19 +866,24 @@ void defer(T : AbstractTask) (T task)
 	instance.defer(task);
 }
 
-Deferrable deferrable ()
+Deferrable!T deferrable(T) ()
 {
-	return instance.deferrable();
+	return instance.deferrable!T;
 }
 
-Deferrable deferrable (void delegate () callback)
+Deferrable!T deferrable(T) (T data)
 {
-	return instance.deferrable(callback);
+	return instance.deferrable!T(data);
 }
 
-Deferrable deferrable (void delegate () callback, void delegate () errback)
+Deferrable!T deferrable(T) (void delegate () callback)
 {
-	return instance.deferrable(callback, errback);
+	return instance.deferrable!T(callback);
+}
+
+Deferrable!T deferrable(T) (void delegate () callback, void delegate () errback)
+{
+	return instance.deferrable!T(callback, errback);
 }
 
 Server startServer(T : Connection) (Address address, string protocol)
