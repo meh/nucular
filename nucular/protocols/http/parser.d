@@ -13,6 +13,9 @@ module nucular.protocols.http.parser;
 import pegged.grammar;
 
 mixin(grammar(`
+HTTP:
+	Version <- :"HTTP" :Slash ~(DIGIT+ '.' DIGIT+)
+
 	MessageHeader <- FieldName :':' FieldValue
 	FieldName     <~ Token
 	FieldValue    <~ (:LWS / FieldContent)*
@@ -25,7 +28,7 @@ mixin(grammar(`
 	CText        <- !('(' / ')') TEXT
 	QuotedString <- DoubleQuote (QDText / QuotedPair) DoubleQuote
 	QDText       <- !DoubleQuote TEXT
-	QuotedPair   <- '\\' CHAR
+	QuotedPair   <- BackSlash CHAR
 
 	OCTET   <- .
 	CHAR    <- [\x00-\x7f]
@@ -46,8 +49,12 @@ mixin(grammar(`
 `));
 
 unittest {
-	auto p = MessageHeader.parse("lol: wut");
+	ParseTree p;
 
-	assert(p.children[0].capture[0] == "lol");
-	assert(p.children[1].capture[0] == "wut");
+	p = HTTP.Version.parse("HTTP/1.1");
+	assert(p.capture[0] == "1.1");
+
+	p = HTTP.MessageHeader.parse("lol: wut");
+	assert(p.capture[0] == "lol");
+	assert(p.capture[1] == "wut");
 }
