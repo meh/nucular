@@ -1,0 +1,3 @@
+[submodule "vendor/pegged"]
+	path = vendor/pegged
+	url = git://github.com/PhilippeSigaud/Pegged.git
