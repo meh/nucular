@@ -17,3 +17,96 @@
  ****************************************************************************/
 
 module nucular.protocols.http.client;
+
+import nucular.reactor : Reactor, instance, Address, Connection;
+import nucular.deferrable;
+
+class Client
+{
+	this ()
+	{
+		this(instance);
+	}
+
+	this (Reactor reactor)
+	{
+		_reactor = reactor;
+	}
+
+	@property connect (Address address)
+	{
+		//_connection = reactor.connect!HTTPConnection((conn) {
+			//conn.http = this;
+		//});
+	}
+
+	/++
+	 + Tells the Client to use the passed connection.
+	 +
+	 + Params:
+	 +   connection = the Connection to use, it's supposed to be already connected.
+	 +/
+	@property use (Connection connection)
+	{
+		_connection = connection;
+
+		autoFlush = true;
+	}
+
+	void flush ()
+	{
+
+	}
+
+	@property autoFlush ()
+	{
+		return _auto_flush;
+	}
+
+	@property autoFlush (bool value)
+	{
+		_auto_flush = value;
+
+		if (value) {
+			flush();
+		}
+	}
+
+	@property connection ()
+	{
+		return _connection;
+	}
+
+	@property reactor ()
+	{
+		return _reactor;
+	}
+
+private:
+	Reactor    _reactor;
+	Connection _connection;
+
+	bool _auto_flush;
+
+private:
+	class HTTPConnection : Connection
+	{
+		override void connected ()
+		{
+			http.autoFlush = true;
+		}
+
+		@property http ()
+		{
+			return _http;
+		}
+
+		@property http (Client value)
+		{
+			_http = value;
+		}
+
+	private:
+		Client _http;
+	}
+}
