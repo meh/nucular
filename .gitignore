@@ -2,3 +2,4 @@ examples/*
 !examples/*.d
 *.o
 libnucular.a
+test

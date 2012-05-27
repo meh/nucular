@@ -17,9 +17,7 @@ SOURCES = FileList['nucular/**/*.d',
 OBJECTS = SOURCES.ext('o')
 
 CLEAN.include(OBJECTS).include(EXAMPLES.ext('o'))
-CLOBBER.include(EXAMPLES)
-
-task :default => 'libnucular.a'
+CLOBBER.include(EXAMPLES).include('test')
 
 rule '.o' => '.d' do |t|
   sh "#{DC} #{FLAGS} -of#{t.name} -c #{t.source}"
@@ -27,6 +25,19 @@ end
 
 file 'libnucular.a' => OBJECTS do |t|
 	sh "#{DC} #{FLAGS} -lib -oflibnucular.a #{OBJECTS}"
+end
+
+task :default => 'libnucular.a'
+
+task :test do
+	FLAGS << ' -unittest' and Rake::Task[:default].invoke
+
+	begin
+		sh "#{DC} #{FLAGS} -oftest test.d #{OBJECTS}"
+		sh './test'
+	ensure
+		sh 'rm -f test test.o'
+	end
 end
 
 EXAMPLES.each {|name|
