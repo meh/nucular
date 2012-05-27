@@ -18,8 +18,12 @@
 
 module nucular.protocols.http.client;
 
+import std.array;
+
 import nucular.reactor : Reactor, instance, Address, Connection;
 import nucular.deferrable;
+
+import nucular.protocols.http.request;
 
 class Client
 {
@@ -35,9 +39,9 @@ class Client
 
 	@property connect (Address address)
 	{
-		//_connection = reactor.connect!HTTPConnection((conn) {
-			//conn.http = this;
-		//});
+		_connection = reactor.connect!HTTPConnection(address, (HTTPConnection conn) {
+			conn.http = this;
+		});
 	}
 
 	/++
@@ -55,7 +59,11 @@ class Client
 
 	void flush ()
 	{
+		while (!_requests.empty) {
+			auto request = _requests.front; _requests.popFront();
 
+			request.send(_connection);
+		}
 	}
 
 	@property autoFlush ()
@@ -85,6 +93,8 @@ class Client
 private:
 	Reactor    _reactor;
 	Connection _connection;
+
+	Request[] _requests;
 
 	bool _auto_flush;
 
