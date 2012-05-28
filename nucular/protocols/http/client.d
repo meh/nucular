@@ -22,7 +22,7 @@ import std.array;
 
 import nucular.reactor : Reactor, instance, Address, Connection;
 import nucular.deferrable;
-
+import nucular.protocols.socks;
 import nucular.protocols.http.request;
 
 class Client
@@ -37,18 +37,25 @@ class Client
 		_reactor = reactor;
 	}
 
-	@property connect (Address address)
+	Connection connect (Address target)
 	{
-		_connection = reactor.connect!HTTPConnection(address, (HTTPConnection conn) {
+		return _connection = reactor.connect!HTTPConnection(target, (HTTPConnection conn) {
 			conn.http = this;
 		});
+	}
+
+	Connection connectThrough (Address target, Address through, string username = null, string password = null, string ver = "5")
+	{
+		return _connection = reactor.connectThrough!HTTPConnection(target, through, (HTTPConnection conn) {
+			conn.http = this;
+		}, username, password, ver).data;
 	}
 
 	/++
 	 + Tells the Client to use the passed connection.
 	 +
-	 + Params:
-	 +   connection = the Connection to use, it's supposed to be already connected.
+	 + The Connection is supposed to be already connected and you will have to deal
+	 + with the response yourself, there are helpers to deal with them anyway.
 	 +/
 	@property use (Connection connection)
 	{
@@ -57,6 +64,9 @@ class Client
 		autoFlush = true;
 	}
 
+	/++
+	 + Send the requests.
+	 +/
 	void flush ()
 	{
 		while (!_requests.empty) {

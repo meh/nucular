@@ -19,7 +19,6 @@
 module nucular.protocols.http.request;
 
 import std.string;
-import std.stdio : writeln;
 
 import nucular.connection;
 import nucular.protocols.http.headers;
