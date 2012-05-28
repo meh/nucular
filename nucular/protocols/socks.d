@@ -470,15 +470,17 @@ private:
 	State _state;
 }
 
-Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, string username = null, string password = null, in string ver = "5")
+Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, void delegate (T) callback, string username = null, string password = null, string ver = "5")
 {
 	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
 	SOCKS      proxy;
 
 	if (ver == "4") {
+		// FIXME: remove the useless cast when the bug is fixed
 		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS4(through);
 	}
 	else if (ver == "4a") {
+		// FIXME: remove the useless cast when the bug is fixed
 		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS4a(through);
 	}
 	else if (ver == "5") {
@@ -491,12 +493,21 @@ Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address t
 
 	proxy.initialize(target, drop_to, username, password);
 
+	// FIXME: remove the useless cast when the bug is fixed
+	callback(cast (T) cast (Object) drop_to);
+	drop_to.initialized();
+
 	return proxy.deferrable;
 }
 
-Deferrable!Connection connectThrough(T : Connection) (Address target, Address through, string username = null, string password = null, in string ver = "5")
+Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, string username = null, string password = null, string ver = "5")
 {
-	return connectThrough!(T)(instance, target, through, username, password, ver);
+	return reactor.connectThrough!T(target, through, reactor.defaultCreationCallback, username, password, ver);
+}
+
+Deferrable!Connection connectThrough(T : Connection) (Address target, Address through, string username = null, string password = null, string ver = "5")
+{
+	return instance.connectThrough!T(target, through, username, password, ver);
 }
 
 private:
