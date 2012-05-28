@@ -16,49 +16,54 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular.protocols.line;
+module nucular.protocols.buffered;
 
 import std.algorithm;
 import std.array;
 import std.exception;
 
-import buffered = nucular.protocols.buffered;
+import nucular.connection;
 
-class Protocol : buffered.Protocol
+class Protocol : Connection
 {
-	override void receiveBufferedData (ref ubyte[] data)
+	override void receiveData (ubyte[] data)
 	{
-		while (data.canFind("\n")) {
-			auto result = data.findSplit("\n");
+		_buffer ~= data;
 
-			if (result[0].back == '\r') {
-				result[0].length--;
+		if (_buffer.length >= _minimum) {
+			ulong old = _minimum;
+
+			receiveBufferedData(_buffer);
+
+			if (_auto_reset && old == _minimum) {
+				_minimum = 0;
 			}
-
-			if (!result[0].empty) {
-				receiveLine(cast (string) result[0]);
-			}
-
-			data = result[2];
 		}
 	}
 
-	void receiveLine (string line)
+	void receiveBufferedData (ref ubyte[] data)
 	{
 		// this is just a place holder
 	}
 
-	void sendLine (string line)
+	@property minimum (ulong value)
 	{
-		enforce(!line.canFind("\n") && !line.canFind("\r"), "the line cannot include line endings");
-
-		sendData(cast (ubyte[]) (line ~ "\r\n"));
+		_minimum = value;
 	}
 
-	void sendLines (string[] lines)
+	@property autoReset (bool value)
 	{
-		foreach (line; lines) {
-			sendLine(line);
-		}
+		_auto_reset = value;
 	}
+
+	@property ref buffer ()
+	{
+		return _buffer;
+	}
+
+private:
+	ubyte[] _buffer;
+
+	ulong _minimum    = 0;
+	bool  _auto_reset = true;
 }

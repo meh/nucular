@@ -31,6 +31,7 @@ version (Posix) {
 import nucular.reactor : Reactor, instance;
 import nucular.deferrable;
 import nucular.connection;
+import buffered = nucular.protocols.buffered;
 
 class ProxiedAddress : UnknownAddress
 {
@@ -60,7 +61,7 @@ private:
 	ushort _port;
 }
 
-abstract class SOCKS : Connection
+abstract class SOCKS : buffered.Protocol
 {
 	SOCKS initialize (Address target, Connection drop_to, string username = null, string password = null)
 	{
@@ -83,17 +84,15 @@ abstract class SOCKS : Connection
 	{
 		other.connected();
 
-		if (!_data.empty) {
-			other.receiveData(_data);
+		if (!buffer.empty) {
+			other.receiveData(buffer);
 		}
 	}
 
-	override void receiveData (ubyte[] data)
+	override void receiveBufferedData (ref ubyte[] data)
 	{
-		_data ~= data;
-
 		try {
-			parseResponse(_data);
+			parseResponse(data);
 		}
 		catch (Exception e) {
 			if (deferrable.hasErrback) {
@@ -144,8 +143,6 @@ private:
 
 	string _username;
 	string _password;
-
-	ubyte[] _data;
 }
 
 class SOCKSError : Error
@@ -211,6 +208,8 @@ class SOCKS4 : SOCKS
 	void sendRequest (Type type, Address address)
 	{
 		if (auto target = cast (InternetAddress) address) {
+			minimum = 8;
+
 			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ toData(target.port()) ~ toData(target.addr()) ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
 		}
 		else {
@@ -226,10 +225,6 @@ class SOCKS4 : SOCKS
 protected:
 	override void parseResponse (ref ubyte[] data)
 	{
-		if (data.length < 8) {
-			return;
-		}
-
 		// drop null byte
 		data.popFront();
 
@@ -253,6 +248,8 @@ class SOCKS4a : SOCKS4
 	override void sendRequest (Type type, Address address)
 	{
 		if (auto target = cast (ProxiedAddress) address) {
+			minimum = 8;
+
 			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ toData(target.port()) ~ cast (ubyte[]) [0, 0, 0, 42] ~ cast (ubyte[]) username ~ [cast (ubyte) 0] ~ cast (ubyte[]) target.toHostNameString() ~ [cast (ubyte) 0]);
 		}
 		else {
@@ -313,6 +310,8 @@ class SOCKS5 : SOCKS
 	{
 		_state = State.MethodNegotiation;
 
+		minimum = 2;
+
 		sendPacket([cast (ubyte) Methods.length] ~ cast (ubyte[]) Methods);
 	}
 
@@ -354,10 +353,6 @@ protected:
 	{
 		final switch (_state) {
 			case State.MethodNegotiation:
-				if (data.length < 2) {
-					return;
-				}
-
 				auto ver    = cast (int) data.front; data.popFront();
 				auto method = cast (Method) data.front; data.popFront();
 
@@ -374,10 +369,6 @@ protected:
 			break;
 
 			case State.Authenticating:
-				if (data.length < 2) {
-					return;
-				}
-
 				auto ver    = cast (int) data.front; data.popFront();
 				auto status = cast (Reply) data.front; data.popFront();
 
@@ -393,10 +384,6 @@ protected:
 			break;
 
 			case State.Connecting:
-				if (data.length < 2) {
-					return;
-				}
-
 				auto ver    = cast (int) data[0];
 				auto status = cast (Reply) data[1];
 
@@ -409,6 +396,8 @@ protected:
 				}
 
 				if (data.length < 3) {
+					minimum = 3;
+
 					return;
 				}
 
@@ -423,6 +412,8 @@ protected:
 				}
 				else if (type == NetworkType.HostName) {
 					if (data.length < 6) {
+						minimum = 6;
+
 						return;
 					}
 					else {
@@ -436,6 +427,8 @@ protected:
 				size += 2;
 
 				if (data.length < size) {
+					minimum = size;
+
 					return;
 				}
 
@@ -455,6 +448,8 @@ protected:
 	void sendAuthentication ()
 	{
 		_state = State.Authenticating;
+
+		minimum = 2;
 
 		sendPacket([cast (ubyte) username.length] ~ cast (ubyte[]) username ~ [cast (ubyte) password.length] ~ cast (ubyte[]) password);
 	}
@@ -502,7 +497,7 @@ Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address t
 
 Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, string username = null, string password = null, string ver = "5")
 {
-	return reactor.connectThrough!T(target, through, reactor.defaultCreationCallback, username, password, ver);
+	return reactor.connectThrough!T(target, through, cast (void delegate (T)) reactor.defaultCreationCallback, username, password, ver);
 }
 
 Deferrable!Connection connectThrough(T : Connection) (Address target, Address through, string username = null, string password = null, string ver = "5")
