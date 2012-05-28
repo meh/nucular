@@ -37,6 +37,9 @@ class Client
 		_reactor = reactor;
 	}
 
+	/++
+	 + Connect directly to the host.
+	 +/
 	Connection connect (Address target)
 	{
 		return _connection = reactor.connect!HTTPConnection(target, (HTTPConnection conn) {
@@ -44,6 +47,9 @@ class Client
 		});
 	}
 
+	/++
+	 + Connect through a SOCKS proxy.
+	 +/
 	Connection connectThrough (Address target, Address through, string username = null, string password = null, string ver = "5")
 	{
 		return _connection = reactor.connectThrough!HTTPConnection(target, through, (HTTPConnection conn) {
@@ -55,7 +61,7 @@ class Client
 	 + Tells the Client to use the passed connection.
 	 +
 	 + The Connection is supposed to be already connected and you will have to deal
-	 + with the response yourself, there are helpers to deal with them anyway.
+	 + with the response yourself.
 	 +/
 	@property use (Connection connection)
 	{
@@ -69,10 +75,12 @@ class Client
 	 +/
 	void flush ()
 	{
-		while (!_requests.empty) {
-			auto request = _requests.front; _requests.popFront();
-
+		foreach (request; _requests) {
 			request.send(_connection);
+		}
+
+		if (!cast (HTTPConnection) _connection) {
+			_requests.clear();
 		}
 	}
 
@@ -114,6 +122,11 @@ private:
 		override void connected ()
 		{
 			http.autoFlush = true;
+		}
+
+		override void receiveData (ubyte[] data)
+		{
+
 		}
 
 		@property http ()
