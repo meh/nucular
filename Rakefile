@@ -2,7 +2,7 @@ require 'rake'
 require 'rake/clean'
 
 DC    = ENV['DC'] || 'dmd'
-FLAGS = "-version=select -w -Ivendor/pegged #{ENV['FLAGS']}"
+FLAGS = "-version=select -w -Ivendor/pegged -Ivendor/openssl/deimos #{ENV['FLAGS']}"
 
 if ENV['DEBUG']
 	FLAGS << ' -debug -gc -gs'
