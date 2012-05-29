@@ -8,22 +8,24 @@ if ENV['DEBUG']
 	FLAGS << ' -debug'
 end
 
+GRAMMARS = FileList['nucular/**/*.pegd']
+SOURCES  = FileList['nucular/**/*.d'].include(GRAMMARS.ext('d'))
+OBJECTS  = SOURCES.ext('o')
+
 EXAMPLES = FileList['examples/*.d'].ext('')
-
-SOURCES = FileList['nucular/**/*.d',
-	'vendor/pegged/pegged/*.d', 'vendor/pegged/pegged/utils/*.d'
-]
-
-OBJECTS = SOURCES.ext('o')
 
 CLEAN.include(OBJECTS).include(EXAMPLES.ext('o'))
 CLOBBER.include(EXAMPLES).include('test')
+
+rule '.pegd' => '.d' do |t|
+  sh "peggeden #{t.source} #{t.name}"
+end
 
 rule '.o' => '.d' do |t|
   sh "#{DC} #{FLAGS} -of#{t.name} -c #{t.source}"
 end
 
-file 'libnucular.a' => OBJECTS do |t|
+file 'libnucular.a' => GRAMMARS + OBJECTS do |t|
 	sh "#{DC} #{FLAGS} -lib -oflibnucular.a #{OBJECTS}"
 end
 

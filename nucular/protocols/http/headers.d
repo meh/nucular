@@ -20,8 +20,7 @@ module nucular.protocols.http.headers;
 
 import std.algorithm;
 
-import nucular.protocols.http.header;
-import std.stdio : writeln;
+public import nucular.protocols.http.header : Header;
 
 class Headers
 {

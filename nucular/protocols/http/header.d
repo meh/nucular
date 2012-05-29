@@ -22,8 +22,6 @@ import std.string;
 import std.uni;
 import std.conv;
 
-import nucular.protocols.http.parser;
-
 class Header
 {
 	static string normalize (string name)
@@ -46,13 +44,6 @@ class Header
 		}
 
 		return result;
-	}
-
-	static Header parse (string text)
-	{
-		auto tree = HTTP.MessageHeader.parse(text);
-
-		return new Header(tree.capture[0].to!string, tree.capture[1].to!string);
 	}
 
 	this (string name, string value)

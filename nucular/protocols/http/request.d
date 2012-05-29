@@ -33,9 +33,31 @@ abstract class Request
 
 	void send (Connection connection)
 	{
+		
 	}
 
-	@property string name ()
+	ref Request callback (void delegate (ref Request) block)
+	{
+		_callback = block;
+
+		return this;
+	}
+
+	ref Request errback (void delegate (ref Request) block)
+	{
+		_errback = block;
+
+		return this;
+	}
+
+	ref Request chunk (void delegate (ref Request, ubyte[] data) block)
+	{
+		_chunk = block;
+
+		return this;
+	}
+
+	@property name ()
 	{
 		string     name = this.classinfo.name;
 		sizediff_t last = name.lastIndexOf('.');
@@ -56,6 +78,10 @@ abstract class Request
 private:
 	string  _resource;
 	Headers _headers;
+
+	void delegate (Request)          _callback;
+	void delegate (Request)          _errback;
+	void delegate (Request, ubyte[]) _chunk;
 }
 
 class Options : Request

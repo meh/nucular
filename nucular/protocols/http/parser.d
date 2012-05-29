@@ -1,60 +1,117 @@
-/*
- *            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
- *                    Version 2, December 2004
+/* Copyleft meh. [http://meh.paranoid.pk | meh@paranoici.org]
  *
- *            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
- *   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+ * This file is part of nucular.
  *
- *  0. You just DO WHAT THE FUCK YOU WANT TO.
- **/
+ * nucular is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published
+ * by the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ *
+ * nucular is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with nucular. If not, see <http://www.gnu.org/licenses/>.
+ ****************************************************************************/
 
 module nucular.protocols.http.parser;
 
-import pegged.grammar;
+import nucular.protocols.http.grammar;
+import nucular.protocols.http.prelude;
+import nucular.protocols.http.headers;
 
-mixin(grammar(`
-HTTP:
-	Version <- :"HTTP" :Slash ~(DIGIT+ '.' DIGIT+)
+class Parser
+{
+	enum State {
+		Prelude,
+		Headers,
+		Content,
+		Finished,
+		Error
+	}
 
-	MessageHeader <- FieldName :':' FieldValue
-	FieldName     <~ Token
-	FieldValue    <~ (:LWS / FieldContent)*
-	FieldContent  <~ OCTET+
+	this ()
+	{
+		_state = State.Prelude;
+	}
 
-	# Basic Rules
-	Token        <~ (!(CTL / Separators) CHAR)+
-	Separators   <- '(' / ')' / '<' / '>' / '@' / ',' / ';' / ':' / '\\' / '[' / ']' / '?' / '=' / '{' / '}'
-	Comment      <: '(' (CText / QuotedPair / Comment) ')'
-	CText        <- !('(' / ')') TEXT
-	QuotedString <- DoubleQuote (QDText / QuotedPair) DoubleQuote
-	QDText       <- !DoubleQuote TEXT
-	QuotedPair   <- BackSlash CHAR
+	this (string initial)
+	{
+		this();
 
-	OCTET   <- .
-	CHAR    <- [\x00-\x7f]
-	UPALPHA <- [A-Z]
-	LOALPHA <- [a-z]
-	ALPHA   <- UPALPHA / LOALPHA
-	DIGIT   <- [0-9]
-	CTL     <- '[\x00-\x1f]'
-	CR      <- '\n'
-	LF      <- '\r'
-	SP      <- ' '
-	HT      <- '\x09'
+		parse(initial);
+	}
 
-	CRLF <~ CR LF
-	LWS  <~ CRLF? (SP / HT)+
-	TEXT <~ !CTL OCTET
-	HEX  <~ [A-F] / [a-f] / DIGIT
-`));
+	ref Parser onPrelude (void delegate (ref Prelude) block)
+	{
+		_on_prelude = block;
 
-unittest {
-	ParseTree p;
+		return this;
+	}
 
-	p = HTTP.Version.parse("HTTP/1.1");
-	assert(p.capture[0] == "1.1");
+	ref Parser onHeader (void delegate (ref Header) block)
+	{
+		_on_header = block;
 
-	p = HTTP.MessageHeader.parse("lol: wut");
-	assert(p.capture[0] == "lol");
-	assert(p.capture[1] == "wut");
+		return this;
+	}
+
+	ref Parser onHeaders (void delegate (ref Headers) block)
+	{
+		_on_headers = block;
+
+		return this;
+	}
+
+	ref Parser onChunk (void delegate (ubyte[]) block)
+	{
+		_on_chunk = block;
+
+		return this;
+	}
+
+	ref Parser onContent (void delegate (ubyte[]) block)
+	{
+		_on_content = block;
+
+		return this;
+	}
+
+	State parse (string data)
+	{
+		ParseTree tree;
+
+		if (state == State.Prelude) {
+			tree = Grammar.StartLine.parse(data);
+		}
+
+		return _state;
+	}
+
+	@property minimum ()
+	{
+		return _minimum;
+	}
+
+	@property state ()
+	{
+		return _state;
+	}
+
+private:
+	Prelude _prelude;
+	Headers _headers;
+	ubyte[] _content;
+
+	State _state;
+	ulong _minimum;
+
+	void delegate (ref Prelude) _on_prelude;
+	void delegate (ref Header)  _on_header;
+	void delegate (ref Headers) _on_headers;
+	void delegate (ubyte[])     _on_chunk;
+	void delegate (ubyte[])     _on_content;
+	void delegate (ref Parser)  _on_end;
 }
