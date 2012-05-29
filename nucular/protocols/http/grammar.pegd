@@ -16,6 +16,8 @@ Grammar:
 
 	Method          <- "OPTIONS" / "GET" / "HEAD" / "POST" / "PUT" / "DELETE" / "TRACE" / "CONNECT" / ExtensionMethod
 	ExtensionMethod <~ Token
+	StatusCode      <- "100" / "101" / "200" / "201" / "202" / "203" / "204" / Digit Digit Digit
+	ReasonPhrase    <- (!(CR / LF) TEXT)*
 
 	StartLine   <- RequestLine / StatusLine
 	RequestLine <- Method :SP RequestURI :SP Version :CRLF

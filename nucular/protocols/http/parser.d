@@ -81,10 +81,8 @@ class Parser
 
 	State parse (string data)
 	{
-		ParseTree tree;
-
 		if (state == State.Prelude) {
-			tree = Grammar.StartLine.parse(data);
+			auto tree = Grammar.StartLine.parse(data);
 		}
 
 		return _state;

@@ -79,9 +79,9 @@ private:
 	string  _resource;
 	Headers _headers;
 
-	void delegate (Request)          _callback;
-	void delegate (Request)          _errback;
-	void delegate (Request, ubyte[]) _chunk;
+	void delegate (ref Request)          _callback;
+	void delegate (ref Request)          _errback;
+	void delegate (ref Request, ubyte[]) _chunk;
 }
 
 class Options : Request
