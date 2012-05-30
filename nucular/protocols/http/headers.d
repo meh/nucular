@@ -18,7 +18,9 @@
 
 module nucular.protocols.http.headers;
 
+import std.array;
 import std.algorithm;
+import std.container;
 
 public import nucular.protocols.http.header : Header;
 
@@ -26,57 +28,59 @@ class Headers
 {
 	Header add (Header header)
 	{
-		return _map[header.name] = header;
+		return this[header.name] = header;
 	}
 
 	Header opIndex (string name)
 	{
-		return _map[Header.normalize(name)];
+		if (_internal.empty) {
+			return null;
+		}
+
+		     name   = Header.normalize(name);
+		auto result = _internal.find!(a => (a.name == name));
+		
+		return result.empty ? null : result.front;
+	}
+
+	string opIndex (string name, bool _)
+	{
+		if (auto h = this[name]) {
+			return h.value;
+		}
+		else {
+			return null;
+		}
 	}
 
 	Header opIndexAssign (Header header, string name)
 	{
-		return _map[Header.normalize(name)] = header;
+		if (auto h = this[name]) {
+			if (h.type == Header.Type.List) {
+				h.concat(header.value);
+
+				return h;
+			}
+			else {
+				_internal.remove(_internal.countUntil!(a => (a.name == name)));
+				_internal ~= header;
+			}
+		}
+		else {
+			_internal ~= header;
+		}
+
+		return header;
 	}
 
 	Header opIndexAssign (string value, string name)
 	{
-		return _map[Header.normalize(name)] = new Header(name, value);
+		return this[name] = new Header(name, value);
 	}
 
 	Header[] opSlice ()
 	{
-		return _map.values;
-	}
-
-	int opApply (int delegate (ref Header) block)
-	{
-		int result = 0;
-
-		foreach (header; _map) {
-			result = block(header);
-
-			if (result) {
-				break;
-			}
-		}
-
-		return result;
-	}
-
-	int opApplyReverse (int delegate (ref Header) block)
-	{
-		int result = 0;
-
-		foreach_reverse (header; _map) {
-			result = block(header);
-
-			if (result) {
-				break;
-			}
-		}
-
-		return result;
+		return _internal;
 	}
 
 	override string toString ()
@@ -94,7 +98,7 @@ class Headers
 	}
 
 private:
-	Header[string] _map;
+	Header[] _internal;
 }
 
 unittest {

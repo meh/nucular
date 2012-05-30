@@ -46,10 +46,48 @@ class Header
 		return result;
 	}
 
+	static string reduce (string text)
+	{
+		string result;
+		bool   space = false;
+
+		foreach (ch; text) {
+			if (ch.isSpace) {
+				if (space) {
+					continue;
+				}
+
+				space   = true;
+				result ~= ' ';
+			}
+			else {
+				if (space) {
+					space = false;
+				}
+
+				result ~= ch;
+			}
+		}
+
+		return result;
+	}
+
+	enum Type {
+		Normal,
+		List
+	}
+
 	this (string name, string value)
 	{
 		_name  = Header.normalize(name);
-		_value = value;
+		_value = Header.reduce(value);
+	}
+
+	ref Header concat (string value)
+	{
+		_value ~= ", " ~ Header.reduce(value);
+
+		return this;
 	}
 
 	@property name ()
@@ -60,6 +98,11 @@ class Header
 	@property value ()
 	{
 		return _value;
+	}
+	
+	@property type ()
+	{
+		return Type.Normal;
 	}
 
 	override string toString ()

@@ -14,28 +14,79 @@ Grammar:
 	AbsolutePath <~ '/' TEXT*
 	Authority    <~ TEXT*
 
-	Method          <- "OPTIONS" / "GET" / "HEAD" / "POST" / "PUT" / "DELETE" / "TRACE" / "CONNECT" / ExtensionMethod
 	ExtensionMethod <~ Token
-	StatusCode      <- "100" / "101" / "200" / "201" / "202" / "203" / "204" / Digit Digit Digit
-	ReasonPhrase    <- (!(CR / LF) TEXT)*
+	Method          <-
+		"OPTIONS" /
+		"GET" /
+		"HEAD" /
+		"POST" /
+		"PUT" /
+		"DELETE" /
+		"TRACE" /
+		"CONNECT" /
+		ExtensionMethod
+
+	ReasonPhrase  <~ (!(CR / LF) TEXT)*
+	ExtensionCode <~ Digit Digit Digit
+	StatusCode    <-
+		"100" / # Continue
+		"101" / # Switching Protocols
+		"200" / # OK
+		"201" / # Created
+		"202" / # Accepted
+		"203" / # Non-Authoritative Information
+		"204" / # No Content
+		"205" / # Reset Content
+		"206" / # Partial Content
+		"300" / # Multiple Choices
+		"301" / # Moved Permanently
+		"302" / # Found
+		"303" / # See Other
+		"304" / # Not Modified
+		"305" / # Use Proxy
+		"307" / # Temporary Redirect
+		"400" / # Bad Request
+		"401" / # Unauthorized
+		"402" / # Payment Required
+		"403" / # Forbidden
+		"404" / # Not Found
+		"405" / # Method Not Allowed
+		"406" / # Not Acceptable
+		"407" / # Proxy Authentication Required
+		"408" / # Request Time-out
+		"409" / # Conflict
+		"410" / # Gone
+		"411" / # Length Required
+		"412" / # Precondition Failed
+		"413" / # Request Entity Too Large
+		"414" / # Request-URI Too Large
+		"415" / # Unsupported Media Type
+		"416" / # Requested range not satisfiable
+		"417" / # Expectation Failed
+		"500" / # Internal Server Error
+		"501" / # Not Implemented
+		"502" / # Bad Gateway
+		"503" / # Service Unavailable
+		"504" / # Gateway Time-out
+		"505" / # HTTP Version not supported
+		ExtensionCode
 
 	StartLine   <- RequestLine / StatusLine
 	RequestLine <- Method :SP RequestURI :SP Version :CRLF
 	StatusLine  <- Version :SP StatusCode :SP ReasonPhrase :CRLF
 
-	MessageHeader <- FieldName :':' FieldValue
+	MessageHeader <- FieldName :':' :SP* FieldValue? :SP*
 	FieldName     <~ Token
-	FieldValue    <~ (:LWS / FieldContent)*
-	FieldContent  <~ OCTET+
+	FieldValue    <~ (LWS / TEXT)*
 
 	# Basic Rules
 	Token        <~ (!(CTL / Separators) CHAR)+
 	Separators   <- '(' / ')' / '<' / '>' / '@' / ',' / ';' / ':' / '\\' / '[' / ']' / '?' / '=' / '{' / '}'
 	Comment      <: '(' (CText / QuotedPair / Comment) ')'
-	CText        <- !('(' / ')') TEXT
-	QuotedString <- DoubleQuote (QDText / QuotedPair) DoubleQuote
-	QDText       <- !DoubleQuote TEXT
-	QuotedPair   <- BackSlash CHAR
+	CText        <~ !('(' / ')') TEXT
+	QuotedString <~ DoubleQuote (QDText / QuotedPair) DoubleQuote
+	QDText       <~ !DoubleQuote TEXT
+	QuotedPair   <~ BackSlash CHAR
 
 	OCTET   <- .
 	CHAR    <- [\x00-\x7f]
@@ -44,8 +95,6 @@ Grammar:
 	ALPHA   <- UPALPHA / LOALPHA
 	DIGIT   <- [0-9]
 	CTL     <- '[\x00-\x1f]'
-	CR      <- '\n'
-	LF      <- '\r'
 	SP      <- ' '
 	HT      <- '\x09'
 

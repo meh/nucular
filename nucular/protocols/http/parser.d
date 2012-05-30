@@ -18,6 +18,11 @@
 
 module nucular.protocols.http.parser;
 
+import std.stdio : writeln;
+import std.conv;
+import std.string;
+import std.algorithm;
+
 import nucular.protocols.http.grammar;
 import nucular.protocols.http.prelude;
 import nucular.protocols.http.headers;
@@ -30,6 +35,16 @@ class Parser
 		Content,
 		Finished,
 		Error
+	}
+
+	static Parser forHeaders (string initial = null)
+	{
+		auto r = new Parser;
+
+		r.onlyHeaders = true;
+		r.parse(initial);
+
+		return r;
 	}
 
 	this ()
@@ -79,23 +94,143 @@ class Parser
 		return this;
 	}
 
-	State parse (string data)
+	State parse (ref string data)
 	{
 		if (state == State.Prelude) {
-			auto tree = Grammar.StartLine.parse(data);
+			auto tree = Grammar.StatusLine.parse(data);
+
+			if (tree.success) {
+				if (tree.children[0].ruleName == "Version") {
+					_prelude = new Prelude(tree.capture[0].to!string, tree.capture[1].to!short, tree.capture[2].to!string);
+				}
+				else {
+					_prelude = new Prelude(tree.capture[1].to!string, tree.capture[0].to!string, tree.capture[1].to!string);
+				}
+
+				if (_on_prelude) {
+					_on_prelude(_prelude);
+				}
+
+				data   = data[tree.end.index .. $];
+				_state = State.Headers;
+			}
+		}
+
+		if (state == State.Headers) {
+			if (!_headers) {
+				_headers = new Headers;
+			}
+
+			auto upto    = data.countUntil("\r\n\r\n");
+			auto headers = upto == -1 ? data : data[0 .. upto];
+
+			foreach (line; headers.splitLines) {
+				auto tree = Grammar.MessageHeader.parse(line);
+
+				if (tree.success) {
+					auto h = new Header(tree.capture[0].to!string, tree.capture[1].to!string);
+
+					if (_on_header) {
+						_on_header(h);
+					}
+
+					_headers.add(h);
+				}
+			}
+
+			if (upto != -1) {
+				if (_on_headers) {
+					_on_headers(_headers);
+				}
+
+				data = data[upto + 4 .. $];
+
+				if (onlyHeaders) {
+					_state = State.Finished;
+				}
+				else {
+					_state = State.Content;
+				}
+			}
+		}
+
+		if (state == State.Content) {
+			if (!_headers["Content-Length"] && _headers["Transfer-Encoding", true] != "chunked") {
+				return _state = State.Error;
+			}
+
+			if (auto h = _headers["Content-Length"]) {
+				if (_on_chunk) {
+					_on_chunk(cast (ubyte[]) data);
+				}
+
+				if (_length + data.length >= h.value.to!ulong) {
+					if (_on_content || !_on_chunk) {
+						_content ~= cast (ubyte[]) data[0 .. h.value.to!ulong - _length];
+						_length  += data.length;
+						data      = data[h.value.to!ulong - _length .. $];
+
+						if (_on_content) {
+							_on_content(cast (ubyte[]) _content);
+						}
+					}
+					else {
+						data = data[h.value.to!ulong - _length .. $];
+					}
+
+					if (_on_end) {
+						_on_end(this);
+					}
+
+					_state = State.Finished;
+				}
+				else {
+					if (_on_content) {
+						_content ~= cast (ubyte[]) data;
+					}
+
+					_length += data.length;
+
+					data = [];
+				}
+			}
+			else {
+				// TODO: implement chunked transfer
+				assert(0);
+			}
 		}
 
 		return _state;
 	}
 
-	@property minimum ()
+	@property prelude ()
 	{
-		return _minimum;
+		return _prelude;
+	}
+
+	@property headers ()
+	{
+		return _headers;
+	}
+
+	@property content ()
+	{
+		return _content;
 	}
 
 	@property state ()
 	{
 		return _state;
+	}
+
+	@property onlyHeaders ()
+	{
+		return _only_headers;
+	}
+
+	@property onlyHeaders (bool value)
+	{
+		_only_headers = value;
 	}
 
 private:
@@ -104,7 +239,9 @@ private:
 	ubyte[] _content;
 
 	State _state;
-	ulong _minimum;
+	ulong _length;
+
+	bool _only_headers;
 
 	void delegate (ref Prelude) _on_prelude;
 	void delegate (ref Header)  _on_header;

@@ -18,6 +18,7 @@
 
 module nucular.protocols.http.prelude;
 
+import std.conv;
 import std.exception;
 
 class Prelude
@@ -27,32 +28,34 @@ class Prelude
 		Response
 	}
 
-	this (string method, string resource)
+	this (string ver, string method, string resource)
 	{
-		_type = Type.Response;
+		_type = Type.Request;
 
+		_version  = ver;
 		_method   = method;
 		_resource = resource;
 	}
 
-	this (short code, string message)
+	this (string ver, short code, string message)
 	{
-		_type = Type.Request;
+		_type = Type.Response;
 
+		_version = ver;
 		_code    = code;
 		_message = message;
 	}
 
 	@property code ()
 	{
-		enforce(type == Type.Request, "the Prelude has to be a response");
+		enforce(type == Type.Response, "the Prelude has to be a response");
 
 		return _code;
 	}
 
 	@property message ()
 	{
-		enforce(type == Type.Request, "the Prelude has to be a response");
+		enforce(type == Type.Response, "the Prelude has to be a response");
 
 		return _message;
 	}
@@ -71,13 +74,29 @@ class Prelude
 		return _resource;
 	}
 
+	@property protocolVersion ()
+	{
+		return _version;
+	}
+
 	@property type ()
 	{
 		return _type;
 	}
 
+	override string toString ()
+	{
+		if (type == Type.Request) {
+			return method ~ " " ~ resource ~ "HTTP/" ~ protocolVersion;
+		}
+		else {
+			return "HTTP/" ~ protocolVersion ~ " " ~ code.to!string ~ " " ~ message;
+		}
+	}
+
 private:
-	Type _type;
+	Type   _type;
+	string _version;
 
 	// response properties
 	short  _code;

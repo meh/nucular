@@ -49,9 +49,11 @@ task :test do
 	FLAGS << ' -unittest' and Rake::Task[:default].invoke
 
 	begin
-		sh "#{DC} #{FLAGS} -oftest test.d #{OBJECTS}"
+		File.open('test.d', 'w') { |f| f.write('void main () { }') }
+
+		sh "#{DC} #{FLAGS} -unittest -oftest test.d libnucular.a"
 		sh './test'
 	ensure
-		sh 'rm -f test test.o'
+		sh 'rm -f test test.o test.d'
 	end
 end
