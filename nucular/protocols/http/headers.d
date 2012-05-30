@@ -38,7 +38,7 @@ class Headers
 		}
 
 		     name   = Header.normalize(name);
-		auto result = _internal.find!(a => (a.name == name));
+		auto result = _internal.find!(a => a.name == name);
 		
 		return result.empty ? null : result.front;
 	}
@@ -62,7 +62,7 @@ class Headers
 				return h;
 			}
 			else {
-				_internal.remove(_internal.countUntil!(a => (a.name == name)));
+				_internal.remove(_internal.countUntil!(a => a.name == name));
 				_internal ~= header;
 			}
 		}

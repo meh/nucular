@@ -5,7 +5,7 @@ DC    = ENV['DC'] || 'dmd'
 FLAGS = "-version=select -w -Ivendor/pegged #{ENV['FLAGS']}"
 
 if ENV['DEBUG']
-	FLAGS << ' -debug'
+	FLAGS << ' -debug -gc -gs'
 end
 
 GRAMMARS = FileList['nucular/**/*.pegd']
