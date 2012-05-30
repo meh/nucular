@@ -79,8 +79,7 @@ class Client
 			request.send(_connection);
 		}
 
-		// FIXME: remove the useless cast when the bug is fixed
-		if (!cast (HTTPConnection) cast (Object) _connection) {
+		if (!cast (HTTPConnection) _connection) {
 			_requests.clear();
 		}
 	}

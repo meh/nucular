@@ -73,7 +73,7 @@ class Connection
 			return std.c.string.strerror(_value).to!string;
 		}
 
-		int opCast(T : int) ()
+		int to(T : int) ()
 		{
 			return _value;
 		}
@@ -232,7 +232,7 @@ class Connection
 	void shutdown ()
 	{
 		version (Posix) {
-			errnoEnforce(.shutdown(cast (int) _descriptor, 2) == 0);
+			errnoEnforce(.shutdown(_descriptor.to!int, 2) == 0);
 		}
 	}
 
@@ -362,7 +362,7 @@ class Connection
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
 
-			errnoEnforce(getsockopt(cast (int) _descriptor, SOL_SOCKET, SO_ERROR, cast (char*) &result, &resultSize) == 0);
+			errnoEnforce(getsockopt(_descriptor.to!int, SOL_SOCKET, SO_ERROR, cast (char*) &result, &resultSize) == 0);
 
 			if (result != 0) {
 				_error = new Errno(result);
@@ -405,7 +405,7 @@ class Connection
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
 
-			return !getsockopt(cast (int) _descriptor, SOL_SOCKET, SO_TYPE, cast (char*) &result, &resultSize);
+			return !getsockopt(_descriptor.to!int, SOL_SOCKET, SO_TYPE, cast (char*) &result, &resultSize);
 		}
 	}
 
@@ -440,7 +440,7 @@ class Connection
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
 
-			errnoEnforce(getsockopt(cast (int) _descriptor, SOL_SOCKET, SO_REUSEADDR, cast (char*) &result, &resultSize) == 0);
+			errnoEnforce(getsockopt(_descriptor.to!int, SOL_SOCKET, SO_REUSEADDR, cast (char*) &result, &resultSize) == 0);
 
 			return cast (bool) result;
 		}
@@ -451,7 +451,7 @@ class Connection
 		version (Posix) {
 			int value = cast (int) enable;
 
-			errnoEnforce(setsockopt(cast (int) _descriptor, SOL_SOCKET, SO_REUSEADDR, cast (char*) &value, value.sizeof) == 0);
+			errnoEnforce(setsockopt(_descriptor.to!int, SOL_SOCKET, SO_REUSEADDR, cast (char*) &value, value.sizeof) == 0);
 		}
 	}
 
@@ -461,7 +461,7 @@ class Connection
 			int       result;
 			socklen_t resultSize = cast (socklen_t) result.sizeof;
 
-			errnoEnforce(getsockopt(cast (int) _descriptor, IPPROTO_TCP, TCP_NODELAY, cast (char*) &result, &resultSize) == 0);
+			errnoEnforce(getsockopt(_descriptor.to!int, IPPROTO_TCP, TCP_NODELAY, cast (char*) &result, &resultSize) == 0);
 
 			return cast (bool) result;
 		}
@@ -472,7 +472,7 @@ class Connection
 		version (Posix) {
 			int value = cast (int) enable;
 
-			errnoEnforce(setsockopt(cast (int) _descriptor, IPPROTO_TCP, TCP_NODELAY, cast (char*) &value, value.sizeof) == 0);
+			errnoEnforce(setsockopt(_descriptor.to!int, IPPROTO_TCP, TCP_NODELAY, cast (char*) &value, value.sizeof) == 0);
 		}
 	}
 
@@ -526,15 +526,9 @@ class Connection
 		return _reactor;
 	}
 
-	Descriptor opCast(T : Descriptor) ()
+	Descriptor to(T : Descriptor) ()
 	{
 		return _descriptor;
-	}
-
-	// FIXME: remove when the bug is fixed
-	Object opCast(T : Object) ()
-	{
-		return this;
 	}
 
 	override string toString ()

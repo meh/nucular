@@ -471,16 +471,13 @@ Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address t
 	SOCKS      proxy;
 
 	if (ver == "4") {
-		// FIXME: remove the useless cast when the bug is fixed
-		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS4(through);
+		proxy = cast (SOCKS) reactor.connect!SOCKS4(through);
 	}
 	else if (ver == "4a") {
-		// FIXME: remove the useless cast when the bug is fixed
-		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS4a(through);
+		proxy = cast (SOCKS) reactor.connect!SOCKS4a(through);
 	}
 	else if (ver == "5") {
-		// FIXME: remove the useless cast when the bug is fixed
-		proxy = cast (SOCKS) cast (Object) reactor.connect!SOCKS5(through);
+		proxy = cast (SOCKS) reactor.connect!SOCKS5(through);
 	}
 	else {
 		throw new Error("version unsupported");
@@ -488,8 +485,7 @@ Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address t
 
 	proxy.initialize(target, drop_to, username, password);
 
-	// FIXME: remove the useless cast when the bug is fixed
-	callback(cast (T) cast (Object) drop_to);
+	callback(cast (T) drop_to);
 	drop_to.initialized();
 
 	return proxy.deferrable;

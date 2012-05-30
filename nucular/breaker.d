@@ -67,15 +67,9 @@ class Breaker
 		readable([_read], sleep);
 	}
 
-	Descriptor opCast(T : Descriptor) ()
+	Descriptor to(T : Descriptor) ()
 	{
 		return _read;
-	}
-
-	// FIXME: remove when the bug is fixed
-	Object opCast(T : Object) ()
-	{
-		return this;
 	}
 
 	override string toString ()

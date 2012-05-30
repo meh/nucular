@@ -143,7 +143,7 @@ class Descriptor
 		}
 
 		if (auto descriptor = cast (Descriptor) other) {
-			return _fd == cast (int) descriptor;
+			return _fd == descriptor.to!int;
 		}
 
 		return false;
@@ -156,7 +156,7 @@ class Descriptor
 		}
 
 		if (auto descriptor = cast (Descriptor) other) {
-			int fd = cast (int) descriptor;
+			int fd = descriptor.to!int;
 
 			return (_fd < fd) ? -1 : (_fd > fd) ? 1 : 0;
 		}
@@ -164,15 +164,9 @@ class Descriptor
 		return 1;
 	}
 
-	int opCast(T : int) ()
+	int to(T : int) ()
 	{
 		return _fd;
-	}
-
-	// FIXME: remove when the bug is fixed
-	Object opCast(T : Object) ()
-	{
-		return this;
 	}
 
 	override hash_t toHash ()

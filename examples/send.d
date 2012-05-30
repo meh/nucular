@@ -78,11 +78,11 @@ int main (string[] args)
 			try {
 				while (stdin.readln(data)) {
 					if (line) {
-						auto sender = cast (LineSender) cast (Object) connection;
+						auto sender = cast (LineSender) connection;
 						sender.sendLine(cast (string) data[0 .. data.length - 1]);
 					}
 					else {
-						auto sender = cast (RawSender) cast (Object) connection;
+						auto sender = cast (RawSender) connection;
 						sender.sendData(cast (ubyte[]) data[0 .. data.length - 1]);
 					}
 				}

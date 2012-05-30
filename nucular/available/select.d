@@ -32,7 +32,7 @@ import nucular.descriptor;
 Descriptor[] readable (Descriptor[] descriptors)
 {
 	fd_set set  = descriptors.toSet();
-	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	int    nfds = descriptors.map!("a.to!int").reduce!(max) + 1;
 
 	try {
 		errnoEnforce(select(nfds, &set, null, null, null) >= 0);
@@ -48,7 +48,7 @@ Descriptor[] readable (Descriptor[] descriptors)
 Descriptor[] readable (Descriptor[] descriptors, Duration sleep)
 {
 	fd_set  set  = descriptors.toSet();
-	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	int     nfds = descriptors.map!("a.to!int").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
 	try {
@@ -65,7 +65,7 @@ Descriptor[] readable (Descriptor[] descriptors, Duration sleep)
 Descriptor[] writable (Descriptor[] descriptors)
 {
 	fd_set set  = descriptors.toSet();
-	int    nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	int    nfds = descriptors.map!("a.to!int").reduce!(max) + 1;
 
 	try {
 		errnoEnforce(select(nfds, null, &set, null, null) >= 0);
@@ -81,7 +81,7 @@ Descriptor[] writable (Descriptor[] descriptors)
 Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
 {
 	fd_set  set  = descriptors.toSet();
-	int     nfds = descriptors.map!("cast (int) a").reduce!(max) + 1;
+	int     nfds = descriptors.map!("a.to!int").reduce!(max) + 1;
 	timeval tv   = { sleep.total!"seconds"().to!(time_t), sleep.fracSec.usecs.to!(suseconds_t) };
 
 	try {
@@ -102,7 +102,7 @@ private fd_set toSet (Descriptor[] descriptors)
 	FD_ZERO(&set);
 
 	foreach (descriptor; descriptors) {
-		FD_SET(cast (int) descriptor, &set);
+		FD_SET(descriptor.to!int, &set);
 	}
 
 	return set;
@@ -112,7 +112,7 @@ private Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors) {
 	Descriptor[] result;
 
 	foreach (descriptor; descriptors) {
-		if (FD_ISSET(cast (int) descriptor, &set)) {
+		if (FD_ISSET(descriptor.to!int, &set)) {
 			result ~= descriptor;
 		}
 	}
