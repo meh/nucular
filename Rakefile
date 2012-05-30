@@ -19,7 +19,7 @@ OBJECTS = SOURCES.ext('o')
 EXAMPLES = FileList['examples/*.d'].ext('')
 
 CLEAN.include(OBJECTS).include(GRAMMARS.ext('d')).include(EXAMPLES.ext('o'))
-CLOBBER.include(EXAMPLES).include('test')
+CLOBBER.include(EXAMPLES).include('vendor/pegged/peggeden')
 
 task :default => 'libnucular.a'
 
@@ -27,9 +27,17 @@ file 'libnucular.a' => GRAMMARS.ext('d') + OBJECTS do |t|
 	sh "#{DC} #{FLAGS} -lib -oflibnucular.a #{OBJECTS}"
 end
 
+task :peggeden => 'vendor/pegged/peggeden'
+
+file 'vendor/pegged/peggeden' do
+	Dir.chdir 'vendor/pegged' do
+		sh 'make'
+	end
+end
+
 GRAMMARS.ext('').each {|name|
-	file "#{name}.d" => "#{name}.pegd" do
-		sh "peggeden #{name}.pegd #{name}.d"
+	file "#{name}.d" => [:peggeden, "#{name}.pegd"] do
+		sh "vendor/pegged/peggeden #{name}.pegd #{name}.d"
 	end
 }
 
