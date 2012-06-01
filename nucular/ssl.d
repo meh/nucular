@@ -225,9 +225,40 @@ private:
 
 class Box
 {
+	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection)
+	{
+		_context = new Context(server, privkey, certchain);
+		_read    = BIO_new(BIO_s_mem());
+		_write   = BIO_new(BIO_s_mem());
+
+		_internal = SSL_new(_context.native);
+
+		SSL_set_bio(native, _read, _write);
+		SSL_set_ex_data(native, 0, cast (void*) connection);
+
+		if (verify) {
+			SSL_set_verify(native, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, _verify_callback);
+		}
+
+		if (server) {
+			SSL_connect(native);
+		}
+	}
+
+	@property connection ()
+	{
+		return cast (Connection) SSL_get_ex_data(native);
+	}
+
+	@property native ()
+	{
+		return _internal;
+	}
 
 private:
-	SSL* _ssl;
+	Context _context;
+
+	SSL* _internal;
 
 	BIO* _read;
 	BIO* _write;
@@ -285,6 +316,10 @@ private:
 		strcpy(buf, password);
 
 		return strlen(password).to!int;
+	}
+
+	extern (C) int _verify_callback (int preverify_ok, X509_STORE_CTX* ctx)
+	{
 	}
 
 	void initialize ()
