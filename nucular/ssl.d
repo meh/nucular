@@ -35,22 +35,18 @@ class Errors : Error
 	this ()
 	{
 		BIO*     bio = BIO_new(BIO_s_mem());
-		BUF_MEM* data;
+		BUF_MEM* buffer;
 		long     length;
 		char[]   message;
 
 		ERR_print_errors(bio);
 
-		length          = BIO_get_mem_data(bio, &data);
-		message[0 .. $] = (cast (char*) data)[0 .. length];
+		length          = BIO_get_mem_data(bio, &buffer);
+		message[0 .. $] = (cast (char*) buffer)[0 .. length];
+
+		BIO_free(bio);
 
 		super(cast (string) message);
-
-		scope (exit) {
-			if (bio) {
-				BIO_free(bio);
-			}
-		}
 	}
 }
 
@@ -150,6 +146,23 @@ class Certificate
 	@property native ()
 	{
 		return _internal;
+	}
+
+	override string toString ()
+	{
+		BIO*     bio = BIO_new(BIO_s_mem());
+		BUF_MEM* buffer;
+		long     length;
+		char[]   result;
+
+		PEM_write_bio_X509(bio, native);
+
+		length         = BIO_get_mem_data(bio, &buffer);
+		result[0 .. $] = (cast (char*) buffer)[0 .. length];
+
+		BIO_free(bio);
+
+		return cast (string) result;
 	}
 
 private:
@@ -489,9 +502,12 @@ private:
 
 	extern (C) int _verify_callback (int preverify_ok, X509_STORE_CTX* ctx)
 	{
-		int result;
+		int        result;
+		X509*      cert       = X509_STORE_CTX_get_current_cert(ctx);
+		SSL*       ssl        = cast (SSL*) X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+		Connection connection = cast (Connection) SSL_get_ex_data(ssl, 0);
 
-		return result;
+		return cast (int) connection.verify(new Certificate(cert));
 	}
 
 	void initialize ()

@@ -31,6 +31,7 @@ import nucular.reactor : Reactor;
 import nucular.descriptor;
 import nucular.queue;
 import nucular.server;
+import nucular.ssl;
 
 version (Posix) {
 	import core.sys.posix.sys.socket;
@@ -169,6 +170,11 @@ class Connection
 
 	void connected () {
 		// this is just a placeholder
+	}
+
+	bool verify (Certificate certificate)
+	{
+		return true;
 	}
 
 	void receiveData (ubyte[] data)
