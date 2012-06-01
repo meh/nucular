@@ -27,7 +27,11 @@ import deimos.openssl.ssl;
 import deimos.openssl.evp;
 import deimos.openssl.err;
 
-class Errors : Error {
+import nucular.connection;
+import nucular.queue;
+
+class Errors : Error
+{
 	this ()
 	{
 		BIO*     bio = BIO_new(BIO_s_mem());
@@ -225,6 +229,12 @@ private:
 
 class Box
 {
+	enum Result {
+		Fatal = -2,
+		Failed,
+		Worked
+	}
+
 	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection)
 	{
 		_context = new Context(server, privkey, certchain);
@@ -237,7 +247,7 @@ class Box
 		SSL_set_ex_data(native, 0, cast (void*) connection);
 
 		if (verify) {
-			SSL_set_verify(native, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, _verify_callback);
+			SSL_set_verify(native, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &_verify_callback);
 		}
 
 		if (server) {
@@ -245,9 +255,165 @@ class Box
 		}
 	}
 
+	~this ()
+	{
+		if (native) {
+			if (SSL_get_shutdown(native) & SSL_RECEIVED_SHUTDOWN) {
+				SSL_shutdown(native);
+			}
+			else {
+				SSL_clear(native);
+			}
+
+			SSL_free(native);
+		}
+	}
+
+	bool putCiphertext (ubyte[] data)
+	{
+		return BIO_write(_read, data.ptr, data.length.to!int) == data.length;
+	}
+
+	int getCiphertext (ref ubyte[] buffer)
+	{
+		return BIO_read(_write, buffer.ptr, buffer.length.to!int);
+	}
+
+	bool canGetCiphertext ()
+	{
+		return cast (bool) BIO_pending(_write);
+	}
+
+	int putPlaintext (ubyte[] data)
+	{
+		_outbound.pushBack(data);
+
+		if (!SSL_is_init_finished(native)) {
+			return Result.Failed;
+		}
+
+		bool fatal  = false;
+		bool worked = false;
+
+		while (!_outbound.empty) {
+			ubyte[] current = _outbound.front;
+			int     n       = SSL_write(native, cast (void*) current.ptr, current.length.to!int);
+
+			if (n > 0) {
+				worked = true;
+				_outbound.popFront();
+			}
+			else {
+				int error = SSL_get_error(native, n);
+
+				if (error != SSL_ERROR_WANT_READ && error != SSL_ERROR_WANT_WRITE) {
+					fatal = true;
+				}
+
+				break;
+			}
+		}
+
+		if (worked) {
+			return Result.Worked;
+		}
+		else if (fatal) {
+			return Result.Fatal;
+		}
+		else {
+			return Result.Failed;
+		}
+	}
+
+	int getPlaintext (ref ubyte[] data)
+	{
+		if (!SSL_is_init_finished(native)) {
+			int error = isServer ? SSL_accept(native) : SSL_connect(native);
+
+			if (error < 0) {
+				if (SSL_get_error(native, error) != SSL_ERROR_WANT_READ) {
+					
+				}
+				else {
+					return 0;
+				}
+			}
+
+			_handshake_completed = true;
+		}
+
+		if (!SSL_is_init_finished(native)) {
+			return Result.Failed;
+		}
+
+		int n = SSL_read(native, data.ptr, data.length.to!int);
+
+		if (n >= 0) {
+			return n;
+		}
+		else {
+			if (SSL_get_error(native, n) == SSL_ERROR_WANT_READ) {
+				return 0;
+			}
+			else {
+				return Result.Failed;
+			}
+		}
+	}
+
+	@property cipher ()
+	{
+		char[]      result;
+		const char* name = SSL_get_cipher(native);
+
+		result[0 .. $] = name[0 .. strlen(name)];
+
+		return cast (string) result;
+	}
+
+	@property context ()
+	{
+		return _context;
+	}
+
+	@property isServer ()
+	{
+		return context.isServer;
+	}
+
+	@property certificate ()
+	{
+		return context.certificate;
+	}
+
+	@property privateKey ()
+	{
+		return context.privateKey;
+	}
+
+	@property peerCertificate ()
+	{
+		X509* cert;
+
+		if (native) {
+			cert = SSL_get_peer_certificate(native);
+		}
+
+		if (cert) {
+			return new Certificate(cert);
+		}
+
+		return null;
+	}
+
+	@property isHandshakeCompleted ()
+	{
+		return _handshake_completed;
+	}
+
 	@property connection ()
 	{
-		return cast (Connection) SSL_get_ex_data(native);
+		return cast (Connection) SSL_get_ex_data(native, 0);
 	}
 
 	@property native ()
@@ -256,12 +422,15 @@ class Box
 	}
 
 private:
+	SSL*    _internal;
 	Context _context;
-
-	SSL* _internal;
 
 	BIO* _read;
 	BIO* _write;
+
+	bool _handshake_completed;
+
+	Queue!(ubyte[]) _outbound;
 }
 
 private:
@@ -320,6 +489,9 @@ private:
 
 	extern (C) int _verify_callback (int preverify_ok, X509_STORE_CTX* ctx)
 	{
+		int result;
+
+		return result;
 	}
 
 	void initialize ()

@@ -29,6 +29,7 @@ import core.stdc.errno;
 
 import nucular.reactor : Reactor;
 import nucular.descriptor;
+import nucular.queue;
 import nucular.server;
 
 version (Posix) {
@@ -190,7 +191,7 @@ class Connection
 		}
 		else {
 			synchronized (_mutex) {
-				_to_write ~= Data(data);
+				_to_write.pushBack(Data(data));
 			}
 		}
 
@@ -202,7 +203,7 @@ class Connection
 		enforce(!isClosing, "you cannot write data when the connection is closing");
 
 		synchronized (_mutex) {
-			_to_write ~= Data(address, data);
+			_to_write.pushBack(Data(address, data));
 		}
 
 		reactor.wakeUp();
@@ -291,7 +292,7 @@ class Connection
 				}
 
 				if (written != current.content.length) {
-					_to_write[0].content = current.content[written .. $];
+					_to_write.front.content = current.content[written .. $];
 
 					return false;
 				}
@@ -552,7 +553,8 @@ private:
 	Address    _remote_address;
 	Address    _local_address;
 
-	Data[] _to_write;
+	Queue!Data _to_write;
+
 	Errno  _error;
 	bool   _closing;
 	bool   _readable;
