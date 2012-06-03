@@ -156,7 +156,7 @@ class Reactor
 					}
 				}
 			}
-
+			
 			if (hasTimers) {
 				descriptors = readable(_descriptors, minimumSleep());
 			}

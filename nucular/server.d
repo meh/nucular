@@ -100,7 +100,7 @@ abstract class Server
 
 	override string toString ()
 	{
-		return "Server(" ~ (cast (Descriptor) _connection).toString() ~ ")";
+		return "Server(" ~ _connection.to!Descriptor.toString() ~ ")";
 	}
 
 protected:
@@ -125,7 +125,7 @@ class TCPServer : Server
 	override Descriptor start ()
 	{
 		if (_connection) {
-			return cast (Descriptor) _connection;
+			return _connection.to!Descriptor;
 		}
 
 		_socket = new TcpSocket;
@@ -140,7 +140,7 @@ class TCPServer : Server
 
 		_running = true;
 
-		return cast (Descriptor) _connection;
+		return _connection.to!Descriptor;
 	}
 
 	Connection accept ()
@@ -174,7 +174,7 @@ class UDPServer : Server
 	override Descriptor start ()
 	{
 		if (_connection) {
-			return cast (Descriptor) _connection;
+			return _connection.to!Descriptor;
 		}
 
 		_socket = new UdpSocket;
@@ -188,7 +188,7 @@ class UDPServer : Server
 
 		_running = true;
 
-		return cast (Descriptor) _connection;
+		return _connection.to!Descriptor;
 	}
 
 	override Connection connection ()
@@ -200,7 +200,7 @@ class UDPServer : Server
 		_client = cast (Connection) _handler.create();
 
 		_client.protocol = "udp";
-		_client.accepted(this, cast (Descriptor) _connection);
+		_client.accepted(this, _connection.to!Descriptor);
 		if (_block) {
 			_block(_client);
 		}
@@ -276,7 +276,7 @@ version (Posix) {
 		override Descriptor start ()
 		{
 			if (_connection) {
-				return cast (Descriptor) _connection;
+				return _connection.to!Descriptor;
 			}
 
 			_socket = new Socket(AddressFamily.UNIX, SocketType.STREAM);
@@ -290,7 +290,7 @@ version (Posix) {
 
 			_running = true;
 
-			return cast (Descriptor) _connection;
+			return _connection.to!Descriptor;
 		}
 
 		override void stop ()
@@ -387,7 +387,7 @@ version (Posix) {
 		override Descriptor start ()
 		{
 			if (_connection) {
-				return cast (Descriptor) _connection;
+				return _connection.to!Descriptor;
 			}
 
 			int  result;
@@ -403,7 +403,7 @@ version (Posix) {
 
 			_running = true;
 
-			return cast (Descriptor) _connection;
+			return _connection.to!Descriptor;
 		}
 
 		override void stop ()
@@ -432,7 +432,7 @@ version (Posix) {
 
 			_client.protocol   = "fifo";
 			_client.isWritable = false;
-			_client.accepted(this, cast (Descriptor) _connection);
+			_client.accepted(this, _connection.to!Descriptor);
 			if (_block) {
 				_block(_client);
 			}

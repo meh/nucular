@@ -48,7 +48,7 @@ int main (string[] args)
 		case "udp":
 			if (auto m = target.match(ctRegex!`^(.*?):(\d+)$`)) {
 				string host = m.captures[1];
-				ushort port = m.captures[2].to!ushort;
+				ushort port = m.captures[2].toImpl!ushort(10);
 
 				address = ipv6 ? new Internet6Address(host, port) : new InternetAddress(host, port);
 			}
