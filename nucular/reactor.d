@@ -21,7 +21,7 @@ module nucular.reactor;
 public import std.socket         : Address, InternetAddress, Internet6Address, parseAddress, getAddress;
 public import core.time          : dur, Duration;
 public import nucular.uri        : URI;
-public import nucular.connection : Connection;
+public import nucular.connection : Connection, SSL;
 public import nucular.descriptor : Descriptor;
 public import nucular.server     : Server;
 public import nucular.signal     : trap;

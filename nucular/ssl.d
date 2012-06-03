@@ -22,12 +22,13 @@ import std.exception;
 import std.file;
 import std.string;
 import std.conv;
+import std.array;
 
 import deimos.openssl.ssl;
 import deimos.openssl.evp;
 import deimos.openssl.err;
 
-import nucular.connection;
+import nucular.connection : Connection;
 import nucular.queue;
 
 class Errors : Error
@@ -208,7 +209,7 @@ class Context
 
 	@property ciphers (string value)
 	{
-		SSL_CTX_set_cipher_list(native, cast (char*) value);
+		SSL_CTX_set_cipher_list(native, value.toStringz());
 	}
 
 	@property isServer ()
@@ -243,7 +244,8 @@ private:
 class Box
 {
 	enum Result {
-		Fatal = -2,
+		Fatal = -3,
+		Interrupted,
 		Failed,
 		Worked
 	}
@@ -287,20 +289,52 @@ class Box
 		return BIO_write(_read, data.ptr, data.length.to!int) == data.length;
 	}
 
-	int getCiphertext (ref ubyte[] buffer)
+	int getPlaintext (ref ubyte[] data)
 	{
-		return BIO_read(_write, buffer.ptr, buffer.length.to!int);
+		if (!SSL_is_init_finished(native)) {
+			int error = isServer ? SSL_accept(native) : SSL_connect(native);
+
+			if (error < 0) {
+				if (SSL_get_error(native, error) != SSL_ERROR_WANT_READ) {
+					return (SSL_get_error(native, error) == SSL_ERROR_SSL) ?
+						Result.Fatal : Result.Failed;
+				}
+				else {
+					return 0;
+				}
+			}
+
+			_handshake_completed = true;
+		}
+
+		if (!SSL_is_init_finished(native)) {
+			return Result.Interrupted;
+		}
+
+		int n = SSL_read(native, data.ptr, data.length.to!int);
+
+		if (n >= 0) {
+			return n;
+		}
+		else {
+			if (SSL_get_error(native, n) == SSL_ERROR_WANT_READ) {
+				return 0;
+			}
+			else {
+				return Result.Failed;
+			}
+		}
 	}
 
-	bool canGetCiphertext ()
-	{
-		return cast (bool) BIO_pending(_write);
-	}
-
-	int putPlaintext (ubyte[] data)
+	Result putPlaintext (ubyte[] data)
 	{
 		_outbound.pushBack(data);
 
+		return putPlaintext();
+	}
+
+	Result putPlaintext ()
+	{
 		if (!SSL_is_init_finished(native)) {
 			return Result.Failed;
 		}
@@ -338,40 +372,39 @@ class Box
 		}
 	}
 
-	int getPlaintext (ref ubyte[] data)
+	int getCiphertext (ref ubyte[] buffer)
 	{
-		if (!SSL_is_init_finished(native)) {
-			int error = isServer ? SSL_accept(native) : SSL_connect(native);
+		int result = 0;
 
-			if (error < 0) {
-				if (SSL_get_error(native, error) != SSL_ERROR_WANT_READ) {
-					
-				}
-				else {
-					return 0;
-				}
-			}
+		if (!_unget.empty) {
+			if (_unget.length >= buffer.length) {
+				buffer[0 .. $] = _unget[0 .. buffer.length];
+				_unget         = _unget.length > buffer.length ? _unget[buffer.length .. $] : null;
 
-			_handshake_completed = true;
-		}
-
-		if (!SSL_is_init_finished(native)) {
-			return Result.Failed;
-		}
-
-		int n = SSL_read(native, data.ptr, data.length.to!int);
-
-		if (n >= 0) {
-			return n;
-		}
-		else {
-			if (SSL_get_error(native, n) == SSL_ERROR_WANT_READ) {
-				return 0;
+				result = buffer.length.to!int;
 			}
 			else {
-				return Result.Failed;
+				buffer[0 .. _unget.length] = _unget[];
+
+				result  = _unget.length.to!int;
+				result += BIO_read(_write, buffer.ptr + result, (buffer.length - result).to!int);
 			}
 		}
+		else {
+			result = BIO_read(_write, buffer.ptr, buffer.length.to!int);
+		}
+
+		return result;
+	}
+
+	void ungetCiphertext (ubyte[] buffer)
+	{
+		_unget ~= buffer;
+	}
+
+	@property canGetCiphertext ()
+	{
+		return cast (bool) BIO_pending(_write);
 	}
 
 	@property cipher ()
@@ -444,6 +477,7 @@ private:
 	bool _handshake_completed;
 
 	Queue!(ubyte[]) _outbound;
+	ubyte[]         _unget;
 }
 
 private:

@@ -27,11 +27,12 @@ import std.string;
 import core.sync.mutex;
 import core.stdc.errno;
 
+public import SSL = nucular.ssl;
+
 import nucular.reactor : Reactor;
 import nucular.descriptor;
 import nucular.queue;
 import nucular.server;
-import nucular.ssl;
 
 version (Posix) {
 	import core.sys.posix.sys.socket;
@@ -50,16 +51,19 @@ class Connection
 	struct Data {
 		ubyte[] content;
 		Address address;
+		bool    encrypt;
 
-		this (ubyte[] data)
+		this (ubyte[] data, bool enc = false)
 		{
 			content = data;
+			encrypt = enc;
 		}
 
-		this (Address addr, ubyte[] data)
+		this (Address addr, ubyte[] data, bool enc = false)
 		{
 			content = data;
 			address = addr;
+			encrypt = enc;
 		}
 	}
 
@@ -126,6 +130,7 @@ class Connection
 	Connection connecting (Reactor reactor, Descriptor descriptor)
 	{
 		watched(reactor, descriptor);
+		_client = true;
 
 		if (protocol == "tcp") {
 			noDelay = true;
@@ -172,9 +177,19 @@ class Connection
 		// this is just a placeholder
 	}
 
-	bool verify (Certificate certificate)
+	bool verify (SSL.Certificate certificate)
 	{
 		return true;
+	}
+
+	void handshakeCompleted ()
+	{
+		// this is just a placeholder
+	}
+
+	void handshakeInterrupted ()
+	{
+		// this is just a placeholder
 	}
 
 	void receiveData (ubyte[] data)
@@ -197,7 +212,12 @@ class Connection
 		}
 		else {
 			synchronized (_mutex) {
-				_to_write.pushBack(Data(data));
+				if (ssl) {
+					_to_write.pushBack(Data(data, true));
+				}
+				else {
+					_to_write.pushBack(Data(data));
+				}
 			}
 		}
 
@@ -213,6 +233,13 @@ class Connection
 		}
 
 		reactor.wakeUp();
+	}
+
+	void startTLS (SSL.PrivateKey key, SSL.Certificate certificate, bool verify = false)
+	{
+		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+
+		_ssl = new SSL.Box(isServer, key, certificate, verify, this);
 	}
 
 	void closeConnection (bool after_writing = false)
@@ -259,7 +286,7 @@ class Connection
 		try {
 			ubyte[] tmp;
 
-			while ((tmp = _descriptor.read(1024)) !is null) {
+			while (!(tmp = _descriptor.read(1024)).empty) {
 				result ~= tmp;
 
 				if (tmp.length != 1024) {
@@ -276,6 +303,37 @@ class Connection
 			closeConnection();
 		}
 
+		if (ssl) {
+			ubyte[] buffer = new ubyte[2048];
+			int     n;
+
+			ssl.putCiphertext(result);
+			result.clear();
+
+			while ((n = ssl.getPlaintext(buffer)) > 0) {
+				if (ssl.isHandshakeCompleted && !isHandshakeCompleted) {
+					_handshake_completed = true;
+					handshakeCompleted();
+				}
+
+				result ~= buffer;
+			}
+
+			if (n == SSL.Box.Result.Fatal) {
+				closeConnection();
+			}
+			else if (n == SSL.Box.Result.Interrupted) {
+				handshakeInterrupted();
+				_ssl = null;
+			}
+			else {
+				if (ssl.isHandshakeCompleted && !isHandshakeCompleted) {
+					_handshake_completed = true;
+					handshakeCompleted();
+				}
+			}
+		}
+
 		return result;
 	}
 
@@ -284,6 +342,8 @@ class Connection
 		if (isClosed || !isWritable) {
 			return true;
 		}
+
+		bool done = true;
 
 		synchronized (_mutex) {
 			while (!_to_write.empty) {
@@ -294,21 +354,83 @@ class Connection
 					written = sendTo(current.address, current.content);
 				}
 				else {
-					written = _descriptor.write(current.content);
+					if (current.encrypt) {
+						auto result = ssl.putPlaintext(current.content);
+
+						if (result == SSL.Box.Result.Fatal) {
+							closeConnection();
+						}
+						else if (result == SSL.Box.Result.Worked) {
+							written = current.content.length;
+						}
+						else {
+							written = 0;
+						}
+					}
+					else {
+						written = _descriptor.write(current.content);
+					}
 				}
 
 				if (written != current.content.length) {
-					_to_write.front.content = current.content[written .. $];
+					if (written > 0) {
+						_to_write.front.content = current.content[written .. $];
+					}
 
-					return false;
+					done = false;
+
+					break;
 				}
 				else {
 					_to_write.popFront();
 				}
 			}
+
+			if (ssl) {
+				auto buffer  = new ubyte[1024];
+				auto working = true;
+
+				while (working && ssl.canGetCiphertext) {
+					{
+						auto result = ssl.getCiphertext(buffer);
+
+						if (result < buffer.length) {
+							working       = false;
+							buffer.length = result;
+						}
+					}
+
+					{
+						auto result = _descriptor.write(buffer);
+
+						if (result < buffer.length) {
+							ssl.ungetCiphertext(buffer[result .. $]);
+							working = false;
+						}
+					}
+				}
+
+				if (done) {
+					done = working;
+				}
+
+				while (true) {
+					auto result = ssl.putPlaintext();
+
+					if (result == SSL.Box.Result.Fatal) {
+						closeConnection();
+					}
+					else if (result == SSL.Box.Result.Worked) {
+						continue;
+					}
+					else {
+						break;
+					}
+				}
+			}
 		}
 
-		return true;
+		return done;
 	}
 
 	Data receiveFrom (ulong length)
@@ -357,6 +479,11 @@ class Connection
 	@property localAddress ()
 	{
 		return _local_address;
+	}
+
+	@property peerCertificate ()
+	{
+		return ssl.peerCertificate;
 	}
 
 	@property error ()
@@ -495,12 +622,27 @@ class Connection
 
 	@property isWatcher ()
 	{
-		return !_server;
+		return !_server && !_client;
+	}
+
+	@property isClient ()
+	{
+		return _client;
+	}
+
+	@property isServer ()
+	{
+		return cast (bool) _server;
 	}
 
 	@property isWritePending ()
 	{
-		return !_to_write.empty;
+		return !_to_write.empty || ssl.canGetCiphertext;
+	}
+	
+	@property isHandshakeCompleted ()
+	{
+		return _handshake_completed;
 	}
 
 	@property protocol ()
@@ -521,6 +663,11 @@ class Connection
 	@property defaultTarget (Address address)
 	{
 		_default_target = address;
+	}
+
+	@property ssl ()
+	{
+		return _ssl;
 	}
 
 	@property server ()
@@ -558,11 +705,14 @@ private:
 	Address    _default_target;
 	Address    _remote_address;
 	Address    _local_address;
+	SSL.Box    _ssl;
 
 	Queue!Data _to_write;
 
-	Errno  _error;
-	bool   _closing;
-	bool   _readable;
-	bool   _writable;
+	Errno _error;
+	bool  _client;
+	bool  _closing;
+	bool  _readable;
+	bool  _writable;
+	bool  _handshake_completed;
 }
