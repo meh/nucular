@@ -27,23 +27,36 @@ struct Queue(T)
 
 	@property front ()
 	{
+		assert(_head, "Attempting to fetch front of an empty Queue of " ~ T.stringof);
+
 		return _head.data;
 	}
 
 	void pushBack (T data)
 	{
-		auto node = Node(data, null, _tail);
+		auto node = new Node(data, null, _tail);
 
-		_tail.next = &node;
-		_tail      = &node;
+		if (_head is null) {
+			_head = _tail = node;
+		}
+		else {
+			_tail.next = node;
+			_tail      = node;
+		}
 	}
 
 	void popFront ()
 	{
-		auto node = _head;
+		assert(_head, "Attempting to pop front of an empty Queue of " ~ T.stringof);
 
-		_head          = _head.next;
-		_head.previous = null;
+		_head = _head.next;
+
+		if (_head is null) {
+			_tail = null;
+		}
+		else {
+			_head.previous = null;
+		}
 	}
 
 private:

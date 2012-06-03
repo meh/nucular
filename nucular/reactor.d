@@ -33,6 +33,8 @@ version (Posix) {
 	import core.sys.posix.fcntl;
 }
 
+import std.stdio : writeln;
+
 import core.sync.mutex;
 import std.array;
 import std.algorithm;
@@ -65,7 +67,7 @@ class Reactor
 
 		_default_creation_callback = (a) { };
 
-		_descriptors ~= cast (Descriptor) _breaker;
+		_descriptors ~= _breaker.to!Descriptor;
 	}
 
 	~this ()
@@ -120,11 +122,11 @@ class Reactor
 					descriptors = writable(_connecting.keys, (0).dur!"seconds");
 				}
 				else {
-					descriptors = writable(_connecting.keys ~ cast (Descriptor) _breaker);
+					descriptors = writable(_connecting.keys ~ _breaker.to!Descriptor);
 				}
 
 				foreach (descriptor; descriptors) {
-					if (cast (Descriptor) _breaker == descriptor) {
+					if (_breaker.to!Descriptor == descriptor) {
 						_breaker.flush();
 					}
 					else {
@@ -176,7 +178,7 @@ class Reactor
 			}
 
 			foreach (descriptor; descriptors) {
-				if (cast (Descriptor) _breaker == descriptor) {
+				if (_breaker.to!Descriptor == descriptor) {
 					_breaker.flush();
 
 					continue;
@@ -186,7 +188,7 @@ class Reactor
 
 					if (auto server = cast (TCPServer) current) {
 						auto connection = server.accept();
-						     descriptor = cast (Descriptor) connection;
+						     descriptor = connection.to!Descriptor;
 
 						schedule({
 							_descriptors             ~= descriptor;
@@ -201,9 +203,9 @@ class Reactor
 						auto data       = connection.receiveFrom(512);
 						auto tmp        = connection.defaultTarget;
 
-						if (cast (Descriptor) connection !in _connections) {
+						if (connection.to!(Descriptor) !in _connections) {
 							schedule({
-								_connections[cast (Descriptor) connection] = connection;
+								_connections[connection.to!Descriptor] = connection;
 							});
 						}
 
@@ -217,7 +219,7 @@ class Reactor
 					version (Posix) {
 						if (auto server = cast (UNIXServer) current) {
 							auto connection = server.accept();
-							     descriptor = cast (Descriptor) connection;
+							     descriptor = connection.to!Descriptor;
 
 							schedule({
 								_descriptors             ~= descriptor;
@@ -231,9 +233,9 @@ class Reactor
 							auto    connection = server.connection;
 							ubyte[] data       = server.read();
 
-							if (cast (Descriptor) connection !in _connections) {
+							if (connection.to!(Descriptor) !in _connections) {
 								schedule({
-									_connections[cast (Descriptor) connection] = connection;
+									_connections[connection.to!Descriptor] = connection;
 								});
 							}
 
@@ -391,8 +393,8 @@ class Reactor
 		server.stop();
 
 		schedule({
-			_descriptors = _descriptors.filter!((a) { return a != cast (Descriptor) server; }).array;
-			_connections.remove(cast (Descriptor) server.connection);
+			_descriptors = _descriptors.filter!((a) { return a != server.to!Descriptor; }).array;
+			_connections.remove(server.connection.to!Descriptor);
 		});
 	}
 
@@ -449,8 +451,8 @@ class Reactor
 	void exchangeConnections (Connection from, Connection to)
 	{
 		schedule({
-			Descriptor fromDescriptor = cast (Descriptor) from;
-			Descriptor toDescriptor   = cast (Descriptor) to;
+			Descriptor fromDescriptor = from.to!Descriptor;
+			Descriptor toDescriptor   = to.to!Descriptor;
 
 			to.exchange(fromDescriptor);
 			from.exchange(toDescriptor);
@@ -471,14 +473,14 @@ class Reactor
 	void closeConnection (Connection connection, bool after_writing = false)
 	{
 		schedule({
-			_connections.remove(cast (Descriptor) connection);
-			_descriptors = _descriptors.filter!((a) { return a != cast (Descriptor) connection; }).array;
+			_connections.remove(connection.to!Descriptor);
+			_descriptors = _descriptors.filter!((a) { return a != connection.to!Descriptor; }).array;
 
 			if (after_writing) {
-				_closing[cast (Descriptor) connection] = connection;
+				_closing[connection.to!Descriptor] = connection;
 			}
 			else {
-				_closing.remove(cast (Descriptor) connection);
+				_closing.remove(connection.to!Descriptor);
 
 				connection.close();
 				connection.unbind();

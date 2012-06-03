@@ -93,6 +93,11 @@ abstract class Server
 		return _reactor;
 	}
 
+	Descriptor to(T : Descriptor) ()
+	{
+		return _connection.to!Descriptor;
+	}
+
 	override string toString ()
 	{
 		return "Server(" ~ (cast (Descriptor) _connection).toString() ~ ")";

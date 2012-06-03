@@ -6,7 +6,7 @@ CFLAGS  = "#{ENV['CFLAGS']} -version=select -w -Ivendor/pegged -Ivendor/openssl"
 LDFLAGS = "#{ENV['LDFLAGS']} -L-lssl -L-lcrypto"
 
 if ENV['DEBUG']
-	CFLAGS << ' -debug -gc -gs'
+	CFLAGS << ' -debug -gs -gc'
 end
 
 GRAMMARS = FileList['nucular/**/*.pegd']

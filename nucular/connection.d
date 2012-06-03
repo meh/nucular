@@ -637,7 +637,7 @@ class Connection
 
 	@property isWritePending ()
 	{
-		return !_to_write.empty || ssl.canGetCiphertext;
+		return !_to_write.empty || (ssl !is null && ssl.canGetCiphertext);
 	}
 	
 	@property isHandshakeCompleted ()
