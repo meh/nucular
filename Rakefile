@@ -1,11 +1,12 @@
 require 'rake'
 require 'rake/clean'
 
-DC    = ENV['DC'] || 'dmd'
-FLAGS = "-version=select -w -Ivendor/pegged -Ivendor/openssl #{ENV['FLAGS']}"
+DC      = ENV['DC'] || 'dmd'
+CFLAGS  = "#{ENV['CFLAGS']} -version=select -w -Ivendor/pegged -Ivendor/openssl"
+LDFLAGS = "#{ENV['LDFLAGS']} -L-lssl -L-lcrypto"
 
 if ENV['DEBUG']
-	FLAGS << ' -debug -gc -gs'
+	CFLAGS << ' -debug -gc -gs'
 end
 
 GRAMMARS = FileList['nucular/**/*.pegd']
@@ -24,7 +25,7 @@ CLOBBER.include(EXAMPLES).include('vendor/pegged/peggeden')
 task :default => 'libnucular.a'
 
 file 'libnucular.a' => GRAMMARS.ext('d') + OBJECTS do |t|
-	sh "#{DC} #{FLAGS} -lib -oflibnucular.a #{OBJECTS}"
+	sh "#{DC} #{CFLAGS} -lib -oflibnucular.a #{OBJECTS}"
 end
 
 task :peggeden => 'vendor/pegged/peggeden'
@@ -42,26 +43,13 @@ GRAMMARS.ext('').each {|name|
 }
 
 rule '.o' => '.d' do |t|
-  sh "#{DC} #{FLAGS} -of#{t.name} -c #{t.source}"
+  sh "#{DC} #{CFLAGS} -of#{t.name} -c #{t.source}"
 end
 
 EXAMPLES.each {|name|
 	file name => ['libnucular.a', "#{name}.o"] do
-		sh "#{DC} #{FLAGS} #{name}.o libnucular.a -of#{name}"
+		sh "#{DC} #{CFLAGS} #{LDFLAGS} #{name}.o libnucular.a -of#{name}"
 	end
 }
 
 task :examples => EXAMPLES
-
-task :test do
-	FLAGS << ' -unittest' and Rake::Task[:default].invoke
-
-	begin
-		File.open('test.d', 'w') { |f| f.write('void main () { }') }
-
-		sh "#{DC} #{FLAGS} -unittest -oftest test.d libnucular.a"
-		sh './test'
-	ensure
-		sh 'rm -f test test.o test.d'
-	end
-end
