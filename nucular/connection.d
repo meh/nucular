@@ -323,7 +323,14 @@ class Connection
 					handshakeCompleted();
 				}
 
-				result ~= buffer;
+				if (n != buffer.length) {
+					result ~= buffer[0 .. n];
+
+					break;
+				}
+				else {
+					result ~= buffer;
+				}
 			}
 
 			if (n == SSL.Box.Result.Fatal) {

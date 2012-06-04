@@ -201,17 +201,17 @@ class Certificate
 	{
 		BIO*     bio = BIO_new(BIO_s_mem());
 		BUF_MEM* buffer;
-		long     length;
-		char[]   result;
 
 		PEM_write_bio_X509(bio, native);
+		BIO_write(bio,"\0".ptr, 1);
 
-		length         = BIO_get_mem_data(bio, &buffer);
-		result[0 .. $] = (cast (char*) buffer)[0 .. length];
+		BIO_get_mem_ptr(bio, &buffer);
 
-		BIO_free(bio);
+		scope (exit) {
+			BIO_free(bio);
+		}
 
-		return cast (string) result;
+		return buffer.data.to!string;
 	}
 
 private:
@@ -316,7 +316,7 @@ class Box
 			SSL_set_verify(native, SSL_VERIFY_PEER | SSL_VERIFY_CLIENT_ONCE, &_verify_callback);
 		}
 
-		if (server) {
+		if (!isServer) {
 			SSL_connect(native);
 		}
 	}
