@@ -10,18 +10,58 @@ import line = nucular.protocols.line;
 
 class RawSender : Connection
 {
+	override void connected ()
+	{
+		if (useSSL) {
+			startTLS();
+		}
+	}
+
 	override void receiveData (ubyte[] data)
 	{
 		writeln(data);
 	}
+
+	@property useSSL (bool value)
+	{
+		_use_ssl = value;
+	}
+
+	@property useSSL ()
+	{
+		return _use_ssl;
+	}
+
+private:
+	bool _use_ssl;
 }
 
 class LineSender : line.Protocol
 {
+	override void connected ()
+	{
+		if (useSSL) {
+			startTLS();
+		}
+	}
+
 	override void receiveLine (string line)
 	{
 		writeln(line);
 	}
+
+	@property useSSL (bool value)
+	{
+		_use_ssl = value;
+	}
+
+	@property useSSL ()
+	{
+		return _use_ssl;
+	}
+
+private:
+	bool _use_ssl;
 }
 
 int main (string[] args)
@@ -31,12 +71,14 @@ int main (string[] args)
 	string  target   = "localhost:10000";
 	bool    ipv4     = true;
 	bool    ipv6     = false;
+	bool    ssl      = false;
 	bool    line     = false;
 
 	getopt(args, config.noPassThrough,
 		"protocol|p", &protocol,
 		"4",          &ipv4,
 		"6",          &ipv6,
+		"ssl|s",      &ssl,
 		"line|l",     &line);
 
 	if (args.length >= 2) {
@@ -70,7 +112,14 @@ int main (string[] args)
 	}
 
 	nucular.reactor.run({
-		Connection connection = line ? address.connect!LineSender(protocol) : address.connect!RawSender(protocol);
+		Connection connection;
+		
+		if (line) {
+			connection = address.connect!LineSender(protocol, (LineSender c) { c.useSSL = ssl; });
+		}
+		else {
+			connection = address.connect!RawSender(protocol, (RawSender c) { c.useSSL = ssl; });
+		}
 
 		(new Thread({
 			char[] data;

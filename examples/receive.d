@@ -12,6 +12,10 @@ class RawEcho : Connection
 	override void initialized ()
 	{
 		writeln(remoteAddress, " connected");
+
+		if (useSSL) {
+			startTLS();
+		}
 	}
 
 	override void receiveData (ubyte[] data)
@@ -30,6 +34,19 @@ class RawEcho : Connection
 			writeln(remoteAddress, " disconnected");
 		}
 	}
+
+	@property useSSL (bool value)
+	{
+		_use_ssl = value;
+	}
+
+	@property useSSL ()
+	{
+		return _use_ssl;
+	}
+
+private:
+	bool _use_ssl;
 }
 
 class LineEcho : line.Protocol
@@ -37,6 +54,10 @@ class LineEcho : line.Protocol
 	override void initialized ()
 	{
 		writeln(remoteAddress, " connected");
+
+		if (useSSL) {
+			startTLS();
+		}
 	}
 
 	override void receiveLine (string line)
@@ -55,6 +76,19 @@ class LineEcho : line.Protocol
 			writeln(remoteAddress, " disconnected");
 		}
 	}
+
+	@property useSSL (bool value)
+	{
+		_use_ssl = value;
+	}
+
+	@property useSSL ()
+	{
+		return _use_ssl;
+	}
+
+private:
+	bool _use_ssl;
 }
 
 int main (string[] args)
@@ -64,12 +98,14 @@ int main (string[] args)
 	string  listen   = "localhost:10000";
 	bool    ipv4     = true;
 	bool    ipv6     = false;
+	bool    ssl      = false;
 	bool    line     = false;
 
 	getopt(args, config.noPassThrough,
 		"protocol|p", &protocol,
 		"4",          &ipv4,
 		"6",          &ipv6,
+		"ssl|s",      &ssl,
 		"line|l",     &line);
 
 	if (args.length >= 2) {
@@ -108,7 +144,14 @@ int main (string[] args)
 	}
 
 	nucular.reactor.run({
-		Server server = line ? address.startServer!LineEcho(protocol) : address.startServer!RawEcho(protocol);
+		Server server;
+		
+		if (line) {
+			server = address.startServer!LineEcho(protocol, (LineEcho c) { c.useSSL = ssl; });
+		}
+		else {
+			server = address.startServer!RawEcho(protocol, (RawEcho c) { c.useSSL = ssl; });
+		}
 
 		nucular.reactor.stopOn("INT", "TERM");
 	});
