@@ -105,9 +105,11 @@ class Errors : Error
 
 class PrivateKey
 {
-	this (EVP_PKEY* key)
+	this (EVP_PKEY* value)
 	{
-		_internal = key;
+		assert(value);
+
+		_internal = value;
 	}
 
 	this (string source, string password = null)
@@ -154,6 +156,8 @@ class Certificate
 {
 	this (X509* value)
 	{
+		assert(value);
+
 		_internal = value;
 	}
 
