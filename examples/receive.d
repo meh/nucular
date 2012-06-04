@@ -81,7 +81,7 @@ int main (string[] args)
 		case "udp":
 			if (auto m = listen.match(r"^(.*?):(\d+)$")) {
 				string host = m.captures[1];
-				ushort port = m.captures[2].toImpl!ushort(10);
+				ushort port = m.captures[2].to!ushort(10);
 
 				address = ipv6 ? new Internet6Address(host, port) : new InternetAddress(host, port);
 			}
@@ -95,7 +95,7 @@ int main (string[] args)
 			case "fifo":
 				if (auto m = listen.match(r"^(.+?)(?::(\d+))?$")) {
 					string path       = m.captures[1];
-					int    permission = m.captures[2].empty ? octal!666 : m.captures[2].toImpl!int(8);
+					int    permission = m.captures[2].empty ? octal!666 : m.captures[2].to!int(8);
 
 					address = new NamedPipeAddress(path, permission);
 				}
