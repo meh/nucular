@@ -103,6 +103,14 @@ class Errors : Error
 	}
 }
 
+enum Version
+{
+	All,
+	SSLv2,
+	SSLv3,
+	TLSv1,
+}
+
 class PrivateKey
 {
 	this (EVP_PKEY* value)
@@ -220,19 +228,24 @@ private:
 
 class Context
 {
-	this (bool server)
+	this (bool server, Version ver = Version.All)
 	{
-		this(server, DefaultPrivateKey, DefaultCertificate);
+		this(server, DefaultPrivateKey, DefaultCertificate, ver);
 	}
 
-	this (bool server, PrivateKey privkey, Certificate certchain)
+	this (bool server, PrivateKey privkey, Certificate certchain, Version ver = Version.All)
 	{
 		_server      = server;
 		_private_key = privkey;
 		_certificate = certchain;
 
-		_internal = SSL_CTX_new(server ? SSLv23_server_method() : SSLv23_client_method());
-		
+		final switch (ver) {
+			case Version.All:   _internal = SSL_CTX_new(isServer ? SSLv23_server_method() : SSLv23_client_method()); break;
+			case Version.SSLv2: _internal = SSL_CTX_new(isServer ? SSLv2_server_method()  : SSLv2_client_method()); break;
+			case Version.SSLv3: _internal = SSL_CTX_new(isServer ? SSLv3_server_method()  : SSLv3_client_method()); break;
+			case Version.TLSv1: _internal = SSL_CTX_new(isServer ? TLSv1_server_method()  : TLSv1_client_method()); break;
+		}
+
 		enforce(_internal, "no SSL context");
 
 		SSL_CTX_set_options(native, SSL_OP_ALL);
@@ -251,6 +264,11 @@ class Context
 		}
 		
 		ciphers = "ALL:!ADH:!LOW:!EXP:!DES-CBC3-SHA:@STRENGTH";
+	}
+
+	~this ()
+	{
+		SSL_CTX_free(native);
 	}
 
 	@property ciphers (string value)
@@ -296,16 +314,17 @@ class Box
 		Worked
 	}
 
-	this (bool server, bool verify, Connection connection)
+	this (bool server, bool verify, Connection connection, Version ver = Version.All)
 	{
-		this(server, DefaultPrivateKey, DefaultCertificate, verify, connection);
+		this(server, DefaultPrivateKey, DefaultCertificate, verify, connection, ver);
 	}
 
-	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection)
+	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection, Version ver = Version.All)
 	{
-		_context = new Context(server, privkey, certchain);
-		_read    = BIO_new(BIO_s_mem());
-		_write   = BIO_new(BIO_s_mem());
+		_context = new Context(server, privkey, certchain, ver);
+
+		_read  = BIO_new(BIO_s_mem());
+		_write = BIO_new(BIO_s_mem());
 
 		_internal = SSL_new(_context.native);
 

@@ -242,11 +242,25 @@ class Connection
 		_ssl = new SSL.Box(isServer, verify, this);
 	}
 
+	void startTLS (SSL.Version ver, bool verify = false)
+	{
+		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+
+		_ssl = new SSL.Box(isServer, verify, this, ver);
+	}
+
 	void startTLS (SSL.PrivateKey key, SSL.Certificate certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
 
 		_ssl = new SSL.Box(isServer, key, certificate, verify, this);
+	}
+
+	void startTLS (SSL.Version ver, SSL.PrivateKey key, SSL.Certificate certificate, bool verify = false)
+	{
+		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+
+		_ssl = new SSL.Box(isServer, key, certificate, verify, this, ver);
 	}
 
 	void closeConnection (bool after_writing = false)
