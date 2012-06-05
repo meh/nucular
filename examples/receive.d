@@ -14,7 +14,7 @@ class RawEcho : Connection
 		writeln(remoteAddress, " connected");
 
 		if (useSSL) {
-			startTLS();
+			secure();
 		}
 	}
 
@@ -56,7 +56,7 @@ class LineEcho : line.Protocol
 		writeln(remoteAddress, " connected");
 
 		if (useSSL) {
-			startTLS();
+			secure();
 		}
 	}
 

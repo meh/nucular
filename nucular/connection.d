@@ -27,7 +27,7 @@ import std.string;
 import core.sync.mutex;
 import core.stdc.errno;
 
-public import SSL = nucular.ssl;
+public import Security = nucular.security;
 
 import nucular.reactor : Reactor;
 import nucular.descriptor;
@@ -177,7 +177,7 @@ class Connection
 		// this is just a placeholder
 	}
 
-	bool verify (SSL.Certificate certificate)
+	bool verify (Security.Certificate certificate)
 	{
 		return true;
 	}
@@ -212,7 +212,7 @@ class Connection
 		}
 		else {
 			synchronized (_mutex) {
-				if (ssl) {
+				if (security) {
 					_to_write.pushBack(Data(data, true));
 				}
 				else {
@@ -235,32 +235,32 @@ class Connection
 		reactor.wakeUp();
 	}
 
-	void startTLS (bool verify = false)
+	void secure (bool verify = false)
 	{
 		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
 
-		_ssl = new SSL.Box(isServer, verify, this);
+		_security = new Security.Box(isServer, verify, this);
 	}
 
-	void startTLS (SSL.Version ver, bool verify = false)
+	void secure (Security.Type type, bool verify = false)
 	{
 		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
 
-		_ssl = new SSL.Box(isServer, verify, this, ver);
+		_security = new Security.Box(isServer, verify, this, type);
 	}
 
-	void startTLS (SSL.PrivateKey key, SSL.Certificate certificate, bool verify = false)
+	void secure (Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
 
-		_ssl = new SSL.Box(isServer, key, certificate, verify, this);
+		_security = new Security.Box(isServer, key, certificate, verify, this);
 	}
 
-	void startTLS (SSL.Version ver, SSL.PrivateKey key, SSL.Certificate certificate, bool verify = false)
+	void secure (Security.Type type, Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
 
-		_ssl = new SSL.Box(isServer, key, certificate, verify, this, ver);
+		_security = new Security.Box(isServer, key, certificate, verify, this, type);
 	}
 
 	void closeConnection (bool after_writing = false)
@@ -324,15 +324,15 @@ class Connection
 			closeConnection();
 		}
 
-		if (ssl) {
+		if (security) {
 			ubyte[] buffer = new ubyte[2048];
 			int     n;
 
-			ssl.putCiphertext(result);
+			security.putCiphertext(result);
 			result.clear();
 
-			while ((n = ssl.getPlaintext(buffer)) > 0) {
-				if (ssl.isHandshakeCompleted && !isHandshakeCompleted) {
+			while ((n = security.getPlaintext(buffer)) > 0) {
+				if (security.isHandshakeCompleted && !isHandshakeCompleted) {
 					_handshake_completed = true;
 					handshakeCompleted();
 				}
@@ -347,15 +347,15 @@ class Connection
 				}
 			}
 
-			if (n == SSL.Box.Result.Fatal) {
+			if (n == Security.Box.Result.Fatal) {
 				closeConnection();
 			}
-			else if (n == SSL.Box.Result.Interrupted) {
+			else if (n == Security.Box.Result.Interrupted) {
 				handshakeInterrupted();
-				_ssl = null;
+				_security = null;
 			}
 			else {
-				if (ssl.isHandshakeCompleted && !isHandshakeCompleted) {
+				if (security.isHandshakeCompleted && !isHandshakeCompleted) {
 					_handshake_completed = true;
 					handshakeCompleted();
 				}
@@ -383,12 +383,12 @@ class Connection
 				}
 				else {
 					if (current.encrypt) {
-						auto result = ssl.putPlaintext(current.content);
+						auto result = security.putPlaintext(current.content);
 
-						if (result == SSL.Box.Result.Fatal) {
+						if (result == Security.Box.Result.Fatal) {
 							closeConnection();
 						}
-						else if (result == SSL.Box.Result.Worked) {
+						else if (result == Security.Box.Result.Worked) {
 							written = current.content.length;
 						}
 						else {
@@ -414,13 +414,13 @@ class Connection
 				}
 			}
 
-			if (ssl) {
+			if (security) {
 				auto buffer  = new ubyte[1024];
 				auto working = true;
 
-				while (working && ssl.canGetCiphertext) {
+				while (working && security.canGetCiphertext) {
 					{
-						auto result = ssl.getCiphertext(buffer);
+						auto result = security.getCiphertext(buffer);
 
 						if (result < buffer.length) {
 							working       = false;
@@ -432,7 +432,7 @@ class Connection
 						auto result = _descriptor.write(buffer);
 
 						if (result < buffer.length) {
-							ssl.ungetCiphertext(buffer[result .. $]);
+							security.ungetCiphertext(buffer[result .. $]);
 							working = false;
 						}
 					}
@@ -443,12 +443,12 @@ class Connection
 				}
 
 				while (true) {
-					auto result = ssl.putPlaintext();
+					auto result = security.putPlaintext();
 
-					if (result == SSL.Box.Result.Fatal) {
+					if (result == Security.Box.Result.Fatal) {
 						closeConnection();
 					}
-					else if (result == SSL.Box.Result.Worked) {
+					else if (result == Security.Box.Result.Worked) {
 						continue;
 					}
 					else {
@@ -511,7 +511,7 @@ class Connection
 
 	@property peerCertificate ()
 	{
-		return ssl.peerCertificate;
+		return security.peerCertificate;
 	}
 
 	@property error ()
@@ -665,7 +665,7 @@ class Connection
 
 	@property isWritePending ()
 	{
-		return !_to_write.empty || (ssl !is null && ssl.canGetCiphertext);
+		return !_to_write.empty || (security !is null && security.canGetCiphertext);
 	}
 	
 	@property isHandshakeCompleted ()
@@ -693,9 +693,9 @@ class Connection
 		_default_target = address;
 	}
 
-	@property ssl ()
+	@property security ()
 	{
-		return _ssl;
+		return _security;
 	}
 
 	@property server ()
@@ -728,12 +728,12 @@ private:
 	Reactor _reactor;
 	Mutex   _mutex;
 
-	Descriptor _descriptor;
-	string     _protocol;
-	Address    _default_target;
-	Address    _remote_address;
-	Address    _local_address;
-	SSL.Box    _ssl;
+	Descriptor   _descriptor;
+	string       _protocol;
+	Address      _default_target;
+	Address      _remote_address;
+	Address      _local_address;
+	Security.Box _security;
 
 	Queue!Data _to_write;
 

@@ -21,7 +21,7 @@ module nucular.reactor;
 public import std.socket         : Address, InternetAddress, Internet6Address, parseAddress, getAddress;
 public import core.time          : dur, Duration;
 public import nucular.uri        : URI;
-public import nucular.connection : Connection, SSL;
+public import nucular.connection : Connection, Security;
 public import nucular.descriptor : Descriptor;
 public import nucular.server     : Server;
 public import nucular.signal     : trap;
@@ -32,8 +32,6 @@ version (Posix) {
 	import core.sys.posix.unistd;
 	import core.sys.posix.fcntl;
 }
-
-import std.stdio : writeln;
 
 import core.sync.mutex;
 import std.array;

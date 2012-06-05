@@ -13,7 +13,7 @@ class RawSender : Connection
 	override void connected ()
 	{
 		if (useSSL) {
-			startTLS();
+			secure();
 		}
 	}
 
@@ -41,7 +41,7 @@ class LineSender : line.Protocol
 	override void connected ()
 	{
 		if (useSSL) {
-			startTLS();
+			secure();
 		}
 	}
 

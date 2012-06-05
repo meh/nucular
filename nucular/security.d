@@ -16,7 +16,7 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular.ssl;
+module nucular.security;
 
 import std.exception;
 import std.file;
@@ -45,7 +45,7 @@ string DefaultMaterials = `
 	SlJlAkEAu//7PkAXpTawBBYuEGfOimO5JvuvyjA8DwDfGqDXA88MQM3/7J7v1dDS
 	Gdb6bY1mYzu3WNGsi0Z3RBaen4H0GwJBALwDqOAFp2+bcFSQCGXzEf77pQTrTc3W
 	o8M9g+sl3Srz/ff2bSsc/wHrjBwGxl1oJOyAPV90Ex46X7EQEd3vKg0CQQCNthd7
-	6l7vyDagi3xqpuPpWssMUjPjlh0ePAll41fKGzXkwgAdprdSCAcEuw/a8hVorf/I
+	6l7vyDagi3xqpuPpWssMUjPjlh0ePAny41fKGzXkwgAdprdSCAcEuw/a8hVorf/I
 	uWhi/Rf5RUVFKfW5
 	-----END PRIVATE KEY-----
 
@@ -103,9 +103,9 @@ class Errors : Error
 	}
 }
 
-enum Version
+enum Type
 {
-	All,
+	Any,
 	SSLv2,
 	SSLv3,
 	TLSv1,
@@ -228,22 +228,22 @@ private:
 
 class Context
 {
-	this (bool server, Version ver = Version.All)
+	this (bool server, Type type = Type.Any)
 	{
-		this(server, DefaultPrivateKey, DefaultCertificate, ver);
+		this(server, DefaultPrivateKey, DefaultCertificate, type);
 	}
 
-	this (bool server, PrivateKey privkey, Certificate certchain, Version ver = Version.All)
+	this (bool server, PrivateKey privkey, Certificate certchain, Type type = Type.Any)
 	{
 		_server      = server;
 		_private_key = privkey;
 		_certificate = certchain;
 
-		final switch (ver) {
-			case Version.All:   _internal = SSL_CTX_new(isServer ? SSLv23_server_method() : SSLv23_client_method()); break;
-			case Version.SSLv2: _internal = SSL_CTX_new(isServer ? SSLv2_server_method()  : SSLv2_client_method()); break;
-			case Version.SSLv3: _internal = SSL_CTX_new(isServer ? SSLv3_server_method()  : SSLv3_client_method()); break;
-			case Version.TLSv1: _internal = SSL_CTX_new(isServer ? TLSv1_server_method()  : TLSv1_client_method()); break;
+		final switch (type) {
+			case Type.Any:   _internal = SSL_CTX_new(isServer ? SSLv23_server_method() : SSLv23_client_method()); break;
+			case Type.SSLv2: _internal = SSL_CTX_new(isServer ? SSLv2_server_method()  : SSLv2_client_method()); break;
+			case Type.SSLv3: _internal = SSL_CTX_new(isServer ? SSLv3_server_method()  : SSLv3_client_method()); break;
+			case Type.TLSv1: _internal = SSL_CTX_new(isServer ? TLSv1_server_method()  : TLSv1_client_method()); break;
 		}
 
 		enforce(_internal, "no SSL context");
@@ -314,14 +314,14 @@ class Box
 		Worked
 	}
 
-	this (bool server, bool verify, Connection connection, Version ver = Version.All)
+	this (bool server, bool verify, Connection connection, Type type = Type.Any)
 	{
-		this(server, DefaultPrivateKey, DefaultCertificate, verify, connection, ver);
+		this(server, DefaultPrivateKey, DefaultCertificate, verify, connection, type);
 	}
 
-	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection, Version ver = Version.All)
+	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection, Type type = Type.Any)
 	{
-		_context = new Context(server, privkey, certchain, ver);
+		_context = new Context(server, privkey, certchain, type);
 
 		_read  = BIO_new(BIO_s_mem());
 		_write = BIO_new(BIO_s_mem());
