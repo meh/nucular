@@ -33,21 +33,33 @@ else version (select) {
 }
 else {
 	version (Windows) {
+		version = iocompletion;
+
 		public import nucular.available.iocompletion;
 	}
 	else version (FreeBSD) {
+		version = kqeue;
+
 		public import nucular.available.kqueue;
 	}
 	else version (OpenBSD) {
+		version = kqueue;
+
 		public import nucular.available.kqueue;
 	}
 	else version (linux) {
+		version = epoll;
+
 		public import nucular.available.epoll;
 	}
 	else version (Posix) {
-		public import nucular.available.select;
+		version = poll;
+
+		public import nucular.available.poll;
 	}
 	else {
-		static assert (0);
+		version = select;
+
+		public import nucular.available.select;
 	}
 }

@@ -18,10 +18,15 @@
 
 module nucular.available.select;
 
+version (select):
+
 import core.time;
-import core.sys.posix.sys.select;
-import core.sys.posix.sys.time;
 import core.stdc.errno;
+
+version (Posix) {
+	import core.sys.posix.sys.select;
+	import core.sys.posix.sys.time;
+}
 
 import std.algorithm;
 import std.conv;
