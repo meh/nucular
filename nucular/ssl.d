@@ -81,7 +81,7 @@ static this ()
 	SSL_load_error_strings();
 	ERR_load_crypto_strings();
 
-	DefaultPrivateKey = new PrivateKey(DefaultMaterials);
+	DefaultPrivateKey  = new PrivateKey(DefaultMaterials);
 	DefaultCertificate = new Certificate(DefaultMaterials);
 }
 
