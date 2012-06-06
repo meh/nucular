@@ -2,7 +2,8 @@ require 'rake'
 require 'rake/clean'
 
 DC      = ENV['DC'] || 'dmd'
-CFLAGS  = "#{ENV['CFLAGS']} -version=select -w -Ivendor/pegged -Ivendor/openssl"
+DRIVER  = ENV['DRIVER'] || 'select'
+CFLAGS  = "#{ENV['CFLAGS']} -version=#{DRIVER} -w -Ivendor/pegged -Ivendor/openssl"
 LDFLAGS = "#{ENV['LDFLAGS']} -L-lssl -L-lcrypto"
 
 if ENV['DEBUG']
