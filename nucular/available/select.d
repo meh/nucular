@@ -41,7 +41,8 @@ Descriptor[] readable (Descriptor[] descriptors)
 
 	try {
 		errnoEnforce(select(nfds, &set, null, null, null) >= 0);
-	} catch (ErrnoException e) {
+	}
+	catch (ErrnoException e) {
 		if (e.errno != EINTR) {
 			throw e;
 		}
@@ -58,7 +59,8 @@ Descriptor[] readable (Descriptor[] descriptors, Duration sleep)
 
 	try {
 		errnoEnforce(select(nfds, &set, null, null, &tv) >= 0);
-	} catch (ErrnoException e) {
+	}
+	catch (ErrnoException e) {
 		if (e.errno != EINTR) {
 			throw e;
 		}
@@ -74,7 +76,8 @@ Descriptor[] writable (Descriptor[] descriptors)
 
 	try {
 		errnoEnforce(select(nfds, null, &set, null, null) >= 0);
-	} catch (ErrnoException e) {
+	}
+	catch (ErrnoException e) {
 		if (e.errno != EINTR) {
 			throw e;
 		}
@@ -91,7 +94,8 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
 
 	try {
 		errnoEnforce(select(nfds, null, &set, null, &tv) >= 0);
-	} catch (ErrnoException e) {
+	}
+	catch (ErrnoException e) {
 		if (e.errno != EINTR) {
 			throw e;
 		}
@@ -101,7 +105,7 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
 }
 
 private:
-	fd_set toSet (Descriptor[] descriptors) pure
+	fd_set toSet (Descriptor[] descriptors)
 	{
 		fd_set set;
 
@@ -114,7 +118,7 @@ private:
 		return set;
 	}
 
-	Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors) pure
+	Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors)
 	{
 		Descriptor[] result;
 

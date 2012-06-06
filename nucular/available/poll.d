@@ -96,7 +96,7 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
 }
 
 private:
-	pollfd[] toSet(string mode) (Descriptor[] descriptors) pure
+	pollfd[] toSet(string mode) (Descriptor[] descriptors)
 		if (mode == "read" || mode == "write")
 	{
 		pollfd[] set = new pollfd[descriptors.length];
@@ -115,7 +115,7 @@ private:
 		return set;
 	}
 
-	Descriptor[] toDescriptors(string mode) (pollfd[] set, Descriptor[] descriptors) pure
+	Descriptor[] toDescriptors(string mode) (pollfd[] set, Descriptor[] descriptors)
 		if (mode == "read" || mode == "write")
 	{
 		Descriptor[] result;
