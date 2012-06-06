@@ -33,16 +33,105 @@ import nucular.descriptor;
 
 Descriptor[] readable (Descriptor[] descriptors)
 {
+	pollfd[] fds = descriptors.toSet!"read";
+
+	try {
+		errnoEnforce(poll(fds.ptr, fds.length, -1) > 0);
+	}
+	catch (ErrnoException e) {
+		if (e.errno != EINTR && e.errno != EAGAIN) {
+			throw e;
+		}
+	}
+
+	return fds.toDescriptors!"read"(descriptors);
 }
 
 Descriptor[] readable (Descriptor[] descriptors, Duration sleep)
 {
+	pollfd[] fds = descriptors.toSet!"read";
+
+	try {
+		errnoEnforce(poll(fds.ptr, fds.length, sleep.total!"msecs".to!int) > 0);
+	}
+	catch (ErrnoException e) {
+		if (e.errno != EINTR && e.errno != EAGAIN) {
+			throw e;
+		}
+	}
+
+	return fds.toDescriptors!"read"(descriptors);
 }
 
 Descriptor[] writable (Descriptor[] descriptors)
 {
+	pollfd[] fds = descriptors.toSet!"write";
+
+	try {
+		errnoEnforce(poll(fds.ptr, fds.length, -1) > 0);
+	}
+	catch (ErrnoException e) {
+		if (e.errno != EINTR && e.errno != EAGAIN) {
+			throw e;
+		}
+	}
+
+	return fds.toDescriptors!"write"(descriptors);
 }
 
 Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
 {
+	pollfd[] fds = descriptors.toSet!"write";
+
+	try {
+		errnoEnforce(poll(fds.ptr, fds.length, sleep.total!"msecs".to!int) > 0);
+	}
+	catch (ErrnoException e) {
+		if (e.errno != EINTR && e.errno != EAGAIN) {
+			throw e;
+		}
+	}
+
+	return fds.toDescriptors!"write"(descriptors);
 }
+
+private:
+	pollfd[] toSet(string mode) (Descriptor[] descriptors) pure
+		if (mode == "read" || mode == "write")
+	{
+		pollfd[] set = new pollfd[descriptors.length];
+
+		foreach (index, descriptor; descriptors) {
+			set[index].fd = descriptor.to!int;
+
+			static if (mode == "read") {
+				set[index].events = POLLIN;
+			}
+			else static if (mode == "write") {
+				set[index].events = POLLOUT;
+			}
+		}
+
+		return set;
+	}
+
+	Descriptor[] toDescriptors(string mode) (pollfd[] set, Descriptor[] descriptors) pure
+		if (mode == "read" || mode == "write")
+	{
+		Descriptor[] result;
+
+		foreach (index, pfd; set) {
+			static if (mode == "read") {
+				if (pfd.revents & POLLIN) {
+					result ~= descriptors[index];
+				}
+			}
+			else static if (mode == "write") {
+				if (pfd.revents & POLLOUT) {
+					result ~= descriptors[index];
+				}
+			}
+		}
+
+		return result;
+	}

@@ -100,27 +100,29 @@ Descriptor[] writable (Descriptor[] descriptors, Duration sleep)
 	return set.toDescriptors(descriptors);
 }
 
-private fd_set toSet (Descriptor[] descriptors)
-{
-	fd_set set;
+private:
+	fd_set toSet (Descriptor[] descriptors) pure
+	{
+		fd_set set;
 
-	FD_ZERO(&set);
+		FD_ZERO(&set);
 
-	foreach (descriptor; descriptors) {
-		FD_SET(descriptor.to!int, &set);
-	}
-
-	return set;
-}
-
-private Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors) {
-	Descriptor[] result;
-
-	foreach (descriptor; descriptors) {
-		if (FD_ISSET(descriptor.to!int, &set)) {
-			result ~= descriptor;
+		foreach (descriptor; descriptors) {
+			FD_SET(descriptor.to!int, &set);
 		}
+
+		return set;
 	}
 
-	return result;
-}
+	Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors) pure
+	{
+		Descriptor[] result;
+
+		foreach (descriptor; descriptors) {
+			if (FD_ISSET(descriptor.to!int, &set)) {
+				result ~= descriptor;
+			}
+		}
+
+		return result;
+	}

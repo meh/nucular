@@ -19,7 +19,7 @@
 version (poll) {
 	public import nucular.available.poll;
 }
-version (epoll) {
+else version (epoll) {
 	public import nucular.available.epoll;
 }
 else version (kqueue) {
