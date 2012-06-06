@@ -321,7 +321,12 @@ class Box
 
 	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection, Type type = Type.Any)
 	{
-		_context = new Context(server, privkey, certchain, type);
+		this(server, new Context(server, privkey, certchain, type), verify, connection);
+	}
+
+	this (bool server, Context context, bool verify, Connection connection)
+	{
+		_context = context;
 
 		_read  = BIO_new(BIO_s_mem());
 		_write = BIO_new(BIO_s_mem());
@@ -336,7 +341,7 @@ class Box
 		}
 
 		if (!isServer) {
-			SSL_connect(native);
+			connect();
 		}
 	}
 
@@ -354,6 +359,16 @@ class Box
 		}
 	}
 
+	int connect ()
+	{
+		return SSL_connect(native);
+	}
+
+	int accept ()
+	{
+		return SSL_accept(native);
+	}
+
 	bool putCiphertext (ubyte[] data)
 	{
 		return BIO_write(_read, data.ptr, data.length.to!int) == data.length;
@@ -362,7 +377,7 @@ class Box
 	int getPlaintext (ref ubyte[] data)
 	{
 		if (!SSL_is_init_finished(native)) {
-			int error = isServer ? SSL_accept(native) : SSL_connect(native);
+			int error = isServer ? accept() : connect();
 
 			if (error < 0) {
 				if (SSL_get_error(native, error) != SSL_ERROR_WANT_READ) {
