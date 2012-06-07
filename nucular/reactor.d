@@ -490,7 +490,7 @@ class Reactor
 	void cancelTimer (Timer timer)
 	{
 		synchronized (_mutex) {
-			_timers = _timers.filter!((a) { return a != timer; }).array;
+			_timers.remove(_timers.countUntil!(a => a != timer));
 		}
 
 		wakeUp();
@@ -499,7 +499,7 @@ class Reactor
 	void cancelTimer (PeriodicTimer timer)
 	{
 		synchronized (_mutex) {
-			_periodic_timers = _periodic_timers.filter!((a) { return a != timer; }).array;
+			_periodic_timers.remove(_periodic_timers.countUntil!(a => a != timer));
 		}
 
 		wakeUp();
@@ -537,7 +537,7 @@ class Reactor
 		}
 
 		synchronized (_mutex) {
-			_timers = _timers.filter!((a) { return !timers_to_call.any!((b) { return a == b; }); }).array;
+			_timers = _timers.filter!(a => !timers_to_call.any!(b => a == b)).array;
 		}
 	}
 
