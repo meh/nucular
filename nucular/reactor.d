@@ -50,6 +50,7 @@ import nucular.descriptor;
 import nucular.server;
 import nucular.selector.best;
 import nucular.signal;
+import nucular.queue;
 
 class Reactor
 {
@@ -255,13 +256,25 @@ class Reactor
 					}
 				}
 			}
+
+			if (!isRunning) {
+				continue;
+			}
+
+			while (hasNextTick) {
+				_next_tick.front()();
+
+				synchronized (_mutex) {
+					_next_tick.popFront();
+				}
+			}
 		}
 	}
 
 	void schedule (void delegate () block)
 	{
 		synchronized (_mutex) {
-			_scheduled ~= block;
+			_scheduled.pushBack(block);
 		}
 
 		wakeUp();
@@ -269,7 +282,11 @@ class Reactor
 
 	void nextTick (void delegate () block)
 	{
-		schedule(block);
+		synchronized (_mutex) {
+			_next_tick.pushBack(block);
+		}
+
+		wakeUp();
 	}
 
 	void stop ()
@@ -577,6 +594,11 @@ class Reactor
 		return !_scheduled.empty;
 	}
 
+	@property hasNextTick ()
+	{
+		return !_next_tick.empty;
+	}
+
 	@property noDescriptors ()
 	{
 		return _selector.empty;
@@ -765,7 +787,8 @@ private:
 	}
 
 private:
-	void delegate ()[] _scheduled;
+	Queue!(void delegate ()) _scheduled;
+	Queue!(void delegate ()) _next_tick;
 
 	Timer[]         _timers;
 	PeriodicTimer[] _periodic_timers;
