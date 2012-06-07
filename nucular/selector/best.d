@@ -17,49 +17,49 @@
  ****************************************************************************/
 
 version (poll) {
-	public import nucular.available.poll;
+	public import nucular.selector.poll;
 }
 else version (epoll) {
-	public import nucular.available.epoll;
+	public import nucular.selector.epoll;
 }
 else version (kqueue) {
-	public import nucular.available.kqueue;
+	public import nucular.selector.kqueue;
 }
 else version (iocompletion) {
-	public import nucular.available.iocompletion;
+	public import nucular.selector.iocompletion;
 }
 else version (select) {
-	public import nucular.available.select;
+	public import nucular.selector.select;
 }
 else {
 	version (Windows) {
 		version = iocompletion;
 
-		public import nucular.available.iocompletion;
+		public import nucular.selector.iocompletion;
 	}
 	else version (FreeBSD) {
 		version = kqeue;
 
-		public import nucular.available.kqueue;
+		public import nucular.selector.kqueue;
 	}
 	else version (OpenBSD) {
 		version = kqueue;
 
-		public import nucular.available.kqueue;
+		public import nucular.selector.kqueue;
 	}
 	else version (linux) {
 		version = epoll;
 
-		public import nucular.available.epoll;
+		public import nucular.selector.epoll;
 	}
 	else version (Posix) {
 		version = poll;
 
-		public import nucular.available.poll;
+		public import nucular.selector.poll;
 	}
 	else {
 		version = select;
 
-		public import nucular.available.select;
+		public import nucular.selector.select;
 	}
 }

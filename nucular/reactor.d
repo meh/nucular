@@ -47,25 +47,22 @@ import nucular.timer;
 import nucular.periodictimer;
 import nucular.deferrable;
 import nucular.descriptor;
-import nucular.breaker;
 import nucular.server;
-import nucular.available.best;
+import nucular.selector.best;
 import nucular.signal;
 
 class Reactor
 {
 	this ()
 	{
-		_breaker = new Breaker;
-		_mutex   = new Mutex;
+		_mutex    = new Mutex;
+		_selector = new Selector;
 
 		_backlog = 100;
 		_quantum = 100.dur!"msecs";
 		_running = false;
 
 		_default_creation_callback = (a) { };
-
-		_descriptors ~= _breaker.to!Descriptor;
 	}
 
 	~this ()
@@ -98,53 +95,17 @@ class Reactor
 
 			if (noDescriptors && !isConnectPending && !isClosePending) {
 				if (!hasTimers) {
-					_breaker.wait();
+					_selector.wait();
 				}
 				else {
-					_breaker.wait(minimumSleep());
+					_selector.wait(minimumSleep());
 
 					if (isRunning) {
 						executeTimers();
 					}
 				}
 
-				_breaker.flush();
-
 				continue;
-			}
-
-			Descriptor[] descriptors;
-
-			if (isConnectPending) {
-				if (hasTimers || !noDescriptors) {
-					descriptors = writable(_connecting.keys, (0).dur!"seconds");
-				}
-				else {
-					descriptors = writable(_connecting.keys ~ _breaker.to!Descriptor);
-				}
-
-				foreach (descriptor; descriptors) {
-					if (_breaker.to!Descriptor == descriptor) {
-						_breaker.flush();
-					}
-					else {
-						Connection connection = _connecting[descriptor];
-
-						_connecting.remove(descriptor);
-
-						if (connection.error) {
-							connection.close();
-							connection.unbind();
-						}
-						else {
-							connection.addresses();
-							connection.connected();
-
-							_descriptors             ~= descriptor;
-							_connections[descriptor]  = connection;
-						}
-					}
-				}
 			}
 
 			if (isClosePending) {
@@ -154,34 +115,28 @@ class Reactor
 					}
 				}
 			}
-			
-			if (hasTimers) {
-				descriptors = readable(_descriptors, minimumSleep());
-			}
-			else if (isWritePending || isConnectPending || isClosePending) {
-				descriptors = readable(_descriptors, (0).dur!"seconds");
+
+			Descriptor[] readable, writable;
+
+			if (isConnectPending || isWritePending) {
+				auto result = hasTimers ? _selector.available(minimumSleep): _selector.available();
+
+				readable = result.readable;
+				writable = result.writable;
 			}
 			else {
-				descriptors = readable(_descriptors);
+				readable = hasTimers ? _selector.readable(minimumSleep) : _selector.readable();
 			}
-
-			if (!isRunning) {
-				continue;
-			}
-
-			executeTimers();
 
 			if (!isRunning || hasScheduled) {
 				continue;
 			}
 
-			foreach (descriptor; descriptors) {
-				if (_breaker.to!Descriptor == descriptor) {
-					_breaker.flush();
+			executeTimers();
+			_selector.flush();
 
-					continue;
-				}
-				else if (descriptor in _servers) {
+			foreach (descriptor; readable) {
+				if (descriptor in _servers) {
 					auto current = _servers[descriptor];
 
 					if (auto server = cast (TCPServer) current) {
@@ -189,8 +144,8 @@ class Reactor
 						     descriptor = connection.to!Descriptor;
 
 						schedule({
-							_descriptors             ~= descriptor;
-							_connections[descriptor]  = connection;
+							_selector.add(descriptor);
+							_connections[descriptor] = connection;
 						});
 
 						continue;
@@ -220,16 +175,16 @@ class Reactor
 							     descriptor = connection.to!Descriptor;
 
 							schedule({
-								_descriptors             ~= descriptor;
-								_connections[descriptor]  = connection;
+								_selector.add(descriptor);
+								_connections[descriptor] = connection;
 							});
 
 							continue;
 						}
 
 						if (auto server = cast (FIFOServer) current) {
-							auto    connection = server.connection;
-							ubyte[] data       = server.read();
+							auto connection = server.connection;
+							auto data       = server.read();
 
 							if (connection.to!(Descriptor) !in _connections) {
 								schedule({
@@ -248,8 +203,8 @@ class Reactor
 					assert(0);
 				}
 				else if (descriptor in _connections) {
-					Connection connection = _connections[descriptor];
-					ubyte[]    data       = connection.read();
+					auto connection = _connections[descriptor];
+					auto data       = connection.read();
 
 					if (!data.empty) {
 						connection.receiveData(data);
@@ -257,39 +212,33 @@ class Reactor
 				}
 			}
 
-			if (!isRunning) {
-				continue;
-			}
-
-			foreach (descriptor, connection; _connections) {
-				if (connection.isWritePending) {
-					descriptors ~= descriptor;
-				}
-			}
-
-			foreach (descriptor, connection; _closing) {
-				if (connection.isWritePending) {
-					descriptors ~= descriptor;
-				}
-			}
-
-			if (!isRunning || hasScheduled || descriptors.empty) {
-				continue;
-			}
-
-			descriptors = writable(descriptors, (0).dur!"seconds");
-
 			isWritePending = false;
-			foreach (descriptor; descriptors) {
-				if (descriptor in _connections) {
+			foreach (descriptor; writable) {
+				if (descriptor in _connecting) {
+					auto connection = _connecting[descriptor];
+
+					_connecting.remove(descriptor);
+
+					if (connection.error) {
+						connection.close();
+						connection.unbind();
+					}
+					else {
+						connection.addresses();
+						connection.connected();
+
+						_connections[descriptor] = connection;
+					}
+				}
+				else if (descriptor in _connections) {
 					if (!_connections[descriptor].write() && !isWritePending) {
 						isWritePending = true;
 					}
 				}
 				else if (descriptor in _closing) {
-					Connection connection = _closing[descriptor];
+					auto connection = _closing[descriptor];
 
-					if (!_closing[descriptor].write()) {
+					if (!connection.write()) {
 						isWritePending = true;
 					}
 					else {
@@ -391,7 +340,7 @@ class Reactor
 		server.stop();
 
 		schedule({
-			_descriptors = _descriptors.filter!((a) { return a != server.to!Descriptor; }).array;
+			_selector.remove(server.to!Descriptor);
 			_connections.remove(server.connection.to!Descriptor);
 		});
 	}
@@ -472,12 +421,12 @@ class Reactor
 	{
 		schedule({
 			_connections.remove(connection.to!Descriptor);
-			_descriptors = _descriptors.filter!((a) { return a != connection.to!Descriptor; }).array;
 
 			if (after_writing) {
 				_closing[connection.to!Descriptor] = connection;
 			}
 			else {
+				_selector.remove(connection.to!Descriptor);
 				_closing.remove(connection.to!Descriptor);
 
 				connection.close();
@@ -599,7 +548,7 @@ class Reactor
 
 	void wakeUp ()
 	{
-		_breaker.act();
+		_selector.wakeUp();
 	}
 
 	@property isRunning ()
@@ -614,7 +563,7 @@ class Reactor
 
 	@property noDescriptors ()
 	{
-		return _descriptors.length == 1;
+		return _selector.empty;
 	}
 
 	@property isConnectPending ()
@@ -701,8 +650,8 @@ private:
 		schedule({
 			auto descriptor = server.start();
 
-			_descriptors         ~= descriptor;
-			_servers[descriptor]  = server;
+			_selector.add(descriptor);
+			_servers[descriptor] = server;
 		});
 
 		return server;
@@ -776,6 +725,7 @@ private:
 		}
 
 		schedule({
+			_selector.add(descriptor);
 			_connecting[descriptor] = connection;
 		});
 
@@ -791,8 +741,8 @@ private:
 		connection.initialized();
 
 		schedule({
-			_descriptors             ~= descriptor;
-			_connections[descriptor]  = connection;
+			_selector.add(descriptor);
+			_connections[descriptor] = connection;
 		});
 
 		return connection;
@@ -803,7 +753,7 @@ private:
 
 	Timer[]         _timers;
 	PeriodicTimer[] _periodic_timers;
-	Descriptor[]    _descriptors;
+	Selector        _selector;
 
 	Connection[Descriptor] _connecting;
 	Server[Descriptor]     _servers;
@@ -811,7 +761,6 @@ private:
 	Connection[Descriptor] _closing;
 
 	ThreadPool _threadpool;
-	Breaker    _breaker;
 	Mutex      _mutex;
 
 	int      _backlog;

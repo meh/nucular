@@ -332,8 +332,8 @@ class Connection
 		}
 
 		if (security) {
-			ubyte[] buffer = new ubyte[2048];
-			int     n;
+			auto buffer = new ubyte[2048];
+			int         n;
 
 			security.putCiphertext(result);
 			result.clear();
@@ -422,7 +422,7 @@ class Connection
 			}
 
 			if (security) {
-				auto buffer  = new ubyte[1024];
+				auto buffer  = new ubyte[2048];
 				auto working = true;
 
 				while (working && security.canGetCiphertext) {

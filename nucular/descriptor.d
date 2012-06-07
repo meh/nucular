@@ -49,7 +49,7 @@ class Descriptor
 
 	ubyte[] read (size_t length)
 	{
-		auto      buffer = new ubyte[](length);
+		auto      buffer = new ubyte[length];
 		ptrdiff_t result;
 
 		result = .read(_fd, cast (void*) buffer.ptr, length);
