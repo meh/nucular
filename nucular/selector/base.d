@@ -20,6 +20,7 @@ module nucular.selector.base;
 
 import core.time;
 import std.algorithm;
+import std.range;
 
 import nucular.descriptor;
 
@@ -28,9 +29,9 @@ struct Result {
 	Descriptor[] writable;
 }
 
-abstract class Selector
+class Selector
 {
-	class Breaker
+	static class Breaker
 	{
 		this ()
 		{
@@ -95,21 +96,23 @@ abstract class Selector
 	void add (Descriptor descriptor)
 	{
 		_descriptors ~= descriptor;
+
+		wakeUp();
 	}
 
 	void remove (Descriptor descriptor)
 	{
 		_descriptors.remove(_descriptors.countUntil!(a => a == descriptor));
+
+		wakeUp();
 	}
 
-	Result available ();
-	Result available (Duration timeout);
+	final Descriptor[] prepare (Descriptor[] descriptors)
+	{
+		_breaker.flush();
 
-	Descriptor[] readable ();
-	Descriptor[] readable (Duration timeout);
-
-	Descriptor[] writable ();
-	Descriptor[] writable (Duration timeout);
+		return descriptors.filter!(a => a != _breaker.to!Descriptor).array;
+	}
 
 	final void wait ()
 	{
@@ -135,11 +138,6 @@ abstract class Selector
 		}
 	}
 
-	final void flush ()
-	{
-		_breaker.flush();
-	}
-
 	final void wakeUp ()
 	{
 		_breaker.act();
@@ -147,13 +145,22 @@ abstract class Selector
 
 	final @property empty ()
 	{
-		return length == 1;
+		return length == 0;
 	}
 
 	final @property length ()
 	{
 		return _descriptors.length - 1;
 	}
+
+	abstract Result available ();
+	abstract Result available (Duration timeout);
+
+	abstract Descriptor[] readable ();
+	abstract Descriptor[] readable (Duration timeout);
+
+	abstract Descriptor[] writable ();
+	abstract Descriptor[] writable (Duration timeout);
 
 protected:
 	final @property descriptors ()

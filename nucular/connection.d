@@ -18,6 +18,8 @@
 
 module nucular.connection;
 
+import std.stdio : writeln;
+
 import std.conv;
 import std.exception;
 import std.array;
@@ -221,7 +223,7 @@ class Connection
 			}
 		}
 
-		reactor.wakeUp();
+		reactor.writeHappened();
 	}
 
 	void sendDataTo (Address address, ubyte[] data)
@@ -232,7 +234,7 @@ class Connection
 			_to_write.pushBack(Data(address, data));
 		}
 
-		reactor.wakeUp();
+		reactor.writeHappened();
 	}
 
 	void secure (bool verify = false)

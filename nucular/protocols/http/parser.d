@@ -18,7 +18,6 @@
 
 module nucular.protocols.http.parser;
 
-import std.stdio : writeln;
 import std.conv;
 import std.string;
 import std.algorithm;

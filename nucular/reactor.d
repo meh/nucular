@@ -93,16 +93,16 @@ class Reactor
 				continue;
 			}
 
-			if (noDescriptors && !isConnectPending && !isClosePending) {
-				if (!hasTimers) {
-					_selector.wait();
-				}
-				else {
+			if (noDescriptors) {
+				if (hasTimers) {
 					_selector.wait(minimumSleep());
 
 					if (isRunning) {
 						executeTimers();
 					}
+				}
+				else {
+					_selector.wait();
 				}
 
 				continue;
@@ -133,7 +133,6 @@ class Reactor
 			}
 
 			executeTimers();
-			_selector.flush();
 
 			foreach (descriptor; readable) {
 				if (descriptor in _servers) {
@@ -243,6 +242,16 @@ class Reactor
 					}
 					else {
 						connection.shutdown();
+					}
+				}
+			}
+
+			if (!isWritePending) {
+				foreach (connection; _connections) {
+					if (connection.isWritePending) {
+						isWritePending = true;
+						
+						break;
 					}
 				}
 			}
@@ -549,6 +558,13 @@ class Reactor
 	void wakeUp ()
 	{
 		_selector.wakeUp();
+	}
+
+	void writeHappened ()
+	{
+		isWritePending = true;
+
+		wakeUp();
 	}
 
 	@property isRunning ()

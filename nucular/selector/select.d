@@ -41,24 +41,26 @@ class Selector : base.Selector
 	this ()
 	{
 		FD_ZERO(&_set);
+
+		super();
 	}
 
 	override void add (Descriptor descriptor)
 	{
-		super.add(descriptor);
-
 		FD_SET(descriptor.to!int, &_set);
 
 		_max = 0;
+
+		super.add(descriptor);
 	}
 
 	override void remove (Descriptor descriptor)
 	{
-		super.remove(descriptor);
-
 		FD_CLR(descriptor.to!int, &_set);
 
 		_max = 0;
+
+		super.remove(descriptor);
 	}
 
 	override base.Result available ()
@@ -68,7 +70,10 @@ class Selector : base.Selector
 
 		select(&read, &write);
 
-		return base.Result(read.to!(Descriptor[])(descriptors), write.to!(Descriptor[])(descriptors));
+		return base.Result(
+			prepare(read.to!(Descriptor[])(descriptors)),
+			prepare(write.to!(Descriptor[])(descriptors))
+		);
 	}
 
 	override base.Result available (Duration timeout)
@@ -78,7 +83,10 @@ class Selector : base.Selector
 
 		select(&read, &write, timeout.to!timeval);
 
-		return base.Result(read.to!(Descriptor[])(descriptors), write.to!(Descriptor[])(descriptors));
+		return base.Result(
+			prepare(read.to!(Descriptor[])(descriptors)),
+			prepare(write.to!(Descriptor[])(descriptors))
+		);
 	}
 
 	override Descriptor[] readable ()
@@ -87,7 +95,7 @@ class Selector : base.Selector
 
 		select(&set, null);
 
-		return set.to!(Descriptor[])(descriptors);
+		return prepare(set.to!(Descriptor[])(descriptors));
 	}
 
 	override Descriptor[] readable (Duration timeout)
@@ -96,7 +104,7 @@ class Selector : base.Selector
 
 		select(&set, null, timeout.to!timeval);
 
-		return set.to!(Descriptor[])(descriptors);
+		return prepare(set.to!(Descriptor[])(descriptors));
 	}
 
 	override Descriptor[] writable ()
@@ -105,7 +113,7 @@ class Selector : base.Selector
 
 		select(null, &set);
 
-		return set.to!(Descriptor[])(descriptors);
+		return prepare(set.to!(Descriptor[])(descriptors));
 	}
 
 	override Descriptor[] writable (Duration timeout)
@@ -114,7 +122,7 @@ class Selector : base.Selector
 
 		select(null, &set, timeout.to!timeval);
 
-		return set.to!(Descriptor[])(descriptors);
+		return prepare(set.to!(Descriptor[])(descriptors));
 	}
 
 	void select (fd_set* read, fd_set* write)
