@@ -37,11 +37,11 @@ class Selector : base.Selector
 {
 	override void add (Descriptor descriptor)
 	{
-		super.add(descriptor);
-
 		pollfd p = { fd: descriptor.to!int };
 
 		_set ~= p;
+
+		super.add(descriptor);
 	}
 
 	override void remove (Descriptor descriptor)
@@ -57,22 +57,16 @@ class Selector : base.Selector
 
 		poll(-1);
 
-		return base.Result(
-			prepare(_set.to!(Descriptor[])("read", descriptors)),
-			prepare(_set.to!(Descriptor[])("write", descriptors))
-		);
+		return base.Result(prepare(toReadable), prepare(toWritable));
 	}
 
 	override base.Result available (Duration timeout)
 	{
 		reset().write().read();
 
-		poll(cast (int) timeout.total!"msecs");
+		poll(timeout.total!("msecs").to!int);
 
-		return base.Result(
-			prepare(_set.to!(Descriptor[])("read", descriptors)),
-			prepare(_set.to!(Descriptor[])("write", descriptors))
-		);
+		return base.Result(prepare(toReadable), prepare(toWritable));
 	}
 
 	override Descriptor[] readable ()
@@ -81,16 +75,16 @@ class Selector : base.Selector
 
 		poll(-1);
 
-		return prepare(_set.to!(Descriptor[])("read", descriptors));
+		return prepare(toReadable);
 	}
 
 	override Descriptor[] readable (Duration timeout)
 	{
 		reset().read();
 
-		poll(cast (int) timeout.total!"msecs");
+		poll(timeout.total!("msecs").to!int);
 
-		return prepare(_set.to!(Descriptor[])("read", descriptors));
+		return prepare(toReadable);
 	}
 
 	override Descriptor[] writable ()
@@ -99,21 +93,21 @@ class Selector : base.Selector
 
 		poll(-1);
 
-		return prepare(_set.to!(Descriptor[])("write", descriptors));
+		return prepare(toWritable);
 	}
 
 	override Descriptor[] writable (Duration timeout)
 	{
 		reset().write();
 
-		poll(cast (int) timeout.total!"msecs");
+		poll(timeout.total!("msecs").to!int);
 
-		return prepare(_set.to!(Descriptor[])("write", descriptors));
+		return prepare(toWritable);
 	}
 
 	auto reset ()
 	{
-		foreach (p; _set) {
+		foreach (ref p; _set) {
 			p.events &= ~POLLIN & ~POLLOUT;
 		}
 
@@ -122,7 +116,7 @@ class Selector : base.Selector
 
 	auto write ()
 	{
-		foreach (p; _set) {
+		foreach (ref p; _set) {
 			p.events |= POLLOUT;
 		}
 
@@ -131,11 +125,37 @@ class Selector : base.Selector
 
 	auto read ()
 	{
-		foreach (p; _set) {
+		foreach (ref p; _set) {
 			p.events |= POLLIN;
 		}
 
 		return this;
+	}
+
+	@property toReadable ()
+	{
+		Descriptor[] result;
+
+		foreach (index, ref p; _set) {
+			if (p.revents & POLLIN) {
+				result ~= descriptors[index];
+			}
+		}
+
+		return result;
+	}
+
+	@property toWritable ()
+	{
+		Descriptor[] result;
+
+		foreach (index, ref p; _set) {
+			if (p.revents & POLLOUT) {
+				result ~= descriptors[index];
+			}
+		}
+
+		return result;
 	}
 
 	void poll (int timeout)
@@ -153,24 +173,3 @@ class Selector : base.Selector
 private:
 	pollfd[] _set;
 }
-
-private:
-	Descriptor[] to(T: Descriptor[]) (pollfd[] set, string mode, Descriptor[] descriptors)
-	{
-		Descriptor[] result;
-
-		foreach (index, pfd; set) {
-			if (mode == "read") {
-				if (pfd.revents & POLLIN) {
-					result ~= descriptors[index];
-				}
-			}
-			else if (mode == "write") {
-				if (pfd.revents & POLLOUT) {
-					result ~= descriptors[index];
-				}
-			}
-		}
-
-		return result;
-	}
