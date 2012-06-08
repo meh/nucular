@@ -103,7 +103,7 @@ class Selector
 
 	void remove (Descriptor descriptor)
 	{
-		_descriptors = _descriptors.remove(_descriptors.countUntil!(a => a == descriptor));
+		_descriptors = _descriptors.remove(_descriptors.countUntil(descriptor));
 
 		wakeUp();
 	}
@@ -112,7 +112,17 @@ class Selector
 	{
 		_breaker.flush();
 
-		return descriptors.filter!(a => a != _breaker.to!Descriptor).array;
+		if (descriptors.empty) {
+			return null;
+		}
+
+		auto index = descriptors.countUntil(_breaker.to!Descriptor);
+
+		if (index != -1) {
+			descriptors = descriptors.remove(index);
+		}
+
+		return descriptors;
 	}
 
 	final void wakeUp ()

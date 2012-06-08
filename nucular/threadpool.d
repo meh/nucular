@@ -244,7 +244,7 @@ private:
 
 			synchronized (_mutex) {
 				_spawned--;
-				_threads = _threads.remove(_threads.countUntil!(a => a != thread));
+				_threads = _threads.remove(_threads.countUntil(thread));
 			}
 		});
 

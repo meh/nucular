@@ -493,7 +493,7 @@ class Reactor
 	void cancelTimer (Timer timer)
 	{
 		synchronized (_mutex) {
-			_timers = _timers.remove(_timers.countUntil!(a => a != timer));
+			_timers = _timers.remove(_timers.countUntil(timer));
 		}
 
 		wakeUp();
@@ -502,7 +502,7 @@ class Reactor
 	void cancelTimer (PeriodicTimer timer)
 	{
 		synchronized (_mutex) {
-			_periodic_timers = _periodic_timers.remove(_periodic_timers.countUntil!(a => a != timer));
+			_periodic_timers = _periodic_timers.remove(_periodic_timers.countUntil(timer));
 		}
 
 		wakeUp();
