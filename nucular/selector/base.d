@@ -103,7 +103,7 @@ class Selector
 
 	void remove (Descriptor descriptor)
 	{
-		_descriptors.remove(_descriptors.countUntil!(a => a == descriptor));
+		_descriptors = _descriptors.remove(_descriptors.countUntil!(a => a == descriptor));
 
 		wakeUp();
 	}

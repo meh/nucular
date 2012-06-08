@@ -62,7 +62,7 @@ class Headers
 				return h;
 			}
 			else {
-				_internal.remove(_internal.countUntil!(a => a.name == name));
+				_internal = _internal.remove(_internal.countUntil!(a => a.name == name));
 				_internal ~= header;
 			}
 		}

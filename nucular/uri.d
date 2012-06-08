@@ -118,7 +118,7 @@ class Query
 		auto index  = _internal.countUntil!(a => a.name == name);
 		auto result = _internal[index];
 
-		_internal.remove(index);
+		_internal = _internal.remove(index);
 
 		return result;
 	}

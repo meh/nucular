@@ -184,12 +184,14 @@ class Reactor
 				}
 				else if (descriptor in _connections) {
 					auto connection = _connections[descriptor];
-
 					auto data       = connection.read();
 
 					if (!data.empty) {
 						connection.receiveData(data);
 					}
+				}
+				else if (descriptor in _connecting) {
+					closeConnection(_connecting[descriptor]);
 				}
 			}
 
@@ -238,6 +240,18 @@ class Reactor
 						
 						break;
 					}
+				}
+			}
+
+			foreach (descriptor; selected.error) {
+				if (descriptor in _connections) {
+					closeConnection(_connections[descriptor]);
+				}
+				else if (descriptor in _servers) {
+					stopServer(_servers[descriptor]);
+				}
+				else if (descriptor in _connecting) {
+					closeConnection(_connecting[descriptor]);
 				}
 			}
 
@@ -434,6 +448,7 @@ class Reactor
 	void closeConnection (Connection connection, bool after_writing = false)
 	{
 		schedule({
+			_connecting.remove(connection.to!Descriptor);
 			_connections.remove(connection.to!Descriptor);
 
 			if (after_writing) {
@@ -478,7 +493,7 @@ class Reactor
 	void cancelTimer (Timer timer)
 	{
 		synchronized (_mutex) {
-			_timers.remove(_timers.countUntil!(a => a != timer));
+			_timers = _timers.remove(_timers.countUntil!(a => a != timer));
 		}
 
 		wakeUp();
@@ -487,7 +502,7 @@ class Reactor
 	void cancelTimer (PeriodicTimer timer)
 	{
 		synchronized (_mutex) {
-			_periodic_timers.remove(_periodic_timers.countUntil!(a => a != timer));
+			_periodic_timers = _periodic_timers.remove(_periodic_timers.countUntil!(a => a != timer));
 		}
 
 		wakeUp();

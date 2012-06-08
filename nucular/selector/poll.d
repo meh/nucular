@@ -26,7 +26,6 @@ import core.stdc.errno;
 import core.sys.posix.poll;
 
 import std.algorithm;
-import std.array;
 import std.conv;
 import std.exception;
 
@@ -47,7 +46,7 @@ class Selector : base.Selector
 
 	override void remove (Descriptor descriptor)
 	{
-		_set.remove(_set.countUntil!(a => a.fd == descriptor.to!int));
+		_set = _set.remove(_set.countUntil!(a => a.fd == descriptor.to!int));
 
 		super.remove(descriptor);
 	}
