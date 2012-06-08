@@ -20,8 +20,6 @@ module nucular.selector.epoll;
 
 version (epoll):
 
-import std.stdio : writeln;
-
 import core.time;
 import core.stdc.errno;
 
@@ -152,12 +150,6 @@ class Selector : base.Selector
 
 		for (int i = 0; i < _length; i++) {
 			auto current = _events[i];
-
-			if (current.data.fd == 0) {
-				continue;
-			}
-
-			assert(current.data.fd in _descriptors_by_fd);
 
 			static if (mode == "read") {
 				if (current.events & EPOLLIN) {
