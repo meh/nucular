@@ -63,72 +63,100 @@ class Selector : base.Selector
 		super.remove(descriptor);
 	}
 
-	override base.Result available ()
+	base.Selected available() ()
 	{
 		fd_set read  = _set;
 		fd_set write = _set;
+		fd_set error = _set;
 
-		select(&read, &write);
+		select(&read, &write, &error);
 
-		return base.Result(
+		return base.Selected(
 			prepare(read.to!(Descriptor[])(descriptors)),
-			prepare(write.to!(Descriptor[])(descriptors))
+			prepare(write.to!(Descriptor[])(descriptors)),
+			prepare(error.to!(Descriptor[])(descriptors))
 		);
 	}
 
-	override base.Result available (Duration timeout)
+	base.Selected available() (Duration timeout)
 	{
 		fd_set read  = _set;
 		fd_set write = _set;
+		fd_set error = _set;
 
-		select(&read, &write, timeout.to!timeval);
+		select(&read, &write, &error, timeout.to!timeval);
 
-		return base.Result(
+		return base.Selected(
 			prepare(read.to!(Descriptor[])(descriptors)),
-			prepare(write.to!(Descriptor[])(descriptors))
+			prepare(write.to!(Descriptor[])(descriptors)),
+			prepare(error.to!(Descriptor[])(descriptors))
 		);
 	}
 
-	override Descriptor[] readable ()
+	base.Selected available(string mode) ()
+		if (mode == "read")
 	{
-		fd_set set = _set;
+		fd_set read  = _set;
+		fd_set error = _set;
 
-		select(&set, null);
+		select(&read, null, &error);
 
-		return prepare(set.to!(Descriptor[])(descriptors));
+		return base.Selected(
+			prepare(read.to!(Descriptor[])(descriptors)),
+			[],
+			prepare(error.to!(Descriptor[])(descriptors))
+		);
 	}
 
-	override Descriptor[] readable (Duration timeout)
+	base.Selected available(string mode) (Duration timeout)
+		if (mode == "read")
 	{
-		fd_set set = _set;
+		fd_set read  = _set;
+		fd_set error = _set;
 
-		select(&set, null, timeout.to!timeval);
+		select(&read, null, &error, timeout.to!timeval);
 
-		return prepare(set.to!(Descriptor[])(descriptors));
+		return base.Selected(
+			prepare(read.to!(Descriptor[])(descriptors)),
+			[],
+			prepare(error.to!(Descriptor[])(descriptors))
+		);
 	}
 
-	override Descriptor[] writable ()
+	base.Selected available(string mode) ()
+		if (mode == "write")
 	{
-		fd_set set = _set;
+		fd_set write = _set;
+		fd_set error = _set;
 
-		select(null, &set);
+		select(null, &write, &error);
 
-		return prepare(set.to!(Descriptor[])(descriptors));
+		return base.Selected(
+			[],
+			prepare(write.to!(Descriptor[])(descriptors)),
+			prepare(error.to!(Descriptor[])(descriptors))
+		);
 	}
 
-	override Descriptor[] writable (Duration timeout)
+	base.Selected available(string mode) (Duration timeout)
+		if (mode == "write")
 	{
-		fd_set set = _set;
+		fd_set write = _set;
+		fd_set error = _set;
 
-		select(null, &set, timeout.to!timeval);
+		select(null, &write, &error, timeout.to!timeval);
 
-		return prepare(set.to!(Descriptor[])(descriptors));
+		return base.Selected(
+			[],
+			prepare(write.to!(Descriptor[])(descriptors)),
+			prepare(error.to!(Descriptor[])(descriptors))
+		);
 	}
 
-	void select (fd_set* read, fd_set* write)
+	void select (fd_set* read, fd_set* write, fd_set* error)
 	{
 		try {
-			errnoEnforce(.select(max, read, write, null, null) >= 0);
+			errnoEnforce(.select(max, read, write, error, null) >= 0);
 		}
 		catch (ErrnoException e) {
 			if (e.errno != EINTR) {
@@ -137,10 +165,10 @@ class Selector : base.Selector
 		}
 	}
 
-	void select (fd_set* read, fd_set* write, timeval timeout)
+	void select (fd_set* read, fd_set* write, fd_set* error, timeval timeout)
 	{
 		try {
-			errnoEnforce(.select(max, read, write, null, &timeout) >= 0);
+			errnoEnforce(.select(max, read, write, error, &timeout) >= 0);
 		}
 		catch (ErrnoException e) {
 			if (e.errno != EINTR) {

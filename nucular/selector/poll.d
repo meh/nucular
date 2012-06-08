@@ -51,58 +51,62 @@ class Selector : base.Selector
 		super.remove(descriptor);
 	}
 
-	override base.Result available ()
+	base.Selected available() ()
 	{
 		reset().write().read();
 
 		poll(-1);
 
-		return base.Result(prepare(toReadable), prepare(toWritable));
+		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
 	}
 
-	override base.Result available (Duration timeout)
+	base.Selected available() (Duration timeout)
 	{
 		reset().write().read();
 
 		poll(timeout.total!("msecs").to!int);
 
-		return base.Result(prepare(toReadable), prepare(toWritable));
+		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
 	}
 
-	override Descriptor[] readable ()
+	base.Selected available(string mode) ()
+		if (mode == "read")
 	{
 		reset().read();
 
 		poll(-1);
 
-		return prepare(toReadable);
+		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
 	}
 
-	override Descriptor[] readable (Duration timeout)
+	base.Selected available(string mode) (Duration timeout)
+		if (mode == "read")
 	{
 		reset().read();
 
 		poll(timeout.total!("msecs").to!int);
 
-		return prepare(toReadable);
+		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
 	}
 
-	override Descriptor[] writable ()
+	base.Selected available(string mode) ()
+		if (mode == "write")
 	{
 		reset().write();
 
 		poll(-1);
 
-		return prepare(toWritable);
+		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
 	}
 
-	override Descriptor[] writable (Duration timeout)
+	base.Selected available(string mode) (Duration timeout)
+		if (mode == "write")
 	{
 		reset().write();
 
 		poll(timeout.total!("msecs").to!int);
 
-		return prepare(toWritable);
+		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
 	}
 
 	auto reset ()
@@ -132,7 +136,8 @@ class Selector : base.Selector
 		return this;
 	}
 
-	@property toReadable ()
+	Descriptor[] to(string mode) ()
+		if (mode == "read")
 	{
 		Descriptor[] result;
 
@@ -145,12 +150,27 @@ class Selector : base.Selector
 		return result;
 	}
 
-	@property toWritable ()
+	Descriptor[] to(string mode) ()
+		if (mode == "write")
 	{
 		Descriptor[] result;
 
 		foreach (index, ref p; _set) {
 			if (p.revents & POLLOUT) {
+				result ~= descriptors[index];
+			}
+		}
+
+		return result;
+	}
+
+	Descriptor[] to(string mode) ()
+		if (mode == "error")
+	{
+		Descriptor[] result;
+
+		foreach (index, ref p; _set) {
+			if (p.revents & POLLERR || p.revents & POLLHUP) {
 				result ~= descriptors[index];
 			}
 		}

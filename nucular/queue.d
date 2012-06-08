@@ -20,18 +20,6 @@ module nucular.queue;
 
 struct Queue(T)
 {
-	@property empty ()
-	{
-		return !_head;
-	}
-
-	@property front ()
-	{
-		assert(_head, "Attempting to fetch front of an empty Queue of " ~ T.stringof);
-
-		return _head.data;
-	}
-
 	void pushBack (T data)
 	{
 		auto node = new Node(data, null, _tail);
@@ -43,6 +31,8 @@ struct Queue(T)
 			_tail.next = node;
 			_tail      = node;
 		}
+
+		_length++;
 	}
 
 	void popFront ()
@@ -57,6 +47,25 @@ struct Queue(T)
 		else {
 			_head.previous = null;
 		}
+
+		_length--;
+	}
+
+	@property front ()
+	{
+		assert(_head, "Attempting to fetch front of an empty Queue of " ~ T.stringof);
+
+		return _head.data;
+	}
+
+	@property empty ()
+	{
+		return !_head;
+	}
+
+	@property length ()
+	{
+		return _length;
 	}
 
 private:
@@ -78,4 +87,5 @@ private:
 private:
 	Node* _head;
 	Node* _tail;
+	ulong _length;
 }

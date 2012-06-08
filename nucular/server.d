@@ -145,8 +145,16 @@ class TCPServer : Server
 
 	Connection accept ()
 	{
+		Socket socket;
+
+		try {
+			socket = _socket.accept();
+		}
+		catch {
+			return null;
+		}
+
 		auto connection = cast (Connection) _handler.create();
-		auto socket     = _socket.accept();
 		auto descriptor = new Descriptor(socket);
 
 		connection.protocol = "tcp";
@@ -306,8 +314,16 @@ version (Posix) {
 
 		Connection accept ()
 		{
+			Socket socket;
+
+			try {
+				socket = _socket.accept();
+			}
+			catch {
+				return null;
+			}
+
 			auto connection = cast (Connection) _handler.create();
-			auto socket     = _socket.accept();
 			auto descriptor = new Descriptor(socket);
 
 			connection.protocol = "unix";

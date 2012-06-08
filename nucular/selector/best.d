@@ -16,6 +16,8 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
+public import nucular.selector.base : Selected;
+
 version (poll) {
 	public import nucular.selector.poll;
 }

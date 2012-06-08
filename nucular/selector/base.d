@@ -24,9 +24,10 @@ import std.range;
 
 import nucular.descriptor;
 
-struct Result {
-	Descriptor[] readable;
-	Descriptor[] writable;
+struct Selected {
+	Descriptor[] read;
+	Descriptor[] write;
+	Descriptor[] error;
 }
 
 class Selector
@@ -114,30 +115,6 @@ class Selector
 		return descriptors.filter!(a => a != _breaker.to!Descriptor).array;
 	}
 
-	final void wait ()
-	{
-		auto descriptors = readable();
-
-		foreach (descriptor; descriptors) {
-			if (descriptor == _breaker.to!Descriptor) {
-				_breaker.flush();
-				break;
-			}
-		}
-	}
-
-	final void wait (Duration timeout)
-	{
-		auto descriptors = readable(timeout);
-
-		foreach (descriptor; descriptors) {
-			if (descriptor == _breaker.to!Descriptor) {
-				_breaker.flush();
-				break;
-			}
-		}
-	}
-
 	final void wakeUp ()
 	{
 		_breaker.act();
@@ -153,14 +130,11 @@ class Selector
 		return _descriptors.length - 1;
 	}
 
-	abstract Result available ();
-	abstract Result available (Duration timeout);
+	abstract Selected available() ();
+	abstract Selected available() (Duration timeout);
 
-	abstract Descriptor[] readable ();
-	abstract Descriptor[] readable (Duration timeout);
-
-	abstract Descriptor[] writable ();
-	abstract Descriptor[] writable (Duration timeout);
+	abstract Selected available(string mode) ();
+	abstract Selected available(string mode) (Duration timeout);
 
 protected:
 	final @property descriptors ()

@@ -50,7 +50,7 @@ else {
 
 class Connection
 {
-	struct Data {
+	static struct Data {
 		ubyte[] content;
 		Address address;
 		bool    encrypt;
@@ -215,10 +215,10 @@ class Connection
 		else {
 			synchronized (_mutex) {
 				if (security) {
-					_to_write.pushBack(Data(data, true));
+					_to_write.pushBack(new Data(data, true));
 				}
 				else {
-					_to_write.pushBack(Data(data));
+					_to_write.pushBack(new Data(data));
 				}
 			}
 		}
@@ -231,7 +231,7 @@ class Connection
 		enforce(!isClosing, "you cannot write data when the connection is closing");
 
 		synchronized (_mutex) {
-			_to_write.pushBack(Data(address, data));
+			_to_write.pushBack(new Data(address, data));
 		}
 
 		reactor.writeHappened();
@@ -384,7 +384,7 @@ class Connection
 
 		synchronized (_mutex) {
 			while (!_to_write.empty) {
-				Data      current = _to_write.front;
+				Data*     current = _to_write.front;
 				ptrdiff_t written;
 
 				if (current.address) {
@@ -470,17 +470,26 @@ class Connection
 		return done;
 	}
 
-	Data receiveFrom (ulong length)
+	Data* receiveFrom (ulong length)
 	{
 		ubyte[]   data = new ubyte[length];
 		Address   address;
 		ptrdiff_t result;
 
-		errnoEnforce((result = _descriptor.socket.receiveFrom(data, SocketFlags.NONE, address)) != Socket.ERROR);
+		try {
+			errnoEnforce((result = _descriptor.socket.receiveFrom(data, SocketFlags.NONE, address)) != Socket.ERROR);
+		}
+		catch (ErrnoException e) {
+			if (e.errno == EAGAIN || e.errno == EWOULDBLOCK) {
+				return null;
+			}
+
+			throw e;
+		}
 
 		data.length = result;
 
-		return Data(address, data);
+		return new Data(address, data);
 	}
 
 	ptrdiff_t sendTo (Address address, ubyte[] data)
@@ -744,7 +753,7 @@ private:
 	Address      _local_address;
 	Security.Box _security;
 
-	Queue!Data _to_write;
+	Queue!(Data*) _to_write;
 
 	Errno _error;
 	bool  _client;

@@ -94,21 +94,6 @@ class Reactor
 				continue;
 			}
 
-			if (noDescriptors) {
-				if (hasTimers) {
-					_selector.wait(minimumSleep());
-
-					if (isRunning) {
-						executeTimers();
-					}
-				}
-				else {
-					_selector.wait();
-				}
-
-				continue;
-			}
-
 			if (isClosePending) {
 				foreach (descriptor, connection; _closing) {
 					if (!connection.isWritePending && connection.isEOF) {
@@ -117,67 +102,68 @@ class Reactor
 				}
 			}
 
-			Descriptor[] readable, writable;
-
+			Selected selected;
 			if (isConnectPending || isWritePending) {
-				auto result = hasTimers ? _selector.available(minimumSleep): _selector.available();
-
-				readable = result.readable;
-				writable = result.writable;
+				selected = hasTimers ? _selector.available(minimumSleep): _selector.available();
 			}
 			else {
-				readable = hasTimers ? _selector.readable(minimumSleep) : _selector.readable();
+				selected = hasTimers ? _selector.available!"read"(minimumSleep) : _selector.available!"read"();
 			}
 
-			if (!isRunning || hasScheduled) {
+			if (!isRunning) {
 				continue;
 			}
 
 			executeTimers();
 
-			foreach (descriptor; readable) {
+			foreach (descriptor; selected.read) {
 				if (descriptor in _servers) {
 					auto current = _servers[descriptor];
 
 					if (auto server = cast (TCPServer) current) {
-						auto connection = server.accept();
-						     descriptor = connection.to!Descriptor;
+						Connection accepted;
 
-						schedule({
-							_selector.add(descriptor);
-							_connections[descriptor] = connection;
-						});
-
-						continue;
-					}
-
-					if (auto server = cast (UDPServer) current) {
-						auto connection = server.connection;
-						auto data       = connection.receiveFrom(512);
-						auto tmp        = connection.defaultTarget;
-
-						if (connection.to!(Descriptor) !in _connections) {
-							schedule({
-								_connections[connection.to!Descriptor] = connection;
-							});
-						}
-
-						connection.defaultTarget = data.address;
-						connection.receiveData(data.content);
-						connection.defaultTarget = tmp;
-
-						continue;
-					}
-
-					version (Posix) {
-						if (auto server = cast (UNIXServer) current) {
-							auto connection = server.accept();
+						while ((accepted = server.accept()) !is null) {
+							auto connection = accepted;
 							     descriptor = connection.to!Descriptor;
 
 							schedule({
 								_selector.add(descriptor);
 								_connections[descriptor] = connection;
 							});
+						}
+
+						continue;
+					}
+
+					if (auto server = cast (UDPServer) current) {
+						Connection       connection = server.connection;
+						Connection.Data* data;
+
+						while ((data = connection.receiveFrom(512)) !is null) {
+							auto tmp = connection.defaultTarget;
+
+							connection.defaultTarget = data.address;
+							connection.receiveData(data.content);
+							connection.defaultTarget = tmp;
+						}
+
+						continue;
+					}
+
+					version (Posix) {
+						if (auto server = cast (UNIXServer) current) {
+							Connection accepted;
+
+							while ((accepted = server.accept()) !is null) {
+								auto connection = accepted;
+								     descriptor = connection.to!Descriptor;
+
+								schedule({
+									_selector.add(descriptor);
+									_connections[descriptor] = connection;
+								});
+							}
 
 							continue;
 						}
@@ -185,12 +171,6 @@ class Reactor
 						if (auto server = cast (FIFOServer) current) {
 							auto connection = server.connection;
 							auto data       = server.read();
-
-							if (connection.to!(Descriptor) !in _connections) {
-								schedule({
-									_connections[connection.to!Descriptor] = connection;
-								});
-							}
 
 							if (!data.empty) {
 								connection.receiveData(data);
@@ -204,6 +184,7 @@ class Reactor
 				}
 				else if (descriptor in _connections) {
 					auto connection = _connections[descriptor];
+
 					auto data       = connection.read();
 
 					if (!data.empty) {
@@ -212,8 +193,11 @@ class Reactor
 				}
 			}
 
-			isWritePending = false;
-			foreach (descriptor; writable) {
+			if (isWritePending && !selected.write.empty) {
+				isWritePending = false;
+			}
+
+			foreach (descriptor; selected.write) {
 				if (descriptor in _connecting) {
 					auto connection = _connecting[descriptor];
 
@@ -434,10 +418,14 @@ class Reactor
 			from.exchanged(to);
 
 			if (fromDescriptor) {
+				assert(to);
+
 				_connections[fromDescriptor] = to;
 			}
 
 			if (toDescriptor) {
+				assert(from);
+
 				_connections[toDescriptor] = from;
 			}
 		});

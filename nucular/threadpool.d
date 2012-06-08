@@ -28,12 +28,25 @@ import core.sync.mutex;
 import core.sync.condition;
 import std.parallelism;
 
+import nucular.queue;
+
 class ThreadPool
 {
 	struct Work
 	{
 		void delegate (void*) block;
 		void*                 data;
+
+		this (void delegate (void*) b)
+		{
+			block = b;
+		}
+
+		this (void delegate (void*) b, void* d)
+		{
+			block = b;
+			data  = d;
+		}
 	}
 
 	this (int min = 20)
@@ -129,7 +142,7 @@ class ThreadPool
 	void process (void delegate () block)
 	{
 		synchronized (_mutex) {
-			_todo ~= Work(cast (void delegate (void*)) block, null);
+			_todo.pushBack(new Work(cast (void delegate (void*)) block));
 
 			_spawnWorker();
 			_condition.notify();
@@ -153,7 +166,7 @@ class ThreadPool
 	void processWith(T) (T data, void delegate (T) block)
 	{
 		synchronized (_mutex) {
-			_todo ~= Work(cast (void delegate (void*)) block, cast (void*) data);
+			_todo.pushBack(new Work(cast (void delegate (void*)) block, cast (void*) data));
 
 			_spawnWorker();
 			_condition.notify();
@@ -181,8 +194,8 @@ private:
 		
 		thread = new Thread({
 			while (true) {
-				Work work;
-				bool keep_going = true;
+				Work* work;
+				bool  keep_going = true;
 
 				synchronized (_mutex) {
 					while (_todo.empty) {
@@ -255,6 +268,6 @@ private:
 	Condition _condition;
 
 	Thread[]              _threads;
-	Work[]                _todo;
+	Queue!(Work*)         _todo;
 	void delegate (void*) _default_block;
 }
