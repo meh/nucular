@@ -39,7 +39,8 @@ class Selector : base.Selector
 	{
 		pollfd p = { fd: descriptor.to!int };
 
-		_set ~= p;
+		_set  ~= p;
+		_last  = null;
 
 		super.add(descriptor);
 	}
@@ -53,17 +54,13 @@ class Selector : base.Selector
 
 	base.Selected available() ()
 	{
-		set!"both";
-
-		poll(-1);
+		poll();
 
 		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
 	}
 
 	base.Selected available() (Duration timeout)
 	{
-		set!"both";
-
 		poll(timeout.total!("msecs").to!int);
 
 		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
@@ -72,9 +69,7 @@ class Selector : base.Selector
 	base.Selected available(string mode) ()
 		if (mode == "read")
 	{
-		set!"read";
-
-		poll(-1);
+		poll!"read";
 
 		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
 	}
@@ -82,9 +77,7 @@ class Selector : base.Selector
 	base.Selected available(string mode) (Duration timeout)
 		if (mode == "read")
 	{
-		set!"read";
-
-		poll(timeout.total!("msecs").to!int);
+		poll!"read"(timeout.total!("msecs").to!int);
 
 		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
 	}
@@ -92,9 +85,7 @@ class Selector : base.Selector
 	base.Selected available(string mode) ()
 		if (mode == "write")
 	{
-		set!"write";
-
-		poll(-1);
+		poll!"write";
 
 		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
 	}
@@ -102,9 +93,7 @@ class Selector : base.Selector
 	base.Selected available(string mode) (Duration timeout)
 		if (mode == "write")
 	{
-		set!"write";
-
-		poll(timeout.total!("msecs").to!int);
+		poll!"write"(timeout.total!("msecs").to!int);
 
 		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
 	}
@@ -159,8 +148,10 @@ class Selector : base.Selector
 		return result;
 	}
 
-	void poll (int timeout)
+	void poll(string mode = "both") (int timeout = -1)
 	{
+		set!mode;
+
 		try {
 			errnoEnforce(.poll(_set.ptr, _set.length, timeout) >= 0);
 		}
