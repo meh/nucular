@@ -53,7 +53,7 @@ class Selector : base.Selector
 
 	base.Selected available() ()
 	{
-		reset().write().read();
+		set!"both";
 
 		poll(-1);
 
@@ -62,7 +62,7 @@ class Selector : base.Selector
 
 	base.Selected available() (Duration timeout)
 	{
-		reset().write().read();
+		set!"both";
 
 		poll(timeout.total!("msecs").to!int);
 
@@ -72,7 +72,7 @@ class Selector : base.Selector
 	base.Selected available(string mode) ()
 		if (mode == "read")
 	{
-		reset().read();
+		set!"read";
 
 		poll(-1);
 
@@ -82,7 +82,7 @@ class Selector : base.Selector
 	base.Selected available(string mode) (Duration timeout)
 		if (mode == "read")
 	{
-		reset().read();
+		set!"read";
 
 		poll(timeout.total!("msecs").to!int);
 
@@ -92,7 +92,7 @@ class Selector : base.Selector
 	base.Selected available(string mode) ()
 		if (mode == "write")
 	{
-		reset().write();
+		set!"write";
 
 		poll(-1);
 
@@ -102,76 +102,57 @@ class Selector : base.Selector
 	base.Selected available(string mode) (Duration timeout)
 		if (mode == "write")
 	{
-		reset().write();
+		set!"write";
 
 		poll(timeout.total!("msecs").to!int);
 
 		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
 	}
 
-	auto reset ()
+	void set(string mode) ()
+		if (mode == "both" || mode == "read" || mode == "write")
 	{
-		foreach (ref p; _set) {
-			p.events &= ~POLLIN & ~POLLOUT;
+		if (_last == mode) {
+			return;
 		}
 
-		return this;
-	}
-
-	auto write ()
-	{
 		foreach (ref p; _set) {
-			p.events |= POLLOUT;
-		}
-
-		return this;
-	}
-
-	auto read ()
-	{
-		foreach (ref p; _set) {
-			p.events |= POLLIN;
-		}
-
-		return this;
-	}
-
-	Descriptor[] to(string mode) ()
-		if (mode == "read")
-	{
-		Descriptor[] result;
-
-		foreach (index, ref p; _set) {
-			if (p.revents & POLLIN) {
-				result ~= descriptors[index];
+			static if (mode == "both") {
+				p.events |= POLLIN | POLLOUT;
+			}
+			else static if (mode == "read") {
+				p.events &= ~POLLOUT;
+				p.events |= POLLIN;
+			}
+			else static if (mode == "write") {
+				p.events &= ~POLLIN;
+				p.events |= POLLOUT;
 			}
 		}
 
-		return result;
+		_last = mode;
 	}
 
 	Descriptor[] to(string mode) ()
-		if (mode == "write")
+		if (mode == "read" || mode == "write" || mode == "error")
 	{
 		Descriptor[] result;
 
 		foreach (index, ref p; _set) {
-			if (p.revents & POLLOUT) {
-				result ~= descriptors[index];
+			static if (mode == "read") {
+				if (p.revents & POLLIN) {
+					result ~= descriptors[index];
+				}
 			}
-		}
-
-		return result;
-	}
-
-	Descriptor[] to(string mode) ()
-		if (mode == "error")
-	{
-		Descriptor[] result;
-
-		foreach (index, ref p; _set) {
-			if (p.revents & POLLERR || p.revents & POLLHUP) {
-				result ~= descriptors[index];
+			else static if (mode == "write") {
+				if (p.revents & POLLOUT) {
+					result ~= descriptors[index];
+				}
+			}
+			else static if (mode == "error") {
+				if (p.revents & POLLERR || p.revents & POLLHUP) {
+					result ~= descriptors[index];
+				}
 			}
 		}
 
@@ -192,4 +173,5 @@ class Selector : base.Selector
 
 private:
 	pollfd[] _set;
+	string   _last;
 }
