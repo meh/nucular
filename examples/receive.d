@@ -12,10 +12,6 @@ class RawEcho : Connection
 	override void initialized ()
 	{
 		writeln(remoteAddress, " connected");
-
-		if (useSSL) {
-			secure();
-		}
 	}
 
 	override void receiveData (ubyte[] data)
@@ -34,19 +30,6 @@ class RawEcho : Connection
 			writeln(remoteAddress, " disconnected");
 		}
 	}
-
-	@property useSSL (bool value)
-	{
-		_use_ssl = value;
-	}
-
-	@property useSSL ()
-	{
-		return _use_ssl;
-	}
-
-private:
-	bool _use_ssl;
 }
 
 class LineEcho : line.Protocol
@@ -54,10 +37,6 @@ class LineEcho : line.Protocol
 	override void initialized ()
 	{
 		writeln(remoteAddress, " connected");
-
-		if (useSSL) {
-			secure();
-		}
 	}
 
 	override void receiveLine (string line)
@@ -76,19 +55,6 @@ class LineEcho : line.Protocol
 			writeln(remoteAddress, " disconnected");
 		}
 	}
-
-	@property useSSL (bool value)
-	{
-		_use_ssl = value;
-	}
-
-	@property useSSL ()
-	{
-		return _use_ssl;
-	}
-
-private:
-	bool _use_ssl;
 }
 
 int main (string[] args)
@@ -147,10 +113,10 @@ int main (string[] args)
 		Server server;
 		
 		if (line) {
-			server = address.startServer!LineEcho(protocol, (LineEcho c) { c.useSSL = ssl; });
+			server = address.startServer!LineEcho(protocol, (LineEcho c) { if (ssl) c.secure(); });
 		}
 		else {
-			server = address.startServer!RawEcho(protocol, (RawEcho c) { c.useSSL = ssl; });
+			server = address.startServer!RawEcho(protocol, (RawEcho c) { if (ssl) c.secure(); });
 		}
 
 		nucular.reactor.stopOn("INT", "TERM");

@@ -52,6 +52,7 @@ class Selector : base.Selector
 		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, descriptor.to!int, &event) == 0);
 
 		_descriptors_by_fd[descriptor.to!int] = descriptor;
+		_last = null;
 
 		super.add(descriptor);
 	}

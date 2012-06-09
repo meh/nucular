@@ -25,6 +25,7 @@ public import nucular.connection : Connection, Security;
 public import nucular.descriptor : Descriptor;
 public import nucular.server     : Server;
 public import nucular.signal     : trap;
+public import nucular.security   : SecureInternetAddress, SecureInternet6Address;
 
 version (Posix) {
 	public import nucular.server : UnixAddress, NamedPipeAddress;

@@ -18,6 +18,9 @@
 
 module nucular.security;
 
+import std.stdio : writeln;
+
+import std.socket : Address, InternetAddress, Internet6Address;
 import std.exception;
 import std.file;
 import std.string;
@@ -109,6 +112,7 @@ enum Type
 	SSLv2,
 	SSLv3,
 	TLSv1,
+	DTLSv1
 }
 
 class PrivateKey
@@ -117,13 +121,19 @@ class PrivateKey
 	{
 		assert(value);
 
-		_internal = value;
+		_internal_evp = value;
+	}
+
+	this (RSA* value)
+	{
+		assert(value);
+
+		_internal_rsa = value;
 	}
 
 	this (string source, string password = null)
 	{
-		BIO*      bio;
-		EVP_PKEY* key;
+		BIO* bio;
 
 		if (exists(source)) {
 			bio = BIO_new_file(source.toStringz(), "r".toStringz());
@@ -132,32 +142,91 @@ class PrivateKey
 			bio = BIO_new_mem_buf(cast (void*) source.ptr, source.length.to!int);
 		}
 
+		assert(bio);
+
+		scope (exit) {
+			BIO_free(bio);
+		}
+
 		if (password) {
-			key = PEM_read_bio_PrivateKey(bio, &key, &_password_callback, cast (void*) password.toStringz());
+			_internal_evp = PEM_read_bio_PrivateKey(bio, null, &_password_callback, cast (void*) password.toStringz());
 		}
 		else {
-			key = PEM_read_bio_PrivateKey(bio, &key, null, null);
+			_internal_evp = PEM_read_bio_PrivateKey(bio, null, null, null);
 		}
 
-		BIO_free(bio);
+		if (!isEVP) {
+			if (password) {
+				_internal_rsa = PEM_read_bio_RSAPrivateKey(bio, null, &_password_callback, cast (void*) password.toStringz());
+			}
+			else {
+				_internal_rsa = PEM_read_bio_RSAPrivateKey(bio, null, null, null);
+			}
 
-		enforceEx!Errors(key);
+			if (!isRSA) {
+				if (password) {
+					_internal_dsa = PEM_read_bio_DSAPrivateKey(bio, null, &_password_callback, cast (void*) password.toStringz());
+				}
+				else {
+					_internal_dsa = PEM_read_bio_DSAPrivateKey(bio, null, null, null);
+				}
 
-		this(key);
+				if (!isDSA) {
+					throw new Errors;
+				}
+			}
+		}
 	}
 
 	~this ()
 	{
-		EVP_PKEY_free(_internal);
+		if (_internal_evp) {
+			EVP_PKEY_free(_internal_evp);
+		}
+
+		if (_internal_rsa) {
+			RSA_free(_internal_rsa);
+		}
+
+		if (_internal_dsa) {
+			DSA_free(_internal_dsa);
+		}
 	}
 
-	@property native ()
+	@property native(T : EVP_PKEY*) ()
 	{
-		return _internal;
+		return _internal_evp;
+	}
+
+	@property native(T : RSA*) ()
+	{
+		return _internal_rsa;
+	}
+
+	@property native(T : DSA*) ()
+	{
+		return _internal_dsa;
+	}
+
+	@property isEVP ()
+	{
+		return _internal_evp !is null;
+	}
+
+	@property isRSA ()
+	{
+		return _internal_rsa !is null;
+	}
+
+	@property isDSA ()
+	{
+		return _internal_dsa !is null;
 	}
 
 private:
-	EVP_PKEY* _internal;
+	EVP_PKEY* _internal_evp;
+	RSA*      _internal_rsa;
+	DSA*      _internal_dsa;
 }
 
 class Certificate
@@ -228,57 +297,56 @@ private:
 
 class Context
 {
-	this (bool server, Type type = Type.Any)
+	this (Type type = Type.Any)
 	{
-		this(server, DefaultPrivateKey, DefaultCertificate, type);
+		this(DefaultPrivateKey, DefaultCertificate, type);
 	}
 
-	this (bool server, PrivateKey privkey, Certificate certchain, Type type = Type.Any)
+	this (PrivateKey privkey, Certificate certchain, Type type = Type.Any)
 	{
-		_server      = server;
+		final switch (type) {
+			case Type.Any:    _internal = SSL_CTX_new(SSLv23_method()); break;
+			case Type.SSLv2:  _internal = SSL_CTX_new(SSLv2_method()); break;
+			case Type.SSLv3:  _internal = SSL_CTX_new(SSLv3_method()); break;
+			case Type.TLSv1:  _internal = SSL_CTX_new(TLSv1_method()); break;
+			case Type.DTLSv1: _internal = SSL_CTX_new(DTLSv1_method()); break;
+		}
+
+		enforceEx!Errors(native);
+
 		_private_key = privkey;
 		_certificate = certchain;
 
-		final switch (type) {
-			case Type.Any:   _internal = SSL_CTX_new(isServer ? SSLv23_server_method() : SSLv23_client_method()); break;
-			case Type.SSLv2: _internal = SSL_CTX_new(isServer ? SSLv2_server_method()  : SSLv2_client_method()); break;
-			case Type.SSLv3: _internal = SSL_CTX_new(isServer ? SSLv3_server_method()  : SSLv3_client_method()); break;
-			case Type.TLSv1: _internal = SSL_CTX_new(isServer ? TLSv1_server_method()  : TLSv1_client_method()); break;
-		}
-
-		enforce(_internal, "no SSL context");
-
 		SSL_CTX_set_options(native, SSL_OP_ALL);
+		SSL_CTX_set_mode(native, SSL_MODE_RELEASE_BUFFERS);
 
-		if (SSL_CTX_use_PrivateKey(native, privkey.native) <= 0) {
-			throw new Errors;
+		if (privkey.isEVP) {
+			enforceEx!Errors(SSL_CTX_use_PrivateKey(native, privkey.native!(EVP_PKEY*)));
+		}
+		else if (privkey.isRSA) {
+			enforceEx!Errors(SSL_CTX_use_RSAPrivateKey(native, privkey.native!(RSA*)));
+		}
+		else {
+			assert(0);
 		}
 
-		if (SSL_CTX_use_certificate(native, certchain.native) <= 0) {
-			throw new Errors;
-		}
+		enforceEx!Errors(SSL_CTX_use_certificate(native, certchain.native));
 
-		if (isServer) {
-			SSL_CTX_sess_set_cache_size(native, 128);
-			SSL_CTX_set_session_id_context(native, cast (ubyte*) "nucular".ptr, 7);
-		}
-		
+		SSL_CTX_set_session_id_context(native, cast (ubyte*) "nucular".ptr, 7);
+
 		ciphers = "ALL:!ADH:!LOW:!EXP:!DES-CBC3-SHA:@STRENGTH";
 	}
 
 	~this ()
 	{
-		SSL_CTX_free(native);
+		if (native) {
+			SSL_CTX_free(native);
+		}
 	}
 
 	@property ciphers (string value)
 	{
 		SSL_CTX_set_cipher_list(native, value.toStringz());
-	}
-
-	@property isServer ()
-	{
-		return _server;
 	}
 
 	@property privateKey ()
@@ -297,12 +365,118 @@ class Context
 	}
 
 private:
-	bool _server;
-
 	SSL_CTX* _internal;
 
 	PrivateKey  _private_key;
 	Certificate _certificate;
+}
+
+private template SecureAddress()
+{
+	private static string constructorsFor(string signature)
+	{
+		string parameters;
+
+		foreach (piece; signature.split(",")) {
+			parameters ~= ", " ~ piece[piece.lastIndexOf(" ") .. $];
+		}
+
+		parameters = parameters[2 .. $];
+
+		return "this (" ~ signature ~ ", bool verify = false) {
+			super(" ~ parameters ~");
+
+			set(verify);
+		}" ~
+
+		"this (" ~ signature ~ ", Context context, bool verify = false) {
+			super(" ~ parameters ~");
+
+			set(context, verify);
+		}" ~
+
+		"this (" ~ signature ~ ", Type type, bool verify = false) {
+			super(" ~ parameters ~");
+
+			set(type, verify);
+		}" ~
+
+		"this (" ~ signature ~ ", PrivateKey key, Certificate certificate, bool verify = false) {
+			super(" ~ parameters ~");
+
+			set(key, certificate, verify);
+		}" ~
+
+		"this (" ~ signature ~ ", Type type, PrivateKey key, Certificate certificate, bool verify = false) {
+			super(" ~ parameters ~");
+
+			set(type, key, certificate, verify);
+		}";
+	}
+
+	void set (bool verify)
+	{
+		_context = new Context();
+		_verify  = verify;
+	}
+
+	void set (Context context, bool verify)
+	{
+		_context = context;
+		_verify  = verify;
+	}
+
+	void set (Type type, bool verify)
+	{
+		_context = new Context(type);
+		_verify  = verify;
+	}
+
+	void set (PrivateKey key, Certificate certificate, bool verify)
+	{
+		_context = new Context(key, certificate);
+		_verify  = verify;
+	}
+
+	void set (Type type, PrivateKey key, Certificate certificate, bool verify)
+	{
+		_context = new Context(key, certificate, type);
+		_verify  = verify;
+	}
+
+	@property context ()
+	{
+		return _context;
+	}
+
+	@property verify ()
+	{
+		return _verify;
+	}
+
+private:
+	Context _context;
+	bool    _verify;
+}
+
+class SecureInternetAddress : InternetAddress
+{
+	mixin SecureAddress;
+
+	mixin(constructorsFor("in char[] addr, ushort port"));
+	mixin(constructorsFor("uint addr, ushort port"));
+	mixin(constructorsFor("ushort port"));
+}
+
+class SecureInternet6Address : Internet6Address
+{
+	mixin SecureAddress;
+
+	mixin(constructorsFor("in char[] node"));
+	mixin(constructorsFor("in char[] node, in char[] service"));
+	mixin(constructorsFor("in char[] node, ushort port"));
+	mixin(constructorsFor("ubyte[16] addr, ushort port"));
+	mixin(constructorsFor("ushort port"));
 }
 
 class Box
@@ -321,11 +495,12 @@ class Box
 
 	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection, Type type = Type.Any)
 	{
-		this(server, new Context(server, privkey, certchain, type), verify, connection);
+		this(server, new Context(privkey, certchain, type), verify, connection);
 	}
 
 	this (bool server, Context context, bool verify, Connection connection)
 	{
+		_server  = server;
 		_context = context;
 
 		_read  = BIO_new(BIO_s_mem());
@@ -509,7 +684,7 @@ class Box
 
 	@property isServer ()
 	{
-		return context.isServer;
+		return _server;
 	}
 
 	@property certificate ()
@@ -524,14 +699,10 @@ class Box
 
 	@property peerCertificate ()
 	{
-		X509* cert;
-
 		if (native) {
-			cert = SSL_get_peer_certificate(native);
-		}
-
-		if (cert) {
-			return new Certificate(cert);
+			if (auto cert = SSL_get_peer_certificate(native)) {
+				return new Certificate(cert);
+			}
 		}
 
 		return null;
@@ -559,16 +730,17 @@ private:
 	BIO* _read;
 	BIO* _write;
 
+	bool _server;
 	bool _handshake_completed;
 
 	Queue!(ubyte[]) _outbound;
 	ubyte[]         _unget;
 }
 
-private:
+private extern (C):
 	import core.stdc.string;
 
-	extern (C) int _password_callback (char* buf, int bufsize, int rwflag, void* userdata)
+	int _password_callback (char* buf, int bufsize, int rwflag, void* userdata)
 	{
 		char* password = cast (char*) userdata;
 
@@ -577,7 +749,7 @@ private:
 		return strlen(password).to!int;
 	}
 
-	extern (C) int _verify_callback (int preverify_ok, X509_STORE_CTX* ctx)
+	int _verify_callback (int preverify_ok, X509_STORE_CTX* ctx)
 	{
 		int        result;
 		X509*      cert       = X509_STORE_CTX_get_current_cert(ctx);

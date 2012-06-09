@@ -10,58 +10,18 @@ import line = nucular.protocols.line;
 
 class RawSender : Connection
 {
-	override void connected ()
-	{
-		if (useSSL) {
-			secure();
-		}
-	}
-
 	override void receiveData (ubyte[] data)
 	{
 		writeln(data);
 	}
-
-	@property useSSL (bool value)
-	{
-		_use_ssl = value;
-	}
-
-	@property useSSL ()
-	{
-		return _use_ssl;
-	}
-
-private:
-	bool _use_ssl;
 }
 
 class LineSender : line.Protocol
 {
-	override void connected ()
-	{
-		if (useSSL) {
-			secure();
-		}
-	}
-
 	override void receiveLine (string line)
 	{
 		writeln(line);
 	}
-
-	@property useSSL (bool value)
-	{
-		_use_ssl = value;
-	}
-
-	@property useSSL ()
-	{
-		return _use_ssl;
-	}
-
-private:
-	bool _use_ssl;
 }
 
 int main (string[] args)
@@ -115,10 +75,10 @@ int main (string[] args)
 		Connection connection;
 		
 		if (line) {
-			connection = address.connect!LineSender(protocol, (LineSender c) { c.useSSL = ssl; });
+			connection = address.connect!LineSender(protocol, (LineSender c) { if (ssl) c.secure(); });
 		}
 		else {
-			connection = address.connect!RawSender(protocol, (RawSender c) { c.useSSL = ssl; });
+			connection = address.connect!RawSender(protocol, (RawSender c) { if (ssl) c.secure(); });
 		}
 
 		(new Thread({
