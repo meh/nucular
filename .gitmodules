@@ -3,4 +3,4 @@
 	url = git://github.com/PhilippeSigaud/Pegged.git
 [submodule "vendor/openssl"]
 	path = vendor/openssl
-	url = git://github.com/D-Programming-Deimos/openssl.git
+	url = git://github.com/meh/openssl.git
