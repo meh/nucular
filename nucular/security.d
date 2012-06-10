@@ -193,17 +193,17 @@ class PrivateKey
 		}
 	}
 
-	@property native(T : EVP_PKEY*) ()
+	@property native(T : EVP_PKEY) ()
 	{
 		return _internal_evp;
 	}
 
-	@property native(T : RSA*) ()
+	@property native(T : RSA) ()
 	{
 		return _internal_rsa;
 	}
 
-	@property native(T : DSA*) ()
+	@property native(T : DSA) ()
 	{
 		return _internal_dsa;
 	}
@@ -321,10 +321,10 @@ class Context
 		SSL_CTX_set_mode(native, SSL_MODE_RELEASE_BUFFERS);
 
 		if (privkey.isEVP) {
-			enforceEx!Errors(SSL_CTX_use_PrivateKey(native, privkey.native!(EVP_PKEY*)));
+			enforceEx!Errors(SSL_CTX_use_PrivateKey(native, privkey.native!EVP_PKEY));
 		}
 		else if (privkey.isRSA) {
-			enforceEx!Errors(SSL_CTX_use_RSAPrivateKey(native, privkey.native!(RSA*)));
+			enforceEx!Errors(SSL_CTX_use_RSAPrivateKey(native, privkey.native!RSA));
 		}
 		else {
 			assert(0);
@@ -375,7 +375,7 @@ private template SecureAddress()
 {
 	private static string constructorsFor(string signature)
 	{
-		string parameters // = signature.split(",").map!(`a[a.lastIndexOf(" ") .. $]`).join(", ");
+		string parameters; // = signature.split(",").map!(`a[a.lastIndexOf(" ") .. $]`).join(", ");
 
 		foreach (piece; signature.split(",")) {
 			parameters ~= ", " ~ piece[piece.lastIndexOf(" ") .. $];
