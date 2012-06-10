@@ -18,48 +18,17 @@
 
 module nucular.protocols.socks;
 
+public import nucular.protocols.dns.resolver : UnresolvedAddress;
+
 import std.exception;
-import std.socket;
 import std.conv;
 import std.array;
 import std.string;
 
-version (Posix) {
-	import core.sys.posix.arpa.inet;
-}
-
-import nucular.reactor : Reactor, instance;
+import nucular.reactor : Reactor, instance, Address, InternetAddress, Internet6Address;
 import nucular.deferrable;
 import nucular.connection;
 import buffered = nucular.protocols.buffered;
-
-class ProxiedAddress : UnknownAddress
-{
-	this (string host, ushort port)
-	{
-		_host = host;
-		_port = port;
-	}
-
-	ushort port ()
-	{
-		return ntohs(_port);
-	}
-
-	override string toPortString ()
-	{
-		return _port.to!string;
-	}
-
-	override string toHostNameString ()
-	{
-		return _host;
-	}
-
-private:
-	string _host;
-	ushort _port;
-}
 
 abstract class SOCKS : buffered.Protocol
 {
@@ -210,7 +179,7 @@ class SOCKS4 : SOCKS
 		if (auto target = cast (InternetAddress) address) {
 			minimum = 8;
 
-			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ toData(target.port()) ~ toData(target.addr()) ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
+			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.to!(ubyte[]) ~ target.addr.to!(ubyte[]) ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
 		}
 		else {
 			throw new SOCKSError("address not supported");
@@ -247,10 +216,10 @@ class SOCKS4a : SOCKS4
 {
 	override void sendRequest (Type type, Address address)
 	{
-		if (auto target = cast (ProxiedAddress) address) {
+		if (auto target = cast (UnresolvedAddress) address) {
 			minimum = 8;
 
-			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ toData(target.port()) ~ cast (ubyte[]) [0, 0, 0, 42] ~ cast (ubyte[]) username ~ [cast (ubyte) 0] ~ cast (ubyte[]) target.toHostNameString() ~ [cast (ubyte) 0]);
+			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.to!(ubyte[]) ~ cast (ubyte[]) [0, 0, 0, 42] ~ cast (ubyte[]) username ~ [cast (ubyte) 0] ~ cast (ubyte[]) target.toHostNameString() ~ [cast (ubyte) 0]);
 		}
 		else {
 			super.sendRequest(type, address);
@@ -322,26 +291,14 @@ class SOCKS5 : SOCKS
 
 	void sendRequest (Type type, Address address)
 	{
-		ubyte[] toData(T) (T data)
-		{
-			ubyte[] result;
-
-			for (int i = 0; i < T.sizeof; i++) {
-				result  ~= cast (ubyte) (data & 0xff);
-				data   >>= 8;
-			}
-
-			return result;
-		}
-
-		if (auto target = cast (ProxiedAddress) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.HostName, target.toHostNameString().length] ~ cast (ubyte[]) target.toHostNameString() ~ toData(target.port()));
+		if (auto target = cast (UnresolvedAddress) address) {
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.HostName, target.toHostNameString().length] ~ cast (ubyte[]) target.toHostNameString() ~ target.port.to!(ubyte[]));
 		}
 		else if (auto target = cast (InternetAddress) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv4] ~ toData(target.addr()) ~ toData(target.port()));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv4] ~ target.addr.to!(ubyte[]) ~ target.port.to!(ubyte[]));
 		}
 		else if (auto target = cast (Internet6Address) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ toData(target.port()));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ target.port.to!(ubyte[]));
 		}
 		else {
 			throw new SOCKSError(Reply.AddressTypeNotSupported);
@@ -465,10 +422,125 @@ private:
 	State _state;
 }
 
-Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, void delegate (T) callback, string username = null, string password = null, string ver = "5")
+private template ProxyAddressConstructor()
+{
+	private static string constructorsFor(string signature)
+	{
+		string parameters; // = signature.split(",").map!(`a[a.lastIndexOf(" ") .. $]`).join(", ");
+
+		foreach (piece; signature.split(",")) {
+			parameters ~= ", " ~ piece[piece.lastIndexOf(" ") .. $];
+		}
+
+		parameters = parameters[2 .. $];
+
+		return `this (` ~ signature ~ `) {
+			super(` ~ parameters ~`);
+
+			set(null, null, 5);
+		}` ~
+
+		`this (` ~ signature ~ `, string username, string password) {
+			super(` ~ parameters ~`);
+
+			set(username, password, 5);
+		}` ~
+
+		`this (` ~ signature ~ `, string username) {
+			super(` ~ parameters ~`);
+
+			set(username, null, "4a");
+		}` ~
+
+		`this (` ~ signature ~ `, string username, string password, string ver) {
+			super(` ~ parameters ~`);
+
+			set(username, password, ver);
+		}` ~
+
+		`this (` ~ signature ~ `, string username, int ver) {
+			super(` ~ parameters ~`);
+
+			set(username, null, ver);
+		}`;
+	}
+
+	void set (string username, string password, string ver)
+	{
+		_username = username;
+		_password = password;
+		_version  = ver;
+	}
+
+	void set (string username, string password, int ver)
+	{
+		_username = username;
+		_password = password;
+		_version  = ver.text;
+	}
+
+	@property username ()
+	{
+		return _username;
+	}
+
+	@property password ()
+	{
+		return _password;
+	}
+
+	@property socksVersion ()
+	{
+		return _version;
+	}
+
+private:
+	string _username;
+	string _password;
+	string _version;
+}
+
+class ProxyAddress : InternetAddress
+{
+	mixin ProxyAddressConstructor;
+
+	mixin(constructorsFor("in char[] addr, ushort port"));
+	mixin(constructorsFor("uint addr, ushort port"));
+	mixin(constructorsFor("ushort port"));
+}
+
+class Proxy6Address : Internet6Address
+{
+	mixin ProxyAddressConstructor;
+
+	mixin(constructorsFor("in char[] node"));
+	mixin(constructorsFor("in char[] node, in char[] service"));
+	mixin(constructorsFor("in char[] node, ushort port"));
+	mixin(constructorsFor("ubyte[16] addr, ushort port"));
+	mixin(constructorsFor("ushort port"));
+}
+
+Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, void delegate (T) callback)
 {
 	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
 	SOCKS      proxy;
+	string     username;
+	string     password;
+	string     ver;
+
+	if (auto address = cast (ProxyAddress) through) {
+		username = address.username;
+		password = address.password;
+		ver      = address.socksVersion;
+	}
+	else if (auto address = cast (Proxy6Address) through) {
+		username = address.username;
+		password = address.password;
+		ver      = address.socksVersion;
+	}
+	else {
+		throw new Error("proxy address unsupported");
+	}
 
 	if (ver == "4") {
 		proxy = cast (SOCKS) reactor.connect!SOCKS4(through);
@@ -491,24 +563,24 @@ Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address t
 	return proxy.deferrable;
 }
 
-Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, string username = null, string password = null, string ver = "5")
+Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through)
 {
-	return reactor.connectThrough!T(target, through, cast (void delegate (T)) reactor.defaultCreationCallback, username, password, ver);
+	return reactor.connectThrough!T(target, through, cast (void delegate (T)) reactor.defaultCreationCallback);
 }
 
-Deferrable!Connection connectThrough(T : Connection) (Address target, Address through, string username = null, string password = null, string ver = "5")
+Deferrable!Connection connectThrough(T : Connection) (Address target, Address through)
 {
-	return instance.connectThrough!T(target, through, username, password, ver);
+	return instance.connectThrough!T(target, through);
 }
 
 private:
-	ubyte[] toData(T) (T data)
+	ubyte[] to(T : ubyte[], T2) (T2 data)
 	{
-		ubyte[] result;
+		auto result = new ubyte[T2.sizeof];
 
-		for (int i = 0; i < T.sizeof; i++) {
-			result  ~= cast (ubyte) (data & 0xff);
-			data   >>= 8;
+		for (int i = 0; i < T2.sizeof; i++) {
+			result[i]   = data & 0xff;
+			data      >>= 8;
 		}
 
 		return result;

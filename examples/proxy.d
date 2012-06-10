@@ -29,8 +29,8 @@ class Reader : Connection
 void main ()
 {
 	nucular.reactor.run({
-		(new ProxiedAddress("automation.whatismyip.com", 80)).
-			connectThrough!Reader(new InternetAddress("localhost", 9050)).
+		(new UnresolvedAddress("automation.whatismyip.com", 80)).
+			connectThrough!Reader(new ProxyAddress("localhost", 9050)).
 				errback((Exception e){
 					if (e) {
 						writeln("! connection failed because: ", e.msg);

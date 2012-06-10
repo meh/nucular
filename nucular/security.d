@@ -371,7 +371,7 @@ private:
 	Certificate _certificate;
 }
 
-private template SecureAddress()
+private template SecureAddressConstructor()
 {
 	private static string constructorsFor(string signature)
 	{
@@ -383,35 +383,35 @@ private template SecureAddress()
 
 		parameters = parameters[2 .. $];
 
-		return "this (" ~ signature ~ ", bool verify = false) {
-			super(" ~ parameters ~");
+		return `this (` ~ signature ~ `, bool verify = false) {
+			super(` ~ parameters ~`);
 
 			set(verify);
-		}" ~
+		}` ~
 
-		"this (" ~ signature ~ ", Context context, bool verify = false) {
-			super(" ~ parameters ~");
+		`this (` ~ signature ~ `, Context context, bool verify = false) {
+			super(` ~ parameters ~`);
 
 			set(context, verify);
-		}" ~
+		}` ~
 
-		"this (" ~ signature ~ ", Type type, bool verify = false) {
-			super(" ~ parameters ~");
+		`this (` ~ signature ~ `, Type type, bool verify = false) {
+			super(` ~ parameters ~`);
 
 			set(type, verify);
-		}" ~
+		}` ~
 
-		"this (" ~ signature ~ ", PrivateKey key, Certificate certificate, bool verify = false) {
-			super(" ~ parameters ~");
+		`this (` ~ signature ~ `, PrivateKey key, Certificate certificate, bool verify = false) {
+			super(` ~ parameters ~`);
 
 			set(key, certificate, verify);
-		}" ~
+		}` ~
 
-		"this (" ~ signature ~ ", Type type, PrivateKey key, Certificate certificate, bool verify = false) {
-			super(" ~ parameters ~");
+		`this (` ~ signature ~ `, Type type, PrivateKey key, Certificate certificate, bool verify = false) {
+			super(` ~ parameters ~`);
 
 			set(type, key, certificate, verify);
-		}";
+		}`;
 	}
 
 	void set (bool verify)
@@ -461,7 +461,7 @@ private:
 
 class SecureInternetAddress : InternetAddress
 {
-	mixin SecureAddress;
+	mixin SecureAddressConstructor;
 
 	mixin(constructorsFor("in char[] addr, ushort port"));
 	mixin(constructorsFor("uint addr, ushort port"));
@@ -470,7 +470,7 @@ class SecureInternetAddress : InternetAddress
 
 class SecureInternet6Address : Internet6Address
 {
-	mixin SecureAddress;
+	mixin SecureAddressConstructor;
 
 	mixin(constructorsFor("in char[] node"));
 	mixin(constructorsFor("in char[] node, in char[] service"));
