@@ -24,7 +24,7 @@ import std.conv;
 import std.string;
 import std.file;
 
-import nucular.reactor : Reactor;
+import nucular.reactor : Reactor, SecureInternetAddress, SecureInternet6Address;
 import nucular.descriptor;
 import nucular.connection;
 
@@ -33,14 +33,12 @@ abstract class Server
 	this (Reactor reactor, Address address)
 	{
 		_reactor = reactor;
-
 		_address = address;
 	}
 
 	this (Reactor reactor, Descriptor descriptor)
 	{
-		_reactor = reactor;
-
+		_reactor    = reactor;
 		_connection = (new Connection).watched(reactor, descriptor);
 		_address    = new UnknownAddress;
 	}
@@ -164,6 +162,13 @@ class TCPServer : Server
 			_block(connection);
 		}
 		connection.initialized();
+
+		if (auto security = cast (SecureInternetAddress) address) {
+			connection.secure(security.context, security.verify);
+		}
+		else if (auto security = cast (SecureInternet6Address) address) {
+			connection.secure(security.context, security.verify);
+		}
 
 		return connection;
 	}

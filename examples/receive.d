@@ -85,7 +85,9 @@ int main (string[] args)
 				string host = m.captures[1];
 				ushort port = m.captures[2].to!ushort(10);
 
-				address = ipv6 ? new Internet6Address(host, port) : new InternetAddress(host, port);
+				address = ipv6 ?
+					ssl ? new SecureInternet6Address(host, port) : new Internet6Address(host, port) :
+					ssl ? new SecureInternetAddress(host, port) : new InternetAddress(host, port);
 			}
 			break;
 
@@ -110,14 +112,7 @@ int main (string[] args)
 	}
 
 	nucular.reactor.run({
-		Server server;
-		
-		if (line) {
-			server = address.startServer!LineEcho(protocol, (LineEcho c) { if (ssl) c.secure(); });
-		}
-		else {
-			server = address.startServer!RawEcho(protocol, (RawEcho c) { if (ssl) c.secure(); });
-		}
+		auto server = line ? address.startServer!LineEcho(protocol) : address.startServer!RawEcho(protocol);
 
 		nucular.reactor.stopOn("INT", "TERM");
 	});

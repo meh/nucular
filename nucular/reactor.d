@@ -766,6 +766,13 @@ private:
 			descriptor.socket.connect(address);
 		}
 
+		if (auto security = cast (SecureInternetAddress) address) {
+			connection.secure(security.context, security.verify);
+		}
+		else if (auto security = cast (SecureInternet6Address) address) {
+			connection.secure(security.context, security.verify);
+		}
+
 		schedule({
 			_selector.add(descriptor);
 			_connecting[descriptor] = connection;
