@@ -375,7 +375,7 @@ private template SecureAddress()
 {
 	private static string constructorsFor(string signature)
 	{
-		string parameters;
+		string parameters // = signature.split(",").map!(`a[a.lastIndexOf(" ") .. $]`).join(", ");
 
 		foreach (piece; signature.split(",")) {
 			parameters ~= ", " ~ piece[piece.lastIndexOf(" ") .. $];
