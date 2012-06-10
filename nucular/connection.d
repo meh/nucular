@@ -239,35 +239,35 @@ class Connection
 
 	void secure (bool verify = false)
 	{
-		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, verify, this);
 	}
 
 	void secure (Security.Context context, bool verify = false)
 	{
-		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, context, verify, this);
 	}
 
 	void secure (Security.Type type, bool verify = false)
 	{
-		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, verify, this, type);
 	}
 
 	void secure (Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
 	{
-		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, certificate, verify, this);
 	}
 
 	void secure (Security.Type type, Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
 	{
-		enforce(protocol == "tcp" || protocol == "unix", "secure connections aren't supported on this protocol");
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, certificate, verify, this, type);
 	}
