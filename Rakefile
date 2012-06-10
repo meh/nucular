@@ -1,10 +1,10 @@
 require 'rake'
 require 'rake/clean'
 
-DC      = ENV['DC'] || 'dmd'
-DRIVER  = ENV['DRIVER'] || 'select'
-CFLAGS  = "#{ENV['CFLAGS']} -version=#{DRIVER} -w -Ivendor/pegged -Ivendor/openssl"
-LDFLAGS = "#{ENV['LDFLAGS']} -L-lssl -L-lcrypto"
+DC       = ENV['DC'] || 'dmd'
+SELECTOR = ENV['SELECTOR'] || 'select'
+CFLAGS   = "#{ENV['CFLAGS']} -version=#{SELECTOR} -w -Ivendor/pegged -Ivendor/openssl"
+LDFLAGS  = "#{ENV['LDFLAGS']} -L-lssl -L-lcrypto"
 
 if ENV['DEBUG']
 	CFLAGS << ' -debug -gc'
