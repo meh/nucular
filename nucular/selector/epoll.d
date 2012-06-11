@@ -23,8 +23,6 @@ version (epoll):
 import core.time;
 import core.stdc.errno;
 
-import core.sys.posix.poll;
-
 import std.algorithm;
 import std.array;
 import std.conv;
@@ -37,7 +35,7 @@ class Selector : base.Selector
 {
 	this ()
 	{
-		_efd = epoll_create1(0);
+		errnoEnforce((_efd = epoll_create1(0)) >= 0);
 
 		super();
 	}
@@ -46,12 +44,10 @@ class Selector : base.Selector
 	{
 		epoll_event event;
 
-		event.data.fd = descriptor.to!int;
-		event.events  = EPOLLET;
+		event.data.u64 = descriptors.length;
 
 		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, descriptor.to!int, &event) == 0);
 
-		_descriptors_by_fd[descriptor.to!int] = descriptor;
 		_last = null;
 
 		super.add(descriptor);
@@ -61,7 +57,7 @@ class Selector : base.Selector
 	{
 		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_DEL, descriptor.to!int, null) == 0);
 
-		_descriptors_by_fd.remove(descriptor.to!int);
+		_last = null;
 
 		super.remove(descriptor);
 	}
@@ -121,20 +117,20 @@ class Selector : base.Selector
 
 		epoll_event event;
 
-		foreach (descriptor; descriptors) {
-			event.data.fd = descriptor.to!int;
+		foreach (index, descriptor; descriptors) {
+			event.data.u64 = index;
 
 			static if (mode == "both") {
-				event.events |= EPOLLIN | EPOLLOUT | EPOLLET;
+				event.events = EPOLLIN | EPOLLOUT | EPOLLET;
 			}
 			else static if (mode == "read") {
-				event.events |= EPOLLIN | EPOLLET;
+				event.events = EPOLLIN | EPOLLET;
 			}
 			else static if (mode == "write") {
-				event.events |= EPOLLOUT | EPOLLET;
+				event.events = EPOLLOUT | EPOLLET;
 			}
 
-			epoll_ctl(_efd, EPOLL_CTL_MOD, descriptor.to!int, &event);
+			errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_MOD, descriptor.to!int, &event) == 0);
 		}
 
 		_last = mode;
@@ -149,22 +145,22 @@ class Selector : base.Selector
 
 		Descriptor[] result;
 
-		for (int i = 0; i < _length; i++) {
-			auto current = _events[i];
-
+		// XXX: somehow it's fucking up the u64, so we use u32, it won't
+		//      be able to handle 4 billion fds anyway.
+		foreach (ref current; _events[0 .. _length]) {
 			static if (mode == "read") {
 				if (current.events & EPOLLIN) {
-					result ~= _descriptors_by_fd[current.data.fd];
+					result ~= descriptors[current.data.u32];
 				}
 			}
 			else static if (mode == "write") {
 				if (current.events & EPOLLOUT) {
-					result ~= _descriptors_by_fd[current.data.fd];
+					result ~= descriptors[current.data.u32];
 				}
 			}
 			else static if (mode == "error") {
-				if (current.events & EPOLLERR || current.events & EPOLLHUP) {
-					result ~= _descriptors_by_fd[current.data.fd];
+				if (current.events & (EPOLLERR | EPOLLHUP)) {
+					result ~= descriptors[current.data.u32];
 				}
 			}
 		}
@@ -191,8 +187,6 @@ private:
 	epoll_event[64] _events;
 	int             _length;
 	string          _last;
-
-	Descriptor[int] _descriptors_by_fd;
 }
 
 private extern (C):

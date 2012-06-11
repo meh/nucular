@@ -138,7 +138,7 @@ class Selector : base.Selector
 				}
 			}
 			else static if (mode == "error") {
-				if (p.revents & POLLERR || p.revents & POLLHUP) {
+				if (p.revents & (POLLERR | POLLHUP)) {
 					result ~= descriptors[index];
 				}
 			}
