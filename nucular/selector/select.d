@@ -45,22 +45,30 @@ class Selector : base.Selector
 		super();
 	}
 
-	override void add (Descriptor descriptor)
+	override bool add (Descriptor descriptor)
 	{
+		if (!super.add(descriptor)) {
+			return false;
+		}
+
 		FD_SET(descriptor.to!int, &_set);
 
 		_max = 0;
 
-		super.add(descriptor);
+		return true;
 	}
 
-	override void remove (Descriptor descriptor)
+	override bool remove (Descriptor descriptor)
 	{
+		if (!super.remove(descriptor)) {
+			return false;
+		}
+
 		FD_CLR(descriptor.to!int, &_set);
 
 		_max = 0;
 
-		super.remove(descriptor);
+		return true;
 	}
 
 	base.Selected available() ()

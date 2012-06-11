@@ -40,26 +40,48 @@ class Selector : base.Selector
 		super();
 	}
 
-	override void add (Descriptor descriptor)
+	override bool add (Descriptor descriptor)
 	{
+		if (!super.add(descriptor)) {
+			return false;
+		}
+
 		epoll_event event;
 
 		event.data.u64 = descriptors.length;
 
-		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, descriptor.to!int, &event) == 0);
+		try {
+			errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, descriptor.to!int, &event) == 0);
+		}
+		catch (ErrnoException e) {
+			if (e.errno != EEXIST) {
+				throw e;
+			}
+		}
 
 		_last = null;
 
-		super.add(descriptor);
+		return true;
 	}
 
-	override void remove (Descriptor descriptor)
+	override bool remove (Descriptor descriptor)
 	{
-		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_DEL, descriptor.to!int, null) == 0);
+		if (!super.remove(descriptor)) {
+			return false;
+		}
+
+		try {
+			errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_DEL, descriptor.to!int, null) == 0);
+		}
+		catch (ErrnoException e) {
+			if (e.errno != ENOENT) {
+				throw e;
+			}
+		}
 
 		_last = null;
 
-		super.remove(descriptor);
+		return true;
 	}
 
 	base.Selected available() ()

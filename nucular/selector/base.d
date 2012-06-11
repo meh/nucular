@@ -94,18 +94,31 @@ class Selector
 		add(_breaker.to!Descriptor);
 	}
 
-	void add (Descriptor descriptor)
+	bool add (Descriptor descriptor)
 	{
+		if (has(descriptor)) {
+			return false;
+		}
+
 		_descriptors ~= descriptor;
 
-		wakeUp();
+		return true;
 	}
 
-	void remove (Descriptor descriptor)
+	bool remove (Descriptor descriptor)
 	{
+		if (!has(descriptor)) {
+			return false;
+		}
+
 		_descriptors = _descriptors.remove(_descriptors.countUntil(descriptor));
 
-		wakeUp();
+		return true;
+	}
+
+	final bool has (Descriptor descriptor)
+	{
+		return _descriptors.countUntil(descriptor) != -1;
 	}
 
 	final Descriptor[] prepare (Descriptor[] descriptors)

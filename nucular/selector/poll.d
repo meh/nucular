@@ -34,21 +34,29 @@ import base = nucular.selector.base;
 
 class Selector : base.Selector
 {
-	override void add (Descriptor descriptor)
+	override bool add (Descriptor descriptor)
 	{
+		if (!super.add(descriptor)) {
+			return false;
+		}
+
 		pollfd p = { fd: descriptor.to!int };
 
 		_set  ~= p;
 		_last  = null;
 
-		super.add(descriptor);
+		return true;
 	}
 
-	override void remove (Descriptor descriptor)
+	override bool remove (Descriptor descriptor)
 	{
+		if (!super.remove(descriptor)) {
+			return false;
+		}
+
 		_set = _set.remove(_set.countUntil!(a => a.fd == descriptor.to!int));
 
-		super.remove(descriptor);
+		return true;
 	}
 
 	base.Selected available() ()
