@@ -35,7 +35,7 @@ class Selector : base.Selector
 {
 	this ()
 	{
-		errnoEnforce((_efd = epoll_create1(0)) >= 0);
+		errnoEnforce((_efd = epoll_create(_events.length)) >= 0);
 
 		super();
 	}
@@ -47,8 +47,6 @@ class Selector : base.Selector
 		}
 
 		epoll_event event;
-
-		event.data.u64 = descriptors.length;
 
 		try {
 			errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, descriptor.to!int, &event) == 0);
@@ -143,13 +141,13 @@ class Selector : base.Selector
 			event.data.u64 = index;
 
 			static if (mode == "both") {
-				event.events = EPOLLIN | EPOLLOUT | EPOLLET;
+				event.events = EPOLLIN | EPOLLOUT;
 			}
 			else static if (mode == "read") {
-				event.events = EPOLLIN | EPOLLET;
+				event.events = EPOLLIN;
 			}
 			else static if (mode == "write") {
-				event.events = EPOLLOUT | EPOLLET;
+				event.events = EPOLLOUT;
 			}
 
 			errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_MOD, descriptor.to!int, &event) == 0);
