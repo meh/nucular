@@ -114,15 +114,13 @@ class Selector : base.Selector
 
 		foreach (ref p; _set) {
 			static if (mode == "both") {
-				p.events |= POLLIN | POLLOUT;
+				p.events = POLLIN | POLLOUT;
 			}
 			else static if (mode == "read") {
-				p.events &= ~POLLOUT;
-				p.events |= POLLIN;
+				p.events = POLLIN;
 			}
 			else static if (mode == "write") {
-				p.events &= ~POLLIN;
-				p.events |= POLLOUT;
+				p.events = POLLOUT;
 			}
 		}
 
