@@ -137,18 +137,18 @@ class Selector : base.Selector
 
 		epoll_event event;
 
+		static if (mode == "both") {
+			event.events = EPOLLIN | EPOLLOUT;
+		}
+		else static if (mode == "read") {
+			event.events = EPOLLIN;
+		}
+		else static if (mode == "write") {
+			event.events = EPOLLOUT;
+		}
+
 		foreach (index, descriptor; descriptors) {
 			event.data.u64 = index;
-
-			static if (mode == "both") {
-				event.events = EPOLLIN | EPOLLOUT;
-			}
-			else static if (mode == "read") {
-				event.events = EPOLLIN;
-			}
-			else static if (mode == "write") {
-				event.events = EPOLLOUT;
-			}
 
 			errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_MOD, descriptor.to!int, &event) == 0);
 		}
