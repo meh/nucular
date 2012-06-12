@@ -26,55 +26,23 @@ class LineSender : line.Protocol
 
 int main (string[] args)
 {
-	Address address;
-	string  protocol = "tcp";
-	string  target   = "localhost:10000";
-	bool    ipv4     = true;
-	bool    ipv6     = false;
-	bool    ssl      = false;
-	bool    line     = false;
+	URI  target   = URI.parse("tcp://localhost:10000");
+	bool ssl      = false;
+	bool line     = false;
 
 	getopt(args, config.noPassThrough,
-		"protocol|p", &protocol,
-		"4",          &ipv4,
-		"6",          &ipv6,
 		"ssl|s",      &ssl,
 		"line|l",     &line);
 
 	if (args.length >= 2) {
-		target = args.back;
+		target = URI.parse(args.back);
 	}
 
-	switch (protocol) {
-		case "tcp":
-		case "udp":
-			if (auto m = target.match(ctRegex!`^(.*?):(\d+)$`)) {
-				string host = m.captures[1];
-				ushort port = m.captures[2].to!ushort(10);
-
-				address = ipv6 ?
-					ssl ? new SecureInternet6Address(host, port) : new Internet6Address(host, port) :
-					ssl ? new SecureInternetAddress(host, port) : new InternetAddress(host, port);
-			}
-			break;
-
-		version (Posix) {
-			case "unix":
-				address = new UnixAddress(target);
-				break;
-
-			case "fifo":
-				address = new NamedPipeAddress(target);
-				break;
-		}
-		
-		default:
-			writeln("! unsupported protocol");
-			return 1;
-	}
 
 	nucular.reactor.run({
-		auto connection = line ? address.connect!LineSender(protocol) : address.connect!RawSender(protocol);
+		auto connection = line ?
+			target.connect!LineSender((c) { if (ssl) c.secure(); }) :
+			target.connect!RawSender((c) { if (ssl) c.secure(); });
 
 		(new Thread({
 			char[] data;

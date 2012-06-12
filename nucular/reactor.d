@@ -42,6 +42,7 @@ import std.datetime;
 import std.socket;
 import std.parallelism;
 import std.string;
+import std.conv;
 
 import nucular.threadpool;
 import nucular.timer;
@@ -121,7 +122,7 @@ class Reactor
 				if (descriptor in _servers) {
 					auto current = _servers[descriptor];
 
-					if (auto server = cast (TCPServer) current) {
+					if (auto server = cast (TcpServer) current) {
 						Connection accepted;
 
 						while ((accepted = server.accept()) !is null) {
@@ -137,7 +138,7 @@ class Reactor
 						continue;
 					}
 
-					if (auto server = cast (UDPServer) current) {
+					if (auto server = cast (UdpServer) current) {
 						Connection       connection = server.connection;
 						Connection.Data* data;
 
@@ -153,7 +154,7 @@ class Reactor
 					}
 
 					version (Posix) {
-						if (auto server = cast (UNIXServer) current) {
+						if (auto server = cast (UnixServer) current) {
 							Connection accepted;
 
 							while ((accepted = server.accept()) !is null) {
@@ -169,7 +170,7 @@ class Reactor
 							continue;
 						}
 
-						if (auto server = cast (FIFOServer) current) {
+						if (auto server = cast (FifoServer) current) {
 							auto connection = server.connection;
 							auto data       = server.read();
 
@@ -347,17 +348,32 @@ class Reactor
 
 	Server startServer(T : Connection) (Address address, string protocol)
 	{
-		return startServer!(T)(address, protocol, cast (void delegate (T)) defaultCreationCallback);
+		return startServer!T(address, protocol, cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	Server startServer(T : Connection) (Address address, void delegate (T) block)
 	{
-		return startServer!(T)(address, address.toProtocol(), block);
+		return startServer!T(address, address.toProtocol(), block);
 	}
 
 	Server startServer(T : Connection) (Address address)
 	{
-		return startServer!(T)(address, address.toProtocol(), cast (void delegate (T)) defaultCreationCallback);
+		return startServer!T(address, address.toProtocol(), cast (void delegate (T)) defaultCreationCallback);
+	}
+
+	Server startServer(T : Connection) (Address address)
+	{
+		return startServer!T(address, address.toProtocol(), cast (void delegate (T)) defaultCreationCallback);
+	}
+
+	Server startServer(T : Connection) (URI uri, void delegate (T) block)
+	{
+		return startServer!T(uri.to!Address, uri.scheme.protocol, block);
+	}
+
+	Server startServer(T : Connection) (URI uri)
+	{
+		return startServer!T(uri, cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	void stopServer (Server server)
@@ -388,6 +404,16 @@ class Reactor
 	Connection connect(T : Connection) (Address address)
 	{
 		return connect!(T)(address, address.toProtocol());
+	}
+
+	Connection connect(T : Connection) (URI uri, void delegate (T) block)
+	{
+		return connect!T(uri.to!Address, uri.scheme.protocol, block);
+	}
+
+	Connection connect(T : Connection) (URI uri)
+	{
+		return connect!T(uri, cast (void delegate (T)) defaultCreationCallback);
 	}
 
 	Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
@@ -675,12 +701,12 @@ private:
 		Server server;
 
 		switch (protocol.toLower()) {
-			case "tcp": server  = cast (Server) new TCPServer(this, address); break;
-			case "udp": server  = cast (Server) new UDPServer(this, address); break;
+			case "tcp": server  = cast (Server) new TcpServer(this, address); break;
+			case "udp": server  = cast (Server) new UdpServer(this, address); break;
 			
 			version (Posix) {
-				case "unix": server = cast (Server) new UNIXServer(this, address); break;
-				case "fifo": server = cast (Server) new FIFOServer(this, address); break;
+				case "unix": server = cast (Server) new UnixServer(this, address); break;
+				case "fifo": server = cast (Server) new FifoServer(this, address); break;
 			}
 
 			default: throw new Error("unsupported server protocol");
@@ -888,42 +914,62 @@ Deferrable!T deferrable(T) (void delegate () callback, void delegate () errback)
 
 Server startServer(T : Connection) (Address address, string protocol)
 {
-	return instance.startServer!(T)(address, protocol);
+	return instance.startServer!T(address, protocol);
 }
 
 Server startServer(T : Connection) (Address address, string protocol, void delegate (T) block)
 {
-	return instance.startServer!(T)(address, protocol, block);
+	return instance.startServer!T(address, protocol, block);
 }
 
 Server startServer(T : Connection) (Address address)
 {
-	return instance.startServer!(T)(address);
+	return instance.startServer!T(address);
 }
 
 Server startServer(T : Connection) (Address address, void delegate (T) block)
 {
-	return instance.startServer!(T)(address, block);
+	return instance.startServer!T(address, block);
+}
+
+Server startServer(T : Connection) (URI uri)
+{
+	return instance.startServer!T(uri);
+}
+
+Server startServer(T : Connection) (URI uri, void delegate (T) block)
+{
+	return instance.startServer!T(uri, block);
 }
 
 Connection connect(T : Connection) (Address address, string protocol)
 {
-	return instance.connect!(T)(address, protocol);
+	return instance.connect!T(address, protocol);
 }
 
 Connection connect(T : Connection) (Address address, string protocol, void delegate (T) block)
 {
-	return instance.connect!(T)(address, protocol, block);
+	return instance.connect!T(address, protocol, block);
 }
 
 Connection connect(T : Connection) (Address address)
 {
-	return instance.connect!(T)(address);
+	return instance.connect!T(address);
 }
 
 Connection connect(T : Connection) (Address address, void delegate (T) block)
 {
-	return instance.connect!(T)(address, block);
+	return instance.connect!T(address, block);
+}
+
+Connection connect(T : Connection) (URI uri, void delegate (T) block)
+{
+	return instance.connect!T(uri, block);
+}
+
+Connection connect(T : Connection) (URI uri)
+{
+	return instance.connect!T(uri);
 }
 
 Connection watch(T : Connection) (Descriptor descriptor)

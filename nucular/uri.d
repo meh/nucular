@@ -19,22 +19,51 @@ import std.algorithm;
 import std.typecons;
 import std.uri;
 
+import nucular.reactor : InternetAddress, Internet6Address;
+
+version (Posix) {
+	import nucular.server : UnixAddress, NamedPipeAddress;
+	import core.sys.posix.unistd;
+}
+
 class Scheme
 {
 	this (string name, string protocol = null)
 	{
+		_name = name;
+
 		_service = new Service;
 		_service.getServiceByName(name, protocol);
 	}
 
 	@property name ()
 	{
-		return _service.name;
+		return _name;
 	}
 
-	@property protocolName ()
+	@property protocol ()
 	{
-		return _service.protocolName;
+		if (_service.protocolName) {
+			return _service.protocolName;
+		}
+
+		if (name == "tcp" || name == "tcp6") {
+			return "tcp";
+		}
+
+		if (name == "udp" || name == "udp6") {
+			return "udp";
+		}
+
+		if (name == "fifo") {
+			return "fifo";
+		}
+
+		if (name == "unix") {
+			return "unix";
+		}
+
+		return "tcp";
 	}
 
 	@property port ()
@@ -48,6 +77,7 @@ class Scheme
 	}
 
 private:
+	string  _name;
 	Service _service;
 }
 
@@ -219,7 +249,7 @@ private:
 class URI
 {
 	enum URIMatcher  = r"^(([^:/?#]+):)(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?";
-	enum HostMatcher = r"^((.*?)(@(.*?)):)?(.*?)(:(\d+))?$";
+	enum HostMatcher = r"^((.*?)(@(.*?)):)?(.+?)(:(\d+))?$";
 
 	static URI parse (string text)
 	{
@@ -259,7 +289,7 @@ class URI
 					password = m.captures[4];
 				}
 
-				if (!m.captures[5]) {
+				if (!m.captures[5].empty) {
 					host = m.captures[5];
 				}
 
@@ -299,7 +329,7 @@ class URI
 
 	@property port ()
 	{
-		return _port;
+		return _port.to!ushort;
 	}
 
 	@property port (ushort value)
@@ -396,6 +426,82 @@ class URI
 		}
 
 		return result;
+	}
+
+	Address to(T : Address) ()
+	{
+		switch (scheme ? scheme.name : "tcp") {
+			case "tcp":
+				if (collectException(Internet6Address.parse(host))) {
+					if (host == "*") {
+						return new InternetAddress(port);
+					}
+					else {
+						return new InternetAddress(host, port);
+					}
+				}
+				else {
+					return new Internet6Address(host, port);
+				}
+
+			case "tcp6":
+				if (host == "*") {
+					return new Internet6Address(port);
+				}
+				else {
+					return new Internet6Address(host, port);
+				}
+
+			case "udp":
+				if (collectException(Internet6Address.parse(host))) {
+					if (host == "*") {
+						return new InternetAddress(port);
+					}
+					else {
+						return new InternetAddress(host, port);
+					}
+				}
+				else {
+					return new Internet6Address(host, port);
+				}
+
+			case "udp6":
+				if (host == "*") {
+					return new Internet6Address(port);
+				}
+				else {
+					return new Internet6Address(host, port);
+				}
+
+			version (Posix) {
+				case "fifo":
+					return new NamedPipeAddress(path, port.to!string.to!mode_t(8));
+
+				case "unix":
+					return new UnixAddress(path);
+			}
+
+			default:
+				if (scheme.protocol == "tcp") {
+					goto case "tcp";
+				}
+
+				if (scheme.protocol == "udp") {
+					goto case "udp";
+				}
+
+				version (Posix) {
+					if (scheme.protocol == "fifo") {
+						goto case "fifo";
+					}
+
+					if (scheme.protocol == "unix") {
+						goto case "unix";
+					}
+				}
+
+				assert(0);
+		}
 	}
 
 	override string toString ()

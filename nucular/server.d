@@ -113,7 +113,7 @@ protected:
 	bool _running;
 }
 
-class TCPServer : Server
+class TcpServer : Server
 {
 	this (Reactor reactor, Address address)
 	{
@@ -177,7 +177,7 @@ private:
 	TcpSocket _socket;
 }
 
-class UDPServer : Server
+class UdpServer : Server
 {
 	this (Reactor reactor, Address address)
 	{
@@ -276,7 +276,7 @@ version (Posix) {
 		socklen_t    _length;
 	}
 
-	class UNIXServer : Server
+	class UnixServer : Server
 	{
 		this (Reactor reactor, Address address)
 		{
@@ -395,7 +395,7 @@ version (Posix) {
 		bool   _readable;
 	}
 
-	class FIFOServer : Server
+	class FifoServer : Server
 	{
 		this (Reactor reactor, Address address)
 		{

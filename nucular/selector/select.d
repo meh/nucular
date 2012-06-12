@@ -80,9 +80,9 @@ class Selector : base.Selector
 		select(&read, &write, &error);
 
 		return base.Selected(
-			prepare(read.to!(Descriptor[])(descriptors)),
-			prepare(write.to!(Descriptor[])(descriptors)),
-			prepare(error.to!(Descriptor[])(descriptors))
+			prepare(read.toDescriptors(descriptors)),
+			prepare(write.toDescriptors(descriptors)),
+			prepare(error.toDescriptors(descriptors))
 		);
 	}
 
@@ -92,12 +92,12 @@ class Selector : base.Selector
 		fd_set write = _set;
 		fd_set error = _set;
 
-		select(&read, &write, &error, timeout.to!timeval);
+		select(&read, &write, &error, timeout.toTimeval);
 
 		return base.Selected(
-			prepare(read.to!(Descriptor[])(descriptors)),
-			prepare(write.to!(Descriptor[])(descriptors)),
-			prepare(error.to!(Descriptor[])(descriptors))
+			prepare(read.toDescriptors(descriptors)),
+			prepare(write.toDescriptors(descriptors)),
+			prepare(error.toDescriptors(descriptors))
 		);
 	}
 
@@ -110,9 +110,9 @@ class Selector : base.Selector
 		select(&read, null, &error);
 
 		return base.Selected(
-			prepare(read.to!(Descriptor[])(descriptors)),
+			prepare(read.toDescriptors(descriptors)),
 			[],
-			prepare(error.to!(Descriptor[])(descriptors))
+			prepare(error.toDescriptors(descriptors))
 		);
 	}
 
@@ -122,12 +122,12 @@ class Selector : base.Selector
 		fd_set read  = _set;
 		fd_set error = _set;
 
-		select(&read, null, &error, timeout.to!timeval);
+		select(&read, null, &error, timeout.toTimeval);
 
 		return base.Selected(
-			prepare(read.to!(Descriptor[])(descriptors)),
+			prepare(read.toDescriptors(descriptors)),
 			[],
-			prepare(error.to!(Descriptor[])(descriptors))
+			prepare(error.toDescriptors(descriptors))
 		);
 	}
 
@@ -141,8 +141,8 @@ class Selector : base.Selector
 
 		return base.Selected(
 			[],
-			prepare(write.to!(Descriptor[])(descriptors)),
-			prepare(error.to!(Descriptor[])(descriptors))
+			prepare(write.toDescriptors(descriptors)),
+			prepare(error.toDescriptors(descriptors))
 		);
 	}
 
@@ -152,12 +152,12 @@ class Selector : base.Selector
 		fd_set write = _set;
 		fd_set error = _set;
 
-		select(null, &write, &error, timeout.to!timeval);
+		select(null, &write, &error, timeout.toTimeval);
 
 		return base.Selected(
 			[],
-			prepare(write.to!(Descriptor[])(descriptors)),
-			prepare(error.to!(Descriptor[])(descriptors))
+			prepare(write.toDescriptors(descriptors)),
+			prepare(error.toDescriptors(descriptors))
 		);
 	}
 
@@ -204,12 +204,12 @@ private:
 }
 
 private:
-	timeval to(T : timeval) (Duration duration)
+	timeval toTimeval (Duration duration)
 	{
 		return timeval(duration.total!"seconds", duration.fracSec.usecs);
 	}
 
-	Descriptor[] to(T : Descriptor[]) (fd_set set, Descriptor[] descriptors)
+	Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors)
 	{
 		Descriptor[] result;
 
