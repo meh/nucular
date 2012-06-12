@@ -482,25 +482,7 @@ class URI
 			}
 
 			default:
-				if (scheme.protocol == "tcp") {
-					goto case "tcp";
-				}
-
-				if (scheme.protocol == "udp") {
-					goto case "udp";
-				}
-
-				version (Posix) {
-					if (scheme.protocol == "fifo") {
-						goto case "fifo";
-					}
-
-					if (scheme.protocol == "unix") {
-						goto case "unix";
-					}
-				}
-
-				assert(0);
+				throw new Exception("don't know how to convert this URI to an Address");
 		}
 	}
 

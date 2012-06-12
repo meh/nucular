@@ -709,7 +709,7 @@ private:
 				case "fifo": server = cast (Server) new FifoServer(this, address); break;
 			}
 
-			default: throw new Error("unsupported server protocol");
+			default: throw new Exception("unsupported server protocol");
 		}
 
 		server.handler = klass;

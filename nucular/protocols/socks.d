@@ -114,7 +114,7 @@ private:
 	string _password;
 }
 
-class SOCKSError : Error
+class SOCKSError : Exception
 {
 	this (string message)
 	{
@@ -126,7 +126,7 @@ class SOCKSError : Error
 		string message;
 
 		final switch (code) {
-			case SOCKS4.Reply.Granted:                throw new Error("there were no errors, why did you call this?");
+			case SOCKS4.Reply.Granted:                throw new Exception("there were no errors, why did you call this?");
 			case SOCKS4.Reply.Rejected:               message = "rejected or failed request"; break;
 			case SOCKS4.Reply.IdentdNotRunning:       message = "identd isn't running"; break;
 			case SOCKS4.Reply.IdentdNotAuthenticated: message = "identd failed the authentication"; break;
@@ -140,7 +140,7 @@ class SOCKSError : Error
 		string message;
 
 		final switch (code) {
-			case SOCKS5.Reply.Succeeded:               throw new Error("there were no errors, why did you call this?");
+			case SOCKS5.Reply.Succeeded:               throw new Exception("there were no errors, why did you call this?");
 			case SOCKS5.Reply.GeneralError:            message = "general SOCKS server failure"; break;
 			case SOCKS5.Reply.ConnectionNotAllowed:    message = "connection not allowed by ruleset"; break;
 			case SOCKS5.Reply.NetworkUnreachable:      message = "network unreachable"; break;

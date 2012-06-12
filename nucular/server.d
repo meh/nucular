@@ -281,7 +281,7 @@ version (Posix) {
 		this (Reactor reactor, Address address)
 		{
 			if (!cast (UnixAddress) address) {
-				throw new Error("you can only bind to an UnixAddress");
+				throw new Exception("you can only bind to an UnixAddress");
 			}
 
 			super(reactor, address);
@@ -400,7 +400,7 @@ version (Posix) {
 		this (Reactor reactor, Address address)
 		{
 			if (!cast (NamedPipeAddress) address) {
-				throw new Error("you can only bind to an UnixAddress");
+				throw new Exception("you can only bind to an UnixAddress");
 			}
 
 			super(reactor, address);

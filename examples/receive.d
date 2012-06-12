@@ -72,9 +72,15 @@ int main (string[] args)
 	}
 
 	nucular.reactor.run({
-		auto server = line ?
-			listen.startServer!LineEcho((c) { if (ssl) c.secure(); }) :
-			listen.startServer!RawEcho((c) { if (ssl) c.secure(); });
+		try {
+			auto server = line ?
+				listen.startServer!LineEcho((c) { if (ssl) c.secure(); }) :
+				listen.startServer!RawEcho((c) { if (ssl) c.secure(); });
+		}
+		catch (Exception e) {
+			writeln("! ", e.msg);
+			nucular.reactor.stop();
+		}
 
 		nucular.reactor.stopOn("INT", "TERM");
 	});

@@ -38,11 +38,18 @@ int main (string[] args)
 		target = URI.parse(args.back);
 	}
 
-
 	nucular.reactor.run({
-		auto connection = line ?
-			target.connect!LineSender((c) { if (ssl) c.secure(); }) :
-			target.connect!RawSender((c) { if (ssl) c.secure(); });
+		Connection connection;
+
+		try {
+			connection = line ?
+				target.connect!LineSender((c) { if (ssl) c.secure(); }) :
+				target.connect!RawSender((c) { if (ssl) c.secure(); });
+		}
+		catch (Exception e) {
+			writeln("! ", e.msg);
+			nucular.reactor.stop();
+		}
 
 		(new Thread({
 			char[] data;
