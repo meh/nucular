@@ -50,7 +50,8 @@ else {
 
 class Connection
 {
-	static struct Data {
+	static struct Data
+	{
 		ubyte[] content;
 		Address address;
 		bool    encrypt;

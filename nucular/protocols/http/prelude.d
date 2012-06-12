@@ -23,7 +23,8 @@ import std.exception;
 
 class Prelude
 {
-	enum Type {
+	enum Type
+	{
 		Request,
 		Response
 	}

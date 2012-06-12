@@ -481,7 +481,8 @@ class SecureInternet6Address : Internet6Address
 
 class Box
 {
-	enum Result {
+	enum Result
+	{
 		Fatal = -3,
 		Interrupted,
 		Failed,

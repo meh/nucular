@@ -24,7 +24,8 @@ import std.range;
 
 import nucular.descriptor;
 
-struct Selected {
+struct Selected
+{
 	Descriptor[] read;
 	Descriptor[] write;
 	Descriptor[] error;

@@ -28,7 +28,8 @@ import nucular.protocols.http.headers;
 
 class Parser
 {
-	enum State {
+	enum State
+	{
 		Prelude,
 		Headers,
 		Content,

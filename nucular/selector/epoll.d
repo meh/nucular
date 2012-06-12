@@ -224,12 +224,14 @@ private extern (C):
 		epoll_data data;
 	}
 
-	enum {
+	enum
+	{
 		EPOLL_CLOEXEC = octal!2000000,
 		EPOLL_NONBLOCK = octal!4000
 	}
 
-	enum {
+	enum
+	{
 		EPOLLIN      = 0x001,
 		EPOLLPRI     = 0x002,
 		EPOLLOUT     = 0x004,
@@ -245,7 +247,8 @@ private extern (C):
 		EPOLLET      = 1u << 31
 	}
 
-	enum {
+	enum
+	{
 		EPOLL_CTL_ADD = 1,
 		EPOLL_CTL_DEL,
 		EPOLL_CTL_MOD

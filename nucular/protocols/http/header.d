@@ -72,7 +72,8 @@ class Header
 		return result;
 	}
 
-	enum Type {
+	enum Type
+	{
 		Normal,
 		List
 	}

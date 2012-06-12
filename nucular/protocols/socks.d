@@ -157,12 +157,14 @@ class SOCKSError : Exception
 
 class SOCKS4 : SOCKS
 {
-	enum Type {
+	enum Type
+	{
 		StreamConnection = 0x01,
 		PortBinding
 	}
 
-	enum Reply {
+	enum Reply
+	{
 		Granted = 0x5a,
 		Rejected,
 		IdentdNotRunning,
@@ -229,14 +231,16 @@ class SOCKS4a : SOCKS4
 
 class SOCKS5 : SOCKS
 {
-	enum State {
+	enum State
+	{
 		MethodNegotiation,
 		Connecting,
 		Authenticating,
 		Finished
 	}
 
-	enum Method {
+	enum Method
+	{
 		NoAuthenticationRequired,
 		GSSAPI,
 		UsernameAndPassword,
@@ -249,19 +253,22 @@ class SOCKS5 : SOCKS
 		NoAcceptable = 0xFF
 	}
 
-	enum Type {
+	enum Type
+	{
 		Connect = 1,
 		Bind,
 		UDPAssociate
 	}
 	
-	enum NetworkType {
+	enum NetworkType
+	{
 		IPv4     = 0x01,
 		HostName = 0x03,
 		IPv6
 	}
 
-	enum Reply {
+	enum Reply
+	{
 		Succeeded,
 		GeneralError,
 		ConnectionNotAllowed,
