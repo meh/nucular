@@ -179,7 +179,7 @@ class SOCKS4 : SOCKS
 		if (auto target = cast (InternetAddress) address) {
 			minimum = 8;
 
-			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.to!(ubyte[]) ~ target.addr.to!(ubyte[]) ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
+			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.toBytes() ~ target.addr.toBytes() ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
 		}
 		else {
 			throw new SOCKSError("address not supported");
@@ -219,7 +219,7 @@ class SOCKS4a : SOCKS4
 		if (auto target = cast (UnresolvedAddress) address) {
 			minimum = 8;
 
-			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.to!(ubyte[]) ~ cast (ubyte[]) [0, 0, 0, 42] ~ cast (ubyte[]) username ~ [cast (ubyte) 0] ~ cast (ubyte[]) target.toHostNameString() ~ [cast (ubyte) 0]);
+			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.toBytes() ~ cast (ubyte[]) [0, 0, 0, 42] ~ cast (ubyte[]) username ~ [cast (ubyte) 0] ~ cast (ubyte[]) target.toHostNameString() ~ [cast (ubyte) 0]);
 		}
 		else {
 			super.sendRequest(type, address);
@@ -292,13 +292,13 @@ class SOCKS5 : SOCKS
 	void sendRequest (Type type, Address address)
 	{
 		if (auto target = cast (UnresolvedAddress) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.HostName, target.toHostNameString().length] ~ cast (ubyte[]) target.toHostNameString() ~ target.port.to!(ubyte[]));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.HostName, target.toHostNameString().length] ~ cast (ubyte[]) target.toHostNameString() ~ target.port.toBytes());
 		}
 		else if (auto target = cast (InternetAddress) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv4] ~ target.addr.to!(ubyte[]) ~ target.port.to!(ubyte[]));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv4] ~ target.addr.toBytes() ~ target.port.toBytes());
 		}
 		else if (auto target = cast (Internet6Address) address) {
-			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ target.port.to!(ubyte[]));
+			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ target.port.toBytes());
 		}
 		else {
 			throw new SOCKSError(Reply.AddressTypeNotSupported);
@@ -476,7 +476,7 @@ private template ProxyAddressConstructor()
 	{
 		_username = username;
 		_password = password;
-		_version  = ver.text;
+		_version  = ver.to!string;
 	}
 
 	@property username ()
@@ -574,11 +574,11 @@ Deferrable!Connection connectThrough(T : Connection) (Address target, Address th
 }
 
 private:
-	ubyte[] to(T : ubyte[], T2) (T2 data)
+	ubyte[] toBytes(T) (T data)
 	{
-		auto result = new ubyte[T2.sizeof];
+		auto result = new ubyte[T.sizeof];
 
-		for (int i = 0; i < T2.sizeof; i++) {
+		for (int i = 0; i < T.sizeof; i++) {
 			result[i]   = data & 0xff;
 			data      >>= 8;
 		}
