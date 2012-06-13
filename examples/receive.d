@@ -59,16 +59,16 @@ class LineEcho : line.Protocol
 
 int main (string[] args)
 {
-	URI  listen = URI.parse("tcp://*:10000");
-	bool ssl    = false;
-	bool line   = false;
+	string listen = "tcp://*:10000";
+	bool   ssl    = false;
+	bool   line   = false;
 
 	getopt(args, config.noPassThrough,
 		"ssl|s",  &ssl,
 		"line|l", &line);
 
 	if (args.length >= 2) {
-		listen = URI.parse(args.back);
+		listen = args.back;
 	}
 
 	nucular.reactor.run({

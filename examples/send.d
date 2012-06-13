@@ -26,16 +26,16 @@ class LineSender : line.Protocol
 
 int main (string[] args)
 {
-	URI  target   = URI.parse("tcp://localhost:10000");
-	bool ssl      = false;
-	bool line     = false;
+	string target   = "tcp://localhost:10000";
+	bool   ssl      = false;
+	bool   line     = false;
 
 	getopt(args, config.noPassThrough,
 		"ssl|s",      &ssl,
 		"line|l",     &line);
 
 	if (args.length >= 2) {
-		target = URI.parse(args.back);
+		target = args.back;
 	}
 
 	nucular.reactor.run({

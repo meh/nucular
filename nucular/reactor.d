@@ -376,6 +376,16 @@ class Reactor
 		return startServer!T(uri, cast (void delegate (T)) defaultCreationCallback);
 	}
 
+	Server startServer(T : Connection) (string uri, void delegate (T) block)
+	{
+		return startServer!T(URI.parse(uri), block);
+	}
+
+	Server startServer(T : Connection) (string uri)
+	{
+		return startServer!T(URI.parse(uri));
+	}
+
 	void stopServer (Server server)
 	{
 		server.stop();
@@ -414,6 +424,16 @@ class Reactor
 	Connection connect(T : Connection) (URI uri)
 	{
 		return connect!T(uri, cast (void delegate (T)) defaultCreationCallback);
+	}
+
+	Connection connect(T : Connection) (string uri, void delegate (T) block)
+	{
+		return connect!T(URI.parse(uri), block);
+	}
+
+	Connection connect(T : Connection) (URI uri)
+	{
+		return connect!T(URI.parse(uri));
 	}
 
 	Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
@@ -942,6 +962,16 @@ Server startServer(T : Connection) (URI uri, void delegate (T) block)
 	return instance.startServer!T(uri, block);
 }
 
+Server startServer(T : Connection) (string uri)
+{
+	return instance.startServer!T(uri);
+}
+
+Server startServer(T : Connection) (string uri, void delegate (T) block)
+{
+	return instance.startServer!T(uri, block);
+}
+
 Connection connect(T : Connection) (Address address, string protocol)
 {
 	return instance.connect!T(address, protocol);
@@ -968,6 +998,16 @@ Connection connect(T : Connection) (URI uri, void delegate (T) block)
 }
 
 Connection connect(T : Connection) (URI uri)
+{
+	return instance.connect!T(uri);
+}
+
+Connection connect(T : Connection) (string uri, void delegate (T) block)
+{
+	return instance.connect!T(uri, block);
+}
+
+Connection connect(T : Connection) (string uri)
 {
 	return instance.connect!T(uri);
 }
