@@ -22,6 +22,7 @@ import std.array;
 
 import nucular.reactor : Reactor, instance, Address, Connection;
 import nucular.deferrable;
+import nucular.queue;
 import nucular.protocols.socks;
 import nucular.protocols.http.request;
 
@@ -50,11 +51,11 @@ class Client
 	/++
 	 + Connect through a SOCKS proxy.
 	 +/
-	Connection connectThrough (Address target, Address through, string username = null, string password = null, string ver = "5")
+	Connection connectThrough (Address target, Address through)
 	{
 		return _connection = reactor.connectThrough!HTTPConnection(target, through, (HTTPConnection conn) {
 			conn.http = this;
-		}, username, password, ver).data;
+		}).data;
 	}
 
 	/++
@@ -112,7 +113,7 @@ private:
 	Reactor    _reactor;
 	Connection _connection;
 
-	Request[] _requests;
+	Queue!Request _requests;
 
 	bool _auto_flush;
 

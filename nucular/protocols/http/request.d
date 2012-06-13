@@ -36,31 +36,31 @@ abstract class Request
 		
 	}
 
-	ref Request callback (void delegate (ref Request) block)
+	Request callback (void delegate (Request) block)
 	{
 		_callback = block;
 
 		return this;
 	}
 
-	ref Request errback (void delegate (ref Request) block)
+	Request errback (void delegate (Request) block)
 	{
 		_errback = block;
 
 		return this;
 	}
 
-	ref Request chunk (void delegate (ref Request, ubyte[] data) block)
+	Request chunk (void delegate (Request, ubyte[] data) block)
 	{
 		_chunk = block;
 
 		return this;
 	}
 
-	@property name ()
+	@property name () pure const
 	{
-		string     name = this.classinfo.name;
-		sizediff_t last = name.lastIndexOf('.');
+		string name = this.classinfo.name;
+		long   last = name.lastIndexOf('.');
 
 		return name[last == -1 ? 0 : last + 1 .. $].toUpper();
 	}
@@ -79,9 +79,9 @@ private:
 	string  _resource;
 	Headers _headers;
 
-	void delegate (ref Request)          _callback;
-	void delegate (ref Request)          _errback;
-	void delegate (ref Request, ubyte[]) _chunk;
+	void delegate (Request)          _callback;
+	void delegate (Request)          _errback;
+	void delegate (Request, ubyte[]) _chunk;
 }
 
 class Options : Request
@@ -90,17 +90,6 @@ class Options : Request
 	{
 		super(resource);
 	}
-
-	override string toString ()
-	{
-		return "";
-	}
-}
-
-unittest {
-	auto req = new Options;
-
-	assert(req.name == "OPTIONS");
 }
 
 class Get : Request
