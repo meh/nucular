@@ -18,6 +18,7 @@ import std.array;
 import std.algorithm;
 import std.typecons;
 import std.uri;
+import std.string : toLower;
 
 import nucular.reactor : InternetAddress, Internet6Address;
 
@@ -30,10 +31,10 @@ class Scheme
 {
 	this (string name, string protocol = null)
 	{
-		_name = name;
+		_name = name.toLower();
 
 		_service = new Service;
-		_service.getServiceByName(name, protocol);
+		_service.getServiceByName(_name, protocol);
 	}
 
 	@property name ()

@@ -26,11 +26,17 @@ class Reader : Connection
 	}
 }
 
-void main ()
+void main (string[] args)
 {
+	string proxy = "socks://localhost:9050";
+
+	if (args.length >= 2) {
+		proxy = args[1];
+	}
+
 	nucular.reactor.run({
 		(new UnresolvedAddress("automation.whatismyip.com", 80)).
-			connectThrough!Reader(new ProxyAddress("localhost", 9050)).
+			connectThrough!Reader(proxy).
 				errback((Exception e){
 					if (e) {
 						writeln("! connection failed because: ", e.msg);

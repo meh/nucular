@@ -23,9 +23,10 @@ public import nucular.protocols.dns.resolver : UnresolvedAddress;
 import std.exception;
 import std.conv;
 import std.array;
+import std.algorithm;
 import std.string;
 
-import nucular.reactor : Reactor, instance, Address, InternetAddress, Internet6Address;
+import nucular.reactor : Reactor, instance, Address, InternetAddress, Internet6Address, URI;
 import nucular.deferrable;
 import nucular.connection;
 import buffered = nucular.protocols.buffered;
@@ -431,7 +432,7 @@ private:
 
 private template ProxyAddressConstructor()
 {
-	private static string constructorsFor(string signature)
+	private static string constructorsFor (string signature)
 	{
 		string parameters; // = signature.split(",").map!(`a[a.lastIndexOf(" ") .. $]`).join(", ");
 
@@ -441,35 +442,36 @@ private template ProxyAddressConstructor()
 
 		parameters = parameters[2 .. $];
 
-		return `this (` ~ signature ~ `) {
-			super(` ~ parameters ~`);
+		return
+			`this (` ~ signature ~ `) {
+				super(` ~ parameters ~`);
 
-			set(null, null, 5);
-		}` ~
+				set(null, null, 5);
+			}` ~
 
-		`this (` ~ signature ~ `, string username, string password) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, string username, string password) {
+				super(` ~ parameters ~`);
 
-			set(username, password, 5);
-		}` ~
+				set(username, password, 5);
+			}` ~
 
-		`this (` ~ signature ~ `, string username) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, string username) {
+				super(` ~ parameters ~`);
 
-			set(username, null, "4a");
-		}` ~
+				set(username, null, "4a");
+			}` ~
 
-		`this (` ~ signature ~ `, string username, string password, string ver) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, string username, string password, string ver) {
+				super(` ~ parameters ~`);
 
-			set(username, password, ver);
-		}` ~
+				set(username, password, ver);
+			}` ~
 
-		`this (` ~ signature ~ `, string username, int ver) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, string username, int ver) {
+				super(` ~ parameters ~`);
 
-			set(username, null, ver);
-		}`;
+				set(username, null, ver);
+			}`;
 	}
 
 	void set (string username, string password, string ver)
@@ -575,10 +577,69 @@ Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address t
 	return reactor.connectThrough!T(target, through, cast (void delegate (T)) reactor.defaultCreationCallback);
 }
 
+Deferrable!Connection connectThrough(T : Connection) (Address target, Address through, void delegate (T) callback)
+{
+	return instance.connectThrough!T(target, through, callback);
+}
+
 Deferrable!Connection connectThrough(T : Connection) (Address target, Address through)
 {
 	return instance.connectThrough!T(target, through);
 }
+
+private string declareConnectThrough (string target, string through)
+{
+	string returnString (string place, string type)
+	{
+		if (place == "target") {
+			switch (type) {
+				default: assert(0);
+
+				case "Address": return place;
+				case "URI":     return place ~ `.to!Address()`;
+				case "string":  return `URI.parse(` ~ place ~ `).to!Address`;
+			}
+		}
+		else if (place == "through") {
+			switch (type) {
+				default: assert(0);
+
+				case "Address": return place;
+				case "URI":     return place ~ `.toProxyAddress()`;
+				case "string":  return `URI.parse(` ~ place ~ `).toProxyAddress()`;
+			}
+		}
+		else {
+			assert(0);
+		}
+	}
+
+	return
+		`Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, ` ~ target ~ ` target, ` ~ through ~ ` through, void delegate (T) block) {
+			return reactor.connectThrough!T(` ~ returnString("target", target) ~ `, ` ~ returnString("through", through) ~ `);
+		}` ~
+
+		`Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, ` ~ target ~ ` target, ` ~ through ~ ` through) {
+			return reactor.connectThrough!T(` ~ returnString("target", target) ~ `, ` ~ returnString("through", through) ~ `, cast (void delegate (T)) reactor.defaultCreationCallback);
+		}` ~
+
+		`Deferrable!Connection connectThrough(T : Connection) (` ~ target ~ ` target, ` ~ through ~ ` through, void delegate (T) block) {
+			return instance.connectThrough!T(` ~ returnString("target", target) ~ `, ` ~ returnString("through", through) ~ `);
+		}` ~
+
+		`Deferrable!Connection connectThrough(T : Connection) (` ~ target ~ ` target, ` ~ through ~ ` through) {
+			return instance.connectThrough!T(` ~ returnString("target", target) ~ `, ` ~ returnString("through", through) ~ `);
+		}`;
+}
+
+mixin(declareConnectThrough("URI", "URI"));
+mixin(declareConnectThrough("string", "string"));
+mixin(declareConnectThrough("Address", "URI"));
+mixin(declareConnectThrough("URI", "Address"));
+mixin(declareConnectThrough("Address", "string"));
+mixin(declareConnectThrough("string", "Address"));
+mixin(declareConnectThrough("URI", "string"));
+mixin(declareConnectThrough("string", "URI"));
 
 private:
 	ubyte[] toBytes(T) (T data)
@@ -591,4 +652,14 @@ private:
 		}
 
 		return result;
+	}
+
+	Address toProxyAddress (URI uri)
+	{
+		string ver;
+
+		enforce(uri.scheme.name.startsWith("socks"), "unknown protocol");
+		enforce(["4", "4a", "5", ""].canFind(ver = uri.scheme.name[5 .. $]));
+
+		return new ProxyAddress(uri.host, uri.port, uri.username, uri.password, ver.empty ? "5" : ver);
 	}
