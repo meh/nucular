@@ -28,15 +28,31 @@ class Protocol : Connection
 {
 	override void receiveData (ubyte[] data)
 	{
-		_buffer ~= data;
+		if (maximum > 0 && buffer.length + data.length > maximum) {
+			if (dropBeginning) {
+				if (data.length - buffer.length >= buffer.length) {
+					buffer = data[maximum + 1 .. $];
+				}
+				else {
+					buffer  = buffer[data.length - buffer.length .. $];
+					buffer ~= data;
+				}
+			}
+			else {
+				buffer ~= data[0 .. maximum - buffer.length];
+			}
+		}
+		else {
+			buffer ~= data;
+		}
 
-		if (_buffer.length >= _minimum) {
-			ulong old = _minimum;
+		if (buffer.length >= minimum) {
+			ulong old = minimum;
 
-			receiveBufferedData(_buffer);
+			receiveBufferedData(buffer);
 
-			if (_auto_reset && old == _minimum) {
-				_minimum = 0;
+			if (autoReset && old == minimum) {
+				minimum = 0;
 			}
 		}
 	}
@@ -46,9 +62,43 @@ class Protocol : Connection
 		// this is just a place holder
 	}
 
+	@property minimum ()
+	{
+		return _minimum;
+	}
+
 	@property minimum (ulong value)
 	{
+		enforce(value == 0 || maximum == 0 || maximum >= value);
+
 		_minimum = value;
+	}
+
+	@property maximum ()
+	{
+		return _maximum;
+	}
+
+	@property maximum (ulong value)
+	{
+		enforce(value == 0 || minimum == 0 || value >= minimum);
+
+		_maximum = value;
+	}
+
+	@property dropBeginning ()
+	{
+		return _drop_beginning;
+	}
+
+	@property dropBeginning (bool value)
+	{
+		_drop_beginning = value;
+	}
+
+	@property autoReset ()
+	{
+		return _auto_reset;
 	}
 
 	@property autoReset (bool value)
@@ -66,4 +116,7 @@ private:
 
 	ulong _minimum    = 0;
 	bool  _auto_reset = true;
+
+	ulong _maximum        = 0;
+	bool  _drop_beginning = false;
 }
