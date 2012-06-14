@@ -88,7 +88,7 @@ static this ()
 	DefaultCertificate = new Certificate(DefaultMaterials);
 }
 
-class Errors : Error
+class Errors : Exception
 {
 	this (string msg = null, string file = __FILE__, size_t line = __LINE__)
 	{
