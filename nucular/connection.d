@@ -96,7 +96,7 @@ class Connection
 		int _value;
 	}
 
-	Connection created (Reactor reactor, Descriptor descriptor = null)
+	final Connection created (Reactor reactor, Descriptor descriptor = null)
 	{
 		_reactor    = reactor;
 		_mutex      = new Mutex;
@@ -108,14 +108,14 @@ class Connection
 		return this;
 	}
 
-	Connection watched (Reactor reactor, Descriptor descriptor)
+	final Connection watched (Reactor reactor, Descriptor descriptor)
 	{
 		created(reactor, descriptor);
 
 		return this;
 	}
 
-	Connection accepted (Server server, Descriptor descriptor)
+	final Connection accepted (Server server, Descriptor descriptor)
 	{
 		created(server.reactor, descriptor);
 
@@ -130,7 +130,7 @@ class Connection
 		return this;
 	}
 
-	Connection connecting (Reactor reactor, Descriptor descriptor)
+	final Connection connecting (Reactor reactor, Descriptor descriptor)
 	{
 		watched(reactor, descriptor);
 		_client = true;
@@ -151,14 +151,14 @@ class Connection
 		}
 	}
 
-	Connection exchange (Connection to)
+	final Connection exchange (Connection to)
 	{
 		reactor.exchangeConnections(this, to);
 
 		return to;
 	}
 
-	Descriptor exchange (Descriptor descriptor)
+	final Descriptor exchange (Descriptor descriptor)
 	{
 		auto old = _descriptor;
 		_descriptor = descriptor;
@@ -166,41 +166,65 @@ class Connection
 		return old;
 	}
 
+	/**
+	 * This method gets called when the Connection is initialized, always
+	 * AFTER the creation block has been called.
+	 */
 	void initialized ()
 	{
 		// this is just a placeholder
 	}
 
+	/**
+	 * This method gets called when the Connection has been exchanged with
+	 * another one.
+	 */
 	void exchanged (Connection other)
 	{
 		// this is just a placeholder
 	}
 
+	/**
+	 * This method gets called when the connection has been established.
+	 */
 	void connected () {
 		// this is just a placeholder
 	}
 
+	/**
+	 * This method is called when security certificate verfication is enabled
+	 * and must return true to specify succesful verification, false otherwise.
+	 */
 	bool verify (Security.Certificate certificate)
 	{
 		return true;
 	}
 
+	/**
+	 * This method is called when the security handshake has been completed.
+	 */
 	void handshakeCompleted ()
 	{
 		// this is just a placeholder
 	}
 
+	/**
+	 * This method is called when the security handshake has been interrupted.
+	 */
 	void handshakeInterrupted ()
 	{
 		// this is just a placeholder
 	}
 
+	/**
+	 * This method is called everytime data arrives on the Connection.
+	 */
 	void receiveData (ubyte[] data)
 	{
 		// this is just a placeholder
 	}
 
-	void sendData (ubyte[] data)
+	final void sendData (ubyte[] data)
 	{
 		enforce(!isClosing, "you cannot write data when the connection is closing");
 
@@ -227,7 +251,7 @@ class Connection
 		reactor.writeHappened();
 	}
 
-	void sendDataTo (Address address, ubyte[] data)
+	final void sendDataTo (Address address, ubyte[] data)
 	{
 		enforce(!isClosing, "you cannot write data when the connection is closing");
 
@@ -238,84 +262,84 @@ class Connection
 		reactor.writeHappened();
 	}
 
-	void secure (bool verify = false)
+	final void secure (bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, verify, this);
 	}
 
-	void secure (Security.Context context, bool verify = false)
+	final void secure (Security.Context context, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, context, verify, this);
 	}
 
-	void secure (Security.Type type, bool verify = false)
+	final void secure (Security.Type type, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, verify, this, type);
 	}
 
-	void secure (Security.PrivateKey key, bool verify = false)
+	final void secure (Security.PrivateKey key, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, verify, this);
 	}
 
-	void secure (string key, bool verify = false)
+	final void secure (string key, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, verify, this);
 	}
 
-	void secure (Security.Type type, Security.PrivateKey key, bool verify = false)
+	final void secure (Security.Type type, Security.PrivateKey key, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, verify, this, type);
 	}
 
-	void secure (Security.Type type, string key, bool verify = false)
+	final void secure (Security.Type type, string key, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, verify, this, type);
 	}
 
-	void secure (Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
+	final void secure (Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, certificate, verify, this);
 	}
 
-	void secure (string key, string certificate, bool verify = false)
+	final void secure (string key, string certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, certificate, verify, this);
 	}
 
-	void secure (Security.Type type, Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
+	final void secure (Security.Type type, Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, certificate, verify, this, type);
 	}
 
-	void secure (Security.Type type, string key, string certificate, bool verify = false)
+	final void secure (Security.Type type, string key, string certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 
 		_security = new Security.Box(isServer, key, certificate, verify, this, type);
 	}
 
-	void closeConnection (bool after_writing = false)
+	final void closeConnection (bool after_writing = false)
 	{
 		if (isClosing) {
 			return;
@@ -326,29 +350,32 @@ class Connection
 		reactor.closeConnection(this, after_writing);
 	}
 
-	void closeConnectionAfterWriting ()
+	final void closeConnectionAfterWriting ()
 	{
 		closeConnection(true);
 	}
 
+	/**
+	 * This method is called when the Connection is closed, either by an error or normally.
+	 */
 	void unbind ()
 	{
 		// this is just a placeholder
 	}
 
-	void shutdown ()
+	final void shutdown ()
 	{
 		version (Posix) {
-			errnoEnforce(.shutdown(_descriptor.to!int, SHUT_RDWR) == 0);
+			errnoEnforce(.shutdown(_descriptor.to!int, 2) == 0);
 		}
 	}
 
-	void close ()
+	final void close ()
 	{
 		_descriptor.close();
 	}
 
-	ubyte[] read ()
+	final ubyte[] read ()
 	{
 		if (isClosed || !isReadable) {
 			return null;
@@ -417,7 +444,7 @@ class Connection
 		return result;
 	}
 
-	bool write ()
+	final bool write ()
 	{
 		if (isClosed || !isWritable) {
 			return true;
@@ -513,7 +540,7 @@ class Connection
 		return done;
 	}
 
-	Data* receiveFrom (ulong length)
+	final Data* receiveFrom (ulong length)
 	{
 		ubyte[]   data = new ubyte[length];
 		Address   address;
@@ -535,7 +562,7 @@ class Connection
 		return new Data(address, data);
 	}
 
-	ptrdiff_t sendTo (Address address, ubyte[] data)
+	final ptrdiff_t sendTo (Address address, ubyte[] data)
 	{
 		ptrdiff_t result;
 
@@ -544,7 +571,7 @@ class Connection
 		return result;
 	}
 
-	void addresses (Descriptor descriptor = null)
+	final void addresses (Descriptor descriptor = null)
 	{
 		if (!descriptor) {
 			descriptor = _descriptor;
@@ -556,7 +583,7 @@ class Connection
 		}
 	}
 
-	@property remoteAddress ()
+	final @property remoteAddress ()
 	{
 		if (defaultTarget) {
 			return defaultTarget;
@@ -565,17 +592,17 @@ class Connection
 		return _remote_address;
 	}
 
-	@property localAddress ()
+	final @property localAddress ()
 	{
 		return _local_address;
 	}
 
-	@property peerCertificate ()
+	final @property peerCertificate ()
 	{
 		return security.peerCertificate;
 	}
 
-	@property error ()
+	final @property error ()
 	{
 		if (_error || isClosed || !isSocket) {
 			return _error;
@@ -595,12 +622,12 @@ class Connection
 		return _error;
 	}
 
-	@property isClosing ()
+	final @property isClosing ()
 	{
 		return _closing;
 	}
 
-	@property isEOF ()
+	final @property isEOF ()
 	{
 		if (isClosed) {
 			return true;
@@ -613,12 +640,12 @@ class Connection
 		return false;
 	}
 
-	@property isClosed ()
+	final @property isClosed ()
 	{
 		return _descriptor.isClosed;
 	}
 
-	@property isAlive ()
+	final @property isAlive ()
 	{
 		if (isClosed) {
 			return false;
@@ -632,32 +659,32 @@ class Connection
 		}
 	}
 
-	@property isSocket ()
+	final @property isSocket ()
 	{
 		return _descriptor.isSocket;
 	}
 
-	@property isWritable ()
+	final @property isWritable ()
 	{
 		return _writable;
 	}
 
-	@property isWritable (bool value)
+	final @property isWritable (bool value)
 	{
 		_writable = value;
 	}
 
-	@property isReadable ()
+	final @property isReadable ()
 	{
 		return _readable;
 	}
 
-	@property isReadable (bool value)
+	final @property isReadable (bool value)
 	{
 		_readable = value;
 	}
 
-	@property reuseAddr ()
+	final @property reuseAddr ()
 	{
 		version (Posix) {
 			int       result;
@@ -669,7 +696,7 @@ class Connection
 		}
 	}
 
-	@property reuseAddr (bool enable)
+	final @property reuseAddr (bool enable)
 	{
 		version (Posix) {
 			int value = cast (int) enable;
@@ -678,7 +705,7 @@ class Connection
 		}
 	}
 
-	@property noDelay ()
+	final @property noDelay ()
 	{
 		version (Posix) {
 			int       result;
@@ -690,7 +717,7 @@ class Connection
 		}
 	}
 
-	@property noDelay (bool enable)
+	final @property noDelay (bool enable)
 	{
 		version (Posix) {
 			int value = cast (int) enable;
@@ -699,77 +726,77 @@ class Connection
 		}
 	}
 
-	@property asynchronous ()
+	final @property asynchronous ()
 	{
 		return _descriptor.asynchronous;
 	}
 
-	@property asynchronous (bool value)
+	final @property asynchronous (bool value)
 	{
 		_descriptor.asynchronous = value;
 	}
 
-	@property isWatcher ()
+	final @property isWatcher ()
 	{
 		return !_server && !_client;
 	}
 
-	@property isClient ()
+	final @property isClient ()
 	{
 		return _client;
 	}
 
-	@property isServer ()
+	final @property isServer ()
 	{
 		return cast (bool) _server;
 	}
 
-	@property isWritePending ()
+	final @property isWritePending ()
 	{
 		return !_to_write.empty || (security !is null && security.canGetCiphertext);
 	}
 	
-	@property isHandshakeCompleted ()
+	final @property isHandshakeCompleted ()
 	{
 		return _handshake_completed;
 	}
 
-	@property protocol ()
+	final @property protocol ()
 	{
 		return _protocol;
 	}
 
-	@property protocol (string value)
+	final @property protocol (string value)
 	{
 		_protocol = value.toLower();
 	}
 
-	@property defaultTarget ()
+	final @property defaultTarget ()
 	{
 		return _default_target;
 	}
 
-	@property defaultTarget (Address address)
+	final @property defaultTarget (Address address)
 	{
 		_default_target = address;
 	}
 
-	@property security ()
+	final @property security ()
 	{
 		return _security;
 	}
 
-	@property server ()
+	final @property server ()
 	{
 		return _server;
 	}
 
-	@property reactor ()
+	final @property reactor ()
 	{
 		return _reactor;
 	}
 
-	Descriptor to(T : Descriptor) ()
+	final Descriptor to(T : Descriptor) ()
 	{
 		return _descriptor;
 	}
