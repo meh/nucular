@@ -21,14 +21,23 @@ import std.uri;
 import std.string : toLower;
 
 import nucular.reactor : InternetAddress, Internet6Address;
+import nucular.security : SecureInternetAddress, SecureInternet6Address;
 
 version (Posix) {
-	import nucular.server : UnixAddress, NamedPipeAddress;
-	import core.sys.posix.unistd;
+	import nucular.server : UnixAddress, NamedPipeAddress, mode_t;
 }
 
+/**
+ * This class abstracts an URI scheme, giving access to the underlying protocol
+ * and standard port.
+ */
 class Scheme
 {
+	/**
+	 * Params:
+	 *   name = the name of the scheme
+	 *   protocol = (optional) the transport layer name (tcp, udp, etcetera)
+	 */
 	this (string name, string protocol = null)
 	{
 		_name = name.toLower();
@@ -37,11 +46,17 @@ class Scheme
 		_service.getServiceByName(_name, protocol);
 	}
 
+	/**
+	 * Get the scheme name.
+	 */
 	@property name ()
 	{
 		return _name;
 	}
 
+	/**
+	 * Get the protocol name.
+	 */
 	@property protocol ()
 	{
 		if (_service.protocolName) {
@@ -67,6 +82,9 @@ class Scheme
 		return "tcp";
 	}
 
+	/**
+	 * Get the default port of the service.
+	 */
 	@property port ()
 	{
 		return _service.port;
@@ -84,25 +102,59 @@ private:
 
 class Query
 {
-	struct Parameter
+	/**
+	 * Representation of a Query parameter, a name=value pair.
+	 */
+	static class Parameter
 	{
-		string name;
-		string value;
-
-		@property empty ()
+		this (string name)
 		{
-			return name.empty && value.empty;
+			_name = name;
 		}
 
+		this (string name, string value)
+		{
+			this(name);
+
+			_value = value;
+		}
+
+		@property name ()
+		{
+			return _name;
+		}
+
+		@property name (string value)
+		{
+			_name = name;
+		}
+
+		@property value ()
+		{
+			return _value;
+		}
+
+		@property value (string value)
+		{
+			_value = value;
+		}
+
+		/**
+		 * Find if the Parameter is true (the value is empty).
+		 */
 		@property isTrue ()
 		{
-			return value.empty;
+			return value.empty || (value != "false" && value != "no");
 		}
 
-		@property isFalse ()
+		bool opCast(T : bool) ()
 		{
 			return isTrue;
 		}
+
+	private:
+		string _name;
+		string _value;
 	}
 
 	static Query parse (string text)
@@ -128,14 +180,17 @@ class Query
 		return result;
 	}
 
+	/**
+	 *
+	 */
 	bool has (string name)
 	{
 		return !_internal.find!(a => a.name == name).empty;
 	}
 
-	ref Query add (string name, string value = null)
+	Query add (string name, string value = null)
 	{
-		_internal ~= Parameter(name, value);
+		_internal ~= new Parameter(name, value);
 
 		return this;
 	}
@@ -143,7 +198,7 @@ class Query
 	Parameter remove (string name)
 	{
 		if (!has(name)) {
-			return Parameter(null, null);
+			return null;
 		}
 
 		auto index  = _internal.countUntil!(a => a.name == name);
@@ -154,7 +209,7 @@ class Query
 		return result;
 	}
 
-	string opIndex (string name)
+	Parameter opIndex (string name)
 	{
 		if (_internal.empty) {
 			return null;
@@ -162,7 +217,7 @@ class Query
 
 		auto result = _internal.find!(a => a.name == name);
 
-		return result.empty ? null : result.front.value;
+		return result.empty ? null : result.front;
 	}
 
 	string opIndexAssign (string name, string value)
@@ -196,7 +251,7 @@ class Query
 		return value;
 	}
 
-	int opApply (int delegate (ref string, ref string) block)
+	int opApply (int delegate (string, string) block)
 	{
 		int result = 0;
 
@@ -211,7 +266,7 @@ class Query
 		return result;
 	}
 
-	int opApplyReverse (int delegate (ref string, ref string) block)
+	int opApplyReverse (int delegate (string, string) block)
 	{
 		int result = 0;
 
@@ -254,58 +309,52 @@ class URI
 
 	static URI parse (string text)
 	{
+		return new URI(text);
+	}
+
+	this (string text)
+	{
 		auto m = text.match(URIMatcher);
 
 		if (!m) {
-			return null;
+			throw new Exception("not a well formed URI");
 		}
 
-		auto uri = new URI(text);
+		scheme = m.captures[2];
+		host   = m.captures[4];
+		port   = 0;
 
-		with (uri) {
-			scheme = m.captures[2];
-			host   = m.captures[4];
-			port   = 0;
+		if (!m.captures[5].empty) {
+			path = m.captures[5];
+		}
+
+		if (!m.captures[7].empty) {
+			query = m.captures[7];
+		}
+
+		if (!m.captures[9].empty) {
+			fragment = m.captures[9];
+		}
+
+		if (m = host.match(HostMatcher)) {
+			if (!m.captures[2].empty) {
+				username = m.captures[2];
+			}
+
+			if (!m.captures[4].empty) {
+				password = m.captures[4];
+			}
 
 			if (!m.captures[5].empty) {
-				path = m.captures[5];
+				host = m.captures[5];
 			}
 
 			if (!m.captures[7].empty) {
-				query = m.captures[7];
-			}
-
-			if (!m.captures[9].empty) {
-				fragment = m.captures[9];
+				port = m.captures[7].to!ushort;
 			}
 		}
 
-		if (m = uri.host.match(HostMatcher)) {
-			with (uri) {
-				if (!m.captures[2].empty) {
-					username = m.captures[2];
-				}
-
-				if (!m.captures[4].empty) {
-					password = m.captures[4];
-				}
-
-				if (!m.captures[5].empty) {
-					host = m.captures[5];
-				}
-
-				if (!m.captures[7].empty) {
-					port = m.captures[7].to!ushort;
-				}
-			}
-		}
-
-		return uri;
-	}
-
-	this (string original)
-	{
-		_original = original;
+		_original = text;
 	}
 
 	@property scheme ()
@@ -433,24 +482,65 @@ class URI
 	{
 		switch (scheme ? scheme.name : "tcp") {
 			case "tcp":
+				auto target = host == "*" ? "0.0.0.0" : host;
+				auto ssl    = query["ssl"] ? query["ssl"].isTrue : false;
+				auto key    = query["key"];
+				auto cert   = query["cert"];
+				auto verify = query["verify"] ? query["verify"].isTrue : false;
+
 				if (collectException(Internet6Address.parse(host))) {
-					if (host == "*") {
-						return new InternetAddress(port);
+					if (ssl) {
+						if (key && cert) {
+							return new SecureInternetAddress(target, port, key.value, cert.value, verify);
+						}
+						else if (key) {
+							return new SecureInternetAddress(target, port, key.value, verify);
+						}
+						else {
+							return new SecureInternetAddress(target, port, verify);
+						}
 					}
 					else {
-						return new InternetAddress(host, port);
+						return new InternetAddress(target, port);
 					}
 				}
 				else {
-					return new Internet6Address(host, port);
+					if (ssl) {
+						if (key && cert) {
+							return new SecureInternet6Address(target, port, key.value, cert.value, verify);
+						}
+						else if (key) {
+							return new SecureInternet6Address(target, port, key.value, verify);
+						}
+						else {
+							return new SecureInternet6Address(target, port, verify);
+						}
+					}
+					else {
+						return new Internet6Address(target, port);
+					}
 				}
 
 			case "tcp6":
-				if (host == "*") {
-					return new Internet6Address(port);
+				auto target = host == "*" ? "0.0.0.0" : host;
+				auto ssl    = query["ssl"] ? query["ssl"].isTrue : false;
+				auto key    = query["key"];
+				auto cert   = query["cert"];
+				auto verify = query["verify"] ? query["verify"].isTrue : false;
+
+				if (ssl) {
+					if (key && cert) {
+						return new SecureInternet6Address(target, key.value, cert.value, verify);
+					}
+					else if (key) {
+						return new SecureInternet6Address(target, key.value, verify);
+					}
+					else {
+						return new SecureInternet6Address(target, verify);
+					}
 				}
 				else {
-					return new Internet6Address(host, port);
+					return new Internet6Address(target, port);
 				}
 
 			case "udp":

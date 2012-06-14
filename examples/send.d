@@ -26,54 +26,48 @@ class LineSender : line.Protocol
 
 int main (string[] args)
 {
-	string target   = "tcp://localhost:10000";
-	bool   ssl      = false;
-	bool   line     = false;
+	string target = "tcp://localhost:10000";
+	bool   line   = false;
 
 	getopt(args, config.noPassThrough,
-		"ssl|s",      &ssl,
-		"line|l",     &line);
+		"line|l", &line);
 
 	if (args.length >= 2) {
 		target = args.back;
 	}
 
 	nucular.reactor.run({
-		Connection connection;
-
 		try {
-			connection = line ?
-				target.connect!LineSender((c) { if (ssl) c.secure(); }) :
-				target.connect!RawSender((c) { if (ssl) c.secure(); });
+			auto connection = line ? target.connect!LineSender : target.connect!RawSender;
+
+			(new Thread({
+				char[] data;
+
+				try {
+					while (stdin.readln(data)) {
+						if (line) {
+							auto sender = cast (LineSender) connection;
+
+							sender.sendLine(cast (string) data[0 .. data.length - 1]);
+						}
+						else {
+							auto sender = cast (RawSender) connection;
+
+							sender.sendData(cast (ubyte[]) data[0 .. data.length - 1]);
+						}
+					}
+				}
+				catch (Exception e) {
+					writeln("! ", e.msg);
+				}
+
+				nucular.reactor.stop();
+			})).start();
 		}
 		catch (Exception e) {
 			writeln("! ", e.msg);
 			nucular.reactor.stop();
 		}
-
-		(new Thread({
-			char[] data;
-
-			try {
-				while (stdin.readln(data)) {
-					if (line) {
-						auto sender = cast (LineSender) connection;
-
-						sender.sendLine(cast (string) data[0 .. data.length - 1]);
-					}
-					else {
-						auto sender = cast (RawSender) connection;
-
-						sender.sendData(cast (ubyte[]) data[0 .. data.length - 1]);
-					}
-				}
-			}
-			catch (Exception e) {
-				writeln("! ", e.msg);
-			}
-
-			nucular.reactor.stop();
-		})).start();
 	});
 
 	return 0;

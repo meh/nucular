@@ -60,11 +60,9 @@ class LineEcho : line.Protocol
 int main (string[] args)
 {
 	string listen = "tcp://*:10000";
-	bool   ssl    = false;
 	bool   line   = false;
 
 	getopt(args, config.noPassThrough,
-		"ssl|s",  &ssl,
 		"line|l", &line);
 
 	if (args.length >= 2) {
@@ -73,9 +71,7 @@ int main (string[] args)
 
 	nucular.reactor.run({
 		try {
-			auto server = line ?
-				listen.startServer!LineEcho((c) { if (ssl) c.secure(); }) :
-				listen.startServer!RawEcho((c) { if (ssl) c.secure(); });
+			auto server = line ? listen.startServer!LineEcho : listen.startServer!RawEcho;
 		}
 		catch (Exception e) {
 			writeln("! ", e.msg);

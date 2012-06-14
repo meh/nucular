@@ -431,7 +431,7 @@ class Reactor
 		return connect!T(URI.parse(uri), block);
 	}
 
-	Connection connect(T : Connection) (URI uri)
+	Connection connect(T : Connection) (string uri)
 	{
 		return connect!T(URI.parse(uri));
 	}

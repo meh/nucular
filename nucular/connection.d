@@ -70,7 +70,7 @@ class Connection
 		}
 	}
 
-	class Errno
+	static class Errno
 	{
 		this (int value)
 		{
@@ -259,6 +259,34 @@ class Connection
 		_security = new Security.Box(isServer, verify, this, type);
 	}
 
+	void secure (Security.PrivateKey key, bool verify = false)
+	{
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
+
+		_security = new Security.Box(isServer, key, verify, this);
+	}
+
+	void secure (string key, bool verify = false)
+	{
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
+
+		_security = new Security.Box(isServer, key, verify, this);
+	}
+
+	void secure (Security.Type type, Security.PrivateKey key, bool verify = false)
+	{
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
+
+		_security = new Security.Box(isServer, key, verify, this, type);
+	}
+
+	void secure (Security.Type type, string key, bool verify = false)
+	{
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
+
+		_security = new Security.Box(isServer, key, verify, this, type);
+	}
+
 	void secure (Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
@@ -266,7 +294,21 @@ class Connection
 		_security = new Security.Box(isServer, key, certificate, verify, this);
 	}
 
+	void secure (string key, string certificate, bool verify = false)
+	{
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
+
+		_security = new Security.Box(isServer, key, certificate, verify, this);
+	}
+
 	void secure (Security.Type type, Security.PrivateKey key, Security.Certificate certificate, bool verify = false)
+	{
+		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
+
+		_security = new Security.Box(isServer, key, certificate, verify, this, type);
+	}
+
+	void secure (Security.Type type, string key, string certificate, bool verify = false)
 	{
 		enforce(protocol == "tcp", "secure connections aren't supported on this protocol");
 

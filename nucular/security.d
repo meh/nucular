@@ -302,7 +302,7 @@ class Context
 		this(DefaultPrivateKey, DefaultCertificate, type);
 	}
 
-	this (PrivateKey privkey, Certificate certchain, Type type = Type.Any)
+	this (PrivateKey key, Type type = Type.Any)
 	{
 		final switch (type) {
 			case Type.Any:    _internal = SSL_CTX_new(SSLv23_method()); break;
@@ -314,27 +314,43 @@ class Context
 
 		enforceEx!Errors(native);
 
-		_private_key = privkey;
-		_certificate = certchain;
+		_private_key = key;
 
 		SSL_CTX_set_options(native, SSL_OP_ALL);
 		SSL_CTX_set_mode(native, SSL_MODE_RELEASE_BUFFERS);
 
-		if (privkey.isEVP) {
-			enforceEx!Errors(SSL_CTX_use_PrivateKey(native, privkey.native!EVP_PKEY));
+		if (privateKey.isEVP) {
+			enforceEx!Errors(SSL_CTX_use_PrivateKey(native, privateKey.native!EVP_PKEY));
 		}
-		else if (privkey.isRSA) {
-			enforceEx!Errors(SSL_CTX_use_RSAPrivateKey(native, privkey.native!RSA));
+		else if (privateKey.isRSA) {
+			enforceEx!Errors(SSL_CTX_use_RSAPrivateKey(native, privateKey.native!RSA));
 		}
 		else {
 			assert(0);
 		}
 
-		enforceEx!Errors(SSL_CTX_use_certificate(native, certchain.native));
-
 		SSL_CTX_set_session_id_context(native, cast (ubyte*) "nucular".ptr, 7);
 
 		ciphers = "ALL:!ADH:!LOW:!EXP:!DES-CBC3-SHA:@STRENGTH";
+	}
+
+	this (string key, Type type = Type.Any)
+	{
+		this(new PrivateKey(key), type);
+	}
+
+	this (PrivateKey key, Certificate cert, Type type = Type.Any)
+	{
+		this(key, type);
+
+		_certificate = cert;
+
+		enforceEx!Errors(SSL_CTX_use_certificate(native, certificate.native));
+	}
+
+	this (string key, string cert, Type type = Type.Any)
+	{
+		this(new PrivateKey(key), new Certificate(cert), type);
 	}
 
 	~this ()
@@ -383,35 +399,72 @@ private template SecureAddressConstructor()
 
 		parameters = parameters[2 .. $];
 
-		return `this (` ~ signature ~ `, bool verify = false) {
-			super(` ~ parameters ~`);
+		return
+			`this (` ~ signature ~ `, bool verify = false) {
+				super(` ~ parameters ~`);
 
-			set(verify);
-		}` ~
+				set(verify);
+			}` ~
 
-		`this (` ~ signature ~ `, Context context, bool verify = false) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, Context context, bool verify = false) {
+				super(` ~ parameters ~`);
 
-			set(context, verify);
-		}` ~
+				set(context, verify);
+			}` ~
 
-		`this (` ~ signature ~ `, Type type, bool verify = false) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, Type type, bool verify = false) {
+				super(` ~ parameters ~`);
 
-			set(type, verify);
-		}` ~
+				set(type, verify);
+			}` ~
 
-		`this (` ~ signature ~ `, PrivateKey key, Certificate certificate, bool verify = false) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, PrivateKey key, bool verify = false) {
+				super(` ~ parameters ~`);
 
-			set(key, certificate, verify);
-		}` ~
+				set(key, verify);
+			}` ~
 
-		`this (` ~ signature ~ `, Type type, PrivateKey key, Certificate certificate, bool verify = false) {
-			super(` ~ parameters ~`);
+			`this (` ~ signature ~ `, string key, bool verify = false) {
+				super(` ~ parameters ~`);
 
-			set(type, key, certificate, verify);
-		}`;
+				set(key, verify);
+			}` ~
+
+			`this (` ~ signature ~ `, PrivateKey key, Certificate certificate, bool verify = false) {
+				super(` ~ parameters ~`);
+
+				set(key, certificate, verify);
+			}` ~
+
+			`this (` ~ signature ~ `, string key, string certificate, bool verify = false) {
+				super(` ~ parameters ~`);
+
+				set(key, certificate, verify);
+			}` ~
+
+			`this (` ~ signature ~ `, Type type, PrivateKey key, bool verify = false) {
+				super(` ~ parameters ~`);
+
+				set(type, key, verify);
+			}` ~
+
+			`this (` ~ signature ~ `, Type type, string key, bool verify = false) {
+				super(` ~ parameters ~`);
+
+				set(type, key, verify);
+			}` ~
+
+			`this (` ~ signature ~ `, Type type, PrivateKey key, Certificate certificate, bool verify = false) {
+				super(` ~ parameters ~`);
+
+				set(type, key, certificate, verify);
+			}` ~
+
+			`this (` ~ signature ~ `, Type type, string key, string certificate, bool verify = false) {
+				super(` ~ parameters ~`);
+
+				set(type, key, certificate, verify);
+			}`;
 	}
 
 	void set (bool verify)
@@ -432,15 +485,51 @@ private template SecureAddressConstructor()
 		_verify  = verify;
 	}
 
+	void set (PrivateKey key, bool verify)
+	{
+		_context = new Context(key);
+		_verify  = verify;
+	}
+
+	void set (string key, bool verify)
+	{
+		_context = new Context(new PrivateKey(key));
+		_verify  = verify;
+	}
+
 	void set (PrivateKey key, Certificate certificate, bool verify)
 	{
 		_context = new Context(key, certificate);
 		_verify  = verify;
 	}
 
+	void set (string key, string certificate, bool verify)
+	{
+		_context = new Context(new PrivateKey(key), new Certificate(certificate));
+		_verify  = verify;
+	}
+
+	void set (Type type, PrivateKey key, bool verify)
+	{
+		_context = new Context(key, type);
+		_verify  = verify;
+	}
+
+	void set (Type type, string key, bool verify)
+	{
+		_context = new Context(new PrivateKey(key), type);
+		_verify  = verify;
+	}
+
 	void set (Type type, PrivateKey key, Certificate certificate, bool verify)
 	{
 		_context = new Context(key, certificate, type);
+		_verify  = verify;
+	}
+
+	void set (Type type, string key, string certificate, bool verify)
+	{
+		_context = new Context(new PrivateKey(key), new Certificate(certificate), type);
 		_verify  = verify;
 	}
 
@@ -494,9 +583,24 @@ class Box
 		this(server, DefaultPrivateKey, DefaultCertificate, verify, connection, type);
 	}
 
-	this (bool server, PrivateKey privkey, Certificate certchain, bool verify, Connection connection, Type type = Type.Any)
+	this (bool server, PrivateKey key, bool verify, Connection connection, Type type = Type.Any)
 	{
-		this(server, new Context(privkey, certchain, type), verify, connection);
+		this(server, new Context(key, type), verify, connection);
+	}
+
+	this (bool server, string key, bool verify, Connection connection, Type type = Type.Any)
+	{
+		this(server, new Context(key, type), verify, connection);
+	}
+
+	this (bool server, PrivateKey key, Certificate cert, bool verify, Connection connection, Type type = Type.Any)
+	{
+		this(server, new Context(key, cert, type), verify, connection);
+	}
+
+	this (bool server, string key, string cert, bool verify, Connection connection, Type type = Type.Any)
+	{
+		this(server, new Context(key, cert, type), verify, connection);
 	}
 
 	this (bool server, Context context, bool verify, Connection connection)
