@@ -159,8 +159,11 @@ class Query
 
 	static Query parse (string text)
 	{
-		auto result = new Query;
+		return new Query(text);
+	}
 
+	this (string text)
+	{
 		foreach (piece; text.split("&")) {
 			auto   pieces = piece.split("=");
 			string name;
@@ -174,10 +177,8 @@ class Query
 				name = pieces[0];
 			}
 
-			result.add(name.decodeComponent(), value.decodeComponent());
+			add(name.decodeComponent(), value.decodeComponent());
 		}
-
-		return result;
 	}
 
 	/**
@@ -483,13 +484,13 @@ class URI
 		switch (scheme ? scheme.name : "tcp") {
 			case "tcp":
 				auto target = host == "*" ? "0.0.0.0" : host;
-				auto ssl    = query["ssl"] ? query["ssl"].isTrue : false;
-				auto key    = query["key"];
-				auto cert   = query["cert"];
-				auto verify = query["verify"] ? query["verify"].isTrue : false;
 
-				if (collectException(Internet6Address.parse(host))) {
-					if (ssl) {
+				if (query && query["ssl"] && query["ssl"].isTrue) {
+					auto key    = query["key"];
+					auto cert   = query["cert"];
+					auto verify = query["verify"] ? query["verify"].isTrue : false;
+
+					if (collectException(Internet6Address.parse(host))) {
 						if (key && cert) {
 							return new SecureInternetAddress(target, port, key.value, cert.value, verify);
 						}
@@ -501,11 +502,6 @@ class URI
 						}
 					}
 					else {
-						return new InternetAddress(target, port);
-					}
-				}
-				else {
-					if (ssl) {
 						if (key && cert) {
 							return new SecureInternet6Address(target, port, key.value, cert.value, verify);
 						}
@@ -516,19 +512,23 @@ class URI
 							return new SecureInternet6Address(target, port, verify);
 						}
 					}
-					else {
-						return new Internet6Address(target, port);
-					}
+				}
+
+				if (collectException(Internet6Address.parse(host))) {
+					return new InternetAddress(target, port);
+				}
+				else {
+					return new Internet6Address(target, port);
 				}
 
 			case "tcp6":
 				auto target = host == "*" ? "0.0.0.0" : host;
-				auto ssl    = query["ssl"] ? query["ssl"].isTrue : false;
-				auto key    = query["key"];
-				auto cert   = query["cert"];
-				auto verify = query["verify"] ? query["verify"].isTrue : false;
 
-				if (ssl) {
+				if (query && query["ssl"] && query["ssl"].isTrue) {
+					auto key    = query["key"];
+					auto cert   = query["cert"];
+					auto verify = query["verify"] ? query["verify"].isTrue : false;
+
 					if (key && cert) {
 						return new SecureInternet6Address(target, key.value, cert.value, verify);
 					}
@@ -539,9 +539,8 @@ class URI
 						return new SecureInternet6Address(target, verify);
 					}
 				}
-				else {
-					return new Internet6Address(target, port);
-				}
+
+				return new Internet6Address(target);
 
 			case "udp":
 				if (collectException(Internet6Address.parse(host))) {
