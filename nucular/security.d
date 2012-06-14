@@ -849,7 +849,7 @@ private extern (C):
 	{
 		char* password = cast (char*) userdata;
 
-		strcpy(buf, password);
+		strncpy(buf, password, bufsize - 1);
 
 		return strlen(password).to!int;
 	}
