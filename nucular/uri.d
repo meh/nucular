@@ -181,8 +181,15 @@ class Query
 		}
 	}
 
+	this (string[string] base)
+	{
+		foreach (name, value; base) {
+			add(name, value);
+		}
+	}
+
 	/**
-	 *
+	 * Find out if the Query has that named Parameter.
 	 */
 	bool has (string name)
 	{
