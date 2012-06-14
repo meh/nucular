@@ -28,7 +28,7 @@ public import nucular.signal     : trap;
 public import nucular.security   : SecureInternetAddress, SecureInternet6Address;
 
 version (Posix) {
-	public import nucular.server : UnixAddress, NamedPipeAddress;
+	public import nucular.server : UnixAddress, NamedPipeAddress, mode_t;
 
 	import core.sys.posix.unistd;
 	import core.sys.posix.fcntl;

@@ -339,7 +339,7 @@ class Connection
 	void shutdown ()
 	{
 		version (Posix) {
-			errnoEnforce(.shutdown(_descriptor.to!int, 2) == 0);
+			errnoEnforce(.shutdown(_descriptor.to!int, SHUT_RDWR) == 0);
 		}
 	}
 
