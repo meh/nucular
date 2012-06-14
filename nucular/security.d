@@ -848,10 +848,11 @@ private extern (C):
 	int _password_callback (char* buf, int bufsize, int rwflag, void* userdata)
 	{
 		char* password = cast (char*) userdata;
+		int   length   = strlen(password).to!int;
 
 		strncpy(buf, password, bufsize - 1);
 
-		return strlen(password).to!int;
+		return length >= bufsize ? bufsize - 1 : length;
 	}
 
 	int _verify_callback (int preverify_ok, X509_STORE_CTX* ctx)
