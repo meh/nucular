@@ -173,7 +173,7 @@ class ThreadPool
 		}
 	}
 
-	ThreadPool opShl(T) (T rhs)
+	ref opShl(T) (T rhs)
 	{
 		processWith(rhs);
 

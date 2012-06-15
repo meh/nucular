@@ -18,48 +18,48 @@
 
 module nucular.protocols.socks.base;
 
-class SOCKSError : Exception
+class SocksError : Exception
 {
-	this (string message)
+	this (string msg, string file = __FILE__, size_t line = __LINE__)
 	{
-		super(message);
+		super(msg, file, line);
 	}
 
-	this (SOCKS4.Reply code)
+	this (Socks4.Reply code)
 	{
 		string message;
 
 		final switch (code) {
-			case SOCKS4.Reply.Granted:                throw new Exception("there were no errors, why did you call this?");
-			case SOCKS4.Reply.Rejected:               message = "rejected or failed request"; break;
-			case SOCKS4.Reply.IdentdNotRunning:       message = "identd isn't running"; break;
-			case SOCKS4.Reply.IdentdNotAuthenticated: message = "identd failed the authentication"; break;
+			case Socks4.Reply.Granted:                throw new Exception("there were no errors, why did you call this?");
+			case Socks4.Reply.Rejected:               message = "rejected or failed request"; break;
+			case Socks4.Reply.IdentdNotRunning:       message = "identd isn't running"; break;
+			case Socks4.Reply.IdentdNotAuthenticated: message = "identd failed the authentication"; break;
 		}
 
 		super(message);
 	}
 
-	this (SOCKS5.Reply code)
+	this (Socks5.Reply code)
 	{
 		string message;
 
 		final switch (code) {
-			case SOCKS5.Reply.Succeeded:               throw new Exception("there were no errors, why did you call this?");
-			case SOCKS5.Reply.GeneralError:            message = "general SOCKS server failure"; break;
-			case SOCKS5.Reply.ConnectionNotAllowed:    message = "connection not allowed by ruleset"; break;
-			case SOCKS5.Reply.NetworkUnreachable:      message = "network unreachable"; break;
-			case SOCKS5.Reply.HostUnreachable:         message = "host unreachable"; break;
-			case SOCKS5.Reply.ConnectionRefused:       message = "connection refused"; break;
-			case SOCKS5.Reply.TTLExpired:              message = "TTL expired"; break;
-			case SOCKS5.Reply.CommandNotSupported:     message = "command not supported"; break;
-			case SOCKS5.Reply.AddressTypeNotSupported: message = "address type not supported"; break;
+			case Socks5.Reply.Succeeded:               throw new Exception("there were no errors, why did you call this?");
+			case Socks5.Reply.GeneralError:            message = "general Socks server failure"; break;
+			case Socks5.Reply.ConnectionNotAllowed:    message = "connection not allowed by ruleset"; break;
+			case Socks5.Reply.NetworkUnreachable:      message = "network unreachable"; break;
+			case Socks5.Reply.HostUnreachable:         message = "host unreachable"; break;
+			case Socks5.Reply.ConnectionRefused:       message = "connection refused"; break;
+			case Socks5.Reply.TTLExpired:              message = "TTL expired"; break;
+			case Socks5.Reply.CommandNotSupported:     message = "command not supported"; break;
+			case Socks5.Reply.AddressTypeNotSupported: message = "address type not supported"; break;
 		}
 
 		super(message);
 	}
 }
 
-interface SOCKS4
+interface Socks4
 {
 	enum Type
 	{
@@ -76,7 +76,7 @@ interface SOCKS4
 	}
 }
 
-interface SOCKS5
+interface Socks5
 {
 	enum State
 	{

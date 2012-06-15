@@ -38,32 +38,36 @@ class Client
 		_reactor = reactor;
 	}
 
-	/++
-	 + Connect directly to the host.
-	 +/
-	Connection connect (Address target)
+	/**
+	 * Connect directly to the host.
+	 */
+	ref connect (Address target)
 	{
-		return _connection = reactor.connect!HTTPConnection(target, (HTTPConnection conn) {
+		_connection = reactor.connect!HTTPConnection(target, (conn) {
 			conn.http = this;
 		});
+
+		return this;
 	}
 
-	/++
-	 + Connect through a SOCKS proxy.
-	 +/
-	Connection connectThrough (Address target, Address through)
+	/**
+	 * Connect through a SOCKS proxy.
+	 */
+	ref connectThrough (Address target, Address through)
 	{
-		return _connection = reactor.connectThrough!HTTPConnection(target, through, (HTTPConnection conn) {
+		_connection = reactor.connectThrough!HTTPConnection(target, through, (conn) {
 			conn.http = this;
 		}).data;
+
+		return this;
 	}
 
-	/++
-	 + Tells the Client to use the passed connection.
-	 +
-	 + The Connection is supposed to be already connected and you will have to deal
-	 + with the response yourself.
-	 +/
+	/**
+	 * Tells the Client to use the passed connection.
+	 *
+	 * The Connection is supposed to be already connected and you will have to deal
+	 * with the response yourself.
+	 */
 	@property use (Connection connection)
 	{
 		_connection = connection;
@@ -71,9 +75,9 @@ class Client
 		autoFlush = true;
 	}
 
-	/++
-	 + Send the requests.
-	 +/
+	/**
+	 * Send the requests.
+	 */
 	void flush ()
 	{
 		foreach (request; _requests) {

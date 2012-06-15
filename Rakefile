@@ -18,7 +18,7 @@ SOURCES = FileList['nucular/**/*.d',
 
 OBJECTS = SOURCES.ext('o')
 
-EXAMPLES = FileList['examples/*.d'].ext('')
+EXAMPLES = FileList['examples/**/*.d'].ext('')
 
 CLEAN.include(OBJECTS).include(GRAMMARS.ext('d')).include(EXAMPLES.ext('o'))
 CLOBBER.include(EXAMPLES).include('vendor/pegged/peggeden')

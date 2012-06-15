@@ -26,8 +26,14 @@ import nucular.connection;
 
 class Protocol : Connection
 {
-	override void receiveData (ubyte[] data)
+	final override void receiveData (ubyte[] data)
 	{
+		if (unbuffered) {
+			receiveUnbufferedData(data);
+
+			return;
+		}
+
 		if (maximum > 0 && buffer.length + data.length > maximum) {
 			if (dropBeginning) {
 				if (data.length - buffer.length >= buffer.length) {
@@ -61,58 +67,81 @@ class Protocol : Connection
 	{
 		// this is just a place holder
 	}
+	
+	void receiveUnbufferedData (ubyte[] data)
+	{
+		// this is just a place holder
+	}
 
-	@property minimum ()
+	final @property minimum ()
 	{
 		return _minimum;
 	}
 
-	@property minimum (ulong value)
+	final @property minimum (ulong value)
 	{
 		enforce(value == 0 || maximum == 0 || maximum >= value);
 
 		_minimum = value;
 	}
 
-	@property maximum ()
+	final @property maximum ()
 	{
 		return _maximum;
 	}
 
-	@property maximum (ulong value)
+	final @property maximum (ulong value)
 	{
 		enforce(value == 0 || minimum == 0 || value >= minimum);
 
 		_maximum = value;
 	}
 
-	@property dropBeginning ()
+	final @property dropBeginning ()
 	{
 		return _drop_beginning;
 	}
 
-	@property dropBeginning (bool value)
+	final @property dropBeginning (bool value)
 	{
 		_drop_beginning = value;
 	}
 
-	@property autoReset ()
+	final @property autoReset ()
 	{
 		return _auto_reset;
 	}
 
-	@property autoReset (bool value)
+	final @property autoReset (bool value)
 	{
 		_auto_reset = value;
 	}
 
-	@property ref buffer ()
+	final @property unbuffered ()
+	{
+		return _unbuffered;
+	}
+
+	final @property unbuffered (bool value)
+	{
+		_unbuffered = value;
+
+		if (unbuffered && !_buffer.empty) {
+			receiveUnbufferedData(_buffer);
+
+			_buffer = null;
+		}
+	}
+
+	final @property ref buffer ()
 	{
 		return _buffer;
 	}
 
 private:
 	ubyte[] _buffer;
+
+	bool _unbuffered;
 
 	ulong _minimum    = 0;
 	bool  _auto_reset = true;

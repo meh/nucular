@@ -84,7 +84,7 @@ class Header
 		_value = Header.reduce(value);
 	}
 
-	ref Header concat (string value)
+	ref concat (string value)
 	{
 		_value ~= ", " ~ Header.reduce(value);
 

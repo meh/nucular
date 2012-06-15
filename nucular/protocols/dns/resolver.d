@@ -25,20 +25,35 @@ version (Posix) {
 
 class UnresolvedAddress : UnknownAddress
 {
+	this (string host)
+	{
+		_host = host;
+	}
+
 	this (string host, ushort port)
 	{
 		_host = host;
 		_port = port;
 	}
 
-	ushort port ()
+	@property port ()
 	{
-		return ntohs(_port);
+		return _port;
+	}
+
+	@property host ()
+	{
+		return _host;
 	}
 
 	override string toPortString ()
 	{
 		return _port.to!string;
+	}
+
+	override string toAddrString ()
+	{
+		return _host;
 	}
 
 	override string toHostNameString ()

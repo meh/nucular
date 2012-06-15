@@ -59,35 +59,35 @@ class Parser
 		parse(initial);
 	}
 
-	ref Parser onPrelude (void delegate (ref Prelude) block)
+	ref onPrelude (void delegate (ref Prelude) block)
 	{
 		_on_prelude = block;
 
 		return this;
 	}
 
-	ref Parser onHeader (void delegate (ref Header) block)
+	ref onHeader (void delegate (ref Header) block)
 	{
 		_on_header = block;
 
 		return this;
 	}
 
-	ref Parser onHeaders (void delegate (ref Headers) block)
+	ref onHeaders (void delegate (ref Headers) block)
 	{
 		_on_headers = block;
 
 		return this;
 	}
 
-	ref Parser onChunk (void delegate (ubyte[]) block)
+	ref onChunk (void delegate (ubyte[]) block)
 	{
 		_on_chunk = block;
 
 		return this;
 	}
 
-	ref Parser onContent (void delegate (ubyte[]) block)
+	ref onContent (void delegate (ubyte[]) block)
 	{
 		_on_content = block;
 

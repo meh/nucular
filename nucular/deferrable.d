@@ -42,28 +42,28 @@ class Deferrable(T)
 		cancelTimeout();
 	}
 
-	Deferrable callback(T) (T delegate () block)
+	ref callback(T) (T delegate () block)
 	{
 		_callbacks ~= cast (void delegate (void*)) block;
 
 		return this;
 	}
 
-	Deferrable callback(T) (void delegate (T data) block)
+	ref callback(T) (void delegate (T data) block)
 	{
 		_callbacks ~= cast (void delegate (void*)) block;
 
 		return this;
 	}
 
-	Deferrable errback(T) (T delegate () block)
+	ref errback(T) (T delegate () block)
 	{
 		_errbacks ~= cast (void delegate (void*)) block;
 
 		return this;
 	}
 
-	Deferrable errback(T) (void delegate (T data) block)
+	ref errback(T) (void delegate (T data) block)
 	{
 		_errbacks ~= cast (void delegate (void*)) block;
 

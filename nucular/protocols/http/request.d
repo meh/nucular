@@ -36,21 +36,21 @@ abstract class Request
 		
 	}
 
-	Request callback (void delegate (Request) block)
+	ref callback (void delegate (Request) block)
 	{
 		_callback = block;
 
 		return this;
 	}
 
-	Request errback (void delegate (Request) block)
+	ref errback (void delegate (Request) block)
 	{
 		_errback = block;
 
 		return this;
 	}
 
-	Request chunk (void delegate (Request, ubyte[] data) block)
+	ref chunk (void delegate (Request, ubyte[] data) block)
 	{
 		_chunk = block;
 

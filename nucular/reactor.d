@@ -331,9 +331,19 @@ class Reactor
 		return new Deferrable!T(this, data);
 	}
 
+	Deferrable!T deferrable(T) (T data, void delegate () callback)
+	{
+		return deferrable(data).callback(callback);
+	}
+
 	Deferrable!T deferrable(T) (void delegate () callback)
 	{
 		return deferrable!T.callback(callback);
+	}
+
+	Deferrable!T deferrable(T) (T data, void delegate () callback, void delegate () errback)
+	{
+		return deferrable(data).callback(callback).errback(errback);
 	}
 
 	Deferrable!T deferrable(T) (void delegate () callback, void delegate () errback)
@@ -396,74 +406,74 @@ class Reactor
 		});
 	}
 
-	Connection connect(T : Connection) (Address address, string protocol, void delegate (T) block)
+	T connect(T : Connection) (Address address, string protocol, void delegate (T) block)
 	{
-		return _connect(T.classinfo, address, protocol, cast (void delegate (Connection)) block);
+		return cast (T) _connect(T.classinfo, address, protocol, cast (void delegate (Connection)) block);
 	}
 
-	Connection connect(T : Connection) (Address address, string protocol)
+	T connect(T : Connection) (Address address, string protocol)
 	{
-		return connect!(T)(address, protocol, cast (void delegate (T)) defaultCreationCallback);
+		return connect!T(address, protocol, cast (void delegate (T)) defaultCreationCallback);
 	}
 
-	Connection connect(T : Connection) (Address address, void delegate (T) block)
+	T connect(T : Connection) (Address address, void delegate (T) block)
 	{
-		return connect!(T)(address, address.toProtocol(), block);
+		return connect!T(address, address.toProtocol(), block);
 	}
 
-	Connection connect(T : Connection) (Address address)
+	T connect(T : Connection) (Address address)
 	{
-		return connect!(T)(address, address.toProtocol());
+		return connect!T(address, address.toProtocol());
 	}
 
-	Connection connect(T : Connection) (URI uri, void delegate (T) block)
+	T connect(T : Connection) (URI uri, void delegate (T) block)
 	{
 		return connect!T(uri.to!Address, uri.scheme.protocol, block);
 	}
 
-	Connection connect(T : Connection) (URI uri)
+	T connect(T : Connection) (URI uri)
 	{
 		return connect!T(uri, cast (void delegate (T)) defaultCreationCallback);
 	}
 
-	Connection connect(T : Connection) (string uri, void delegate (T) block)
+	T connect(T : Connection) (string uri, void delegate (T) block)
 	{
 		return connect!T(URI.parse(uri), block);
 	}
 
-	Connection connect(T : Connection) (string uri)
+	T connect(T : Connection) (string uri)
 	{
 		return connect!T(URI.parse(uri));
 	}
 
-	Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
+	T watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
 	{
-		return _watch(T.classinfo, descriptor, cast (void delegate (Connection)) block);
+		return cast (T) _watch(T.classinfo, descriptor, cast (void delegate (Connection)) block);
 	}
 
-	Connection watch(T : Connection) (Descriptor descriptor)
+	T watch(T : Connection) (Descriptor descriptor)
 	{
-		return watch!(T)(descriptor, cast (void delegate (T)) defaultCreationCallback);
+		return watch!T(descriptor, cast (void delegate (T)) defaultCreationCallback);
 	}
 
-	Connection watch(T : Connection) (Socket socket, void delegate (T) block)
+	T watch(T : Connection) (Socket socket, void delegate (T) block)
 	{
-		return watch!(T)(new Descriptor(socket), block);
+		return watch!T(new Descriptor(socket), block);
 	}
 
-	Connection watch(T : Connection) (Socket socket)
+	T watch(T : Connection) (Socket socket)
 	{
-		return watch!(T)(new Descriptor(socket), cast (void delegate (T)) defaultCreationCallback);
+		return watch!T(new Descriptor(socket), cast (void delegate (T)) defaultCreationCallback);
 	}
 
-	Connection watch(T : Connection) (int fd, void delegate (T) block)
+	T watch(T : Connection) (int fd, void delegate (T) block)
 	{
-		return watch!(T)(new Descriptor(fd), block);
+		return watch!T(new Descriptor(fd), block);
 	}
 
-	Connection watch(T : Connection) (int fd)
+	T watch(T : Connection) (int fd)
 	{
-		return watch!(T)(new Descriptor(fd), defaultCreationCallback);
+		return watch!T(new Descriptor(fd), defaultCreationCallback);
 	}
 
 	void exchangeConnections (Connection from, Connection to)
@@ -972,74 +982,74 @@ Server startServer(T : Connection) (string uri, void delegate (T) block)
 	return instance.startServer!T(uri, block);
 }
 
-Connection connect(T : Connection) (Address address, string protocol)
+T connect(T : Connection) (Address address, string protocol)
 {
 	return instance.connect!T(address, protocol);
 }
 
-Connection connect(T : Connection) (Address address, string protocol, void delegate (T) block)
+T connect(T : Connection) (Address address, string protocol, void delegate (T) block)
 {
 	return instance.connect!T(address, protocol, block);
 }
 
-Connection connect(T : Connection) (Address address)
+T connect(T : Connection) (Address address)
 {
 	return instance.connect!T(address);
 }
 
-Connection connect(T : Connection) (Address address, void delegate (T) block)
+T connect(T : Connection) (Address address, void delegate (T) block)
 {
 	return instance.connect!T(address, block);
 }
 
-Connection connect(T : Connection) (URI uri, void delegate (T) block)
+T connect(T : Connection) (URI uri, void delegate (T) block)
 {
 	return instance.connect!T(uri, block);
 }
 
-Connection connect(T : Connection) (URI uri)
+T connect(T : Connection) (URI uri)
 {
 	return instance.connect!T(uri);
 }
 
-Connection connect(T : Connection) (string uri, void delegate (T) block)
+T connect(T : Connection) (string uri, void delegate (T) block)
 {
 	return instance.connect!T(uri, block);
 }
 
-Connection connect(T : Connection) (string uri)
+T connect(T : Connection) (string uri)
 {
 	return instance.connect!T(uri);
 }
 
-Connection watch(T : Connection) (Descriptor descriptor)
+T watch(T : Connection) (Descriptor descriptor)
 {
-	return instance.watch!(T)(descriptor);
+	return instance.watch!T(descriptor);
 }
 
-Connection watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
+T watch(T : Connection) (Descriptor descriptor, void delegate (T) block)
 {
-	return instance.watch!(T)(descriptor, block);
+	return instance.watch!T(descriptor, block);
 }
 
-Connection watch(T : Connection) (Socket socket)
+T watch(T : Connection) (Socket socket)
 {
-	return instance.watch!(T)(socket);
+	return instance.watch!T(socket);
 }
 
-Connection watch(T : Connection) (Socket socket, void delegate (T) block)
+T watch(T : Connection) (Socket socket, void delegate (T) block)
 {
-	return instance.watch!(T)(socket, block);
+	return instance.watch!T(socket, block);
 }
 
-Connection watch(T : Connection) (int fd)
+T watch(T : Connection) (int fd)
 {
-	return instance.watch!(T)(fd);
+	return instance.watch!T(fd);
 }
 
-Connection watch(T : Connection) (int fd, void delegate (T) block)
+T watch(T : Connection) (int fd, void delegate (T) block)
 {
-	return instance.watch!(T)(fd, block);
+	return instance.watch!T(fd, block);
 }
 
 Timer addTimer (Duration time, void delegate () block)

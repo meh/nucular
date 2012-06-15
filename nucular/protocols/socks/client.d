@@ -32,9 +32,9 @@ import nucular.connection;
 import buffered = nucular.protocols.buffered;
 import base = nucular.protocols.socks.base;
 
-abstract class SOCKS : buffered.Protocol
+abstract class Socks : buffered.Protocol
 {
-	SOCKS initialize (Address target, Connection drop_to, string username = null, string password = null)
+	ref initialize (Address target, Connection drop_to, string username = null, string password = null)
 	{
 		_target     = target;
 		_drop_to    = drop_to;
@@ -116,7 +116,7 @@ private:
 	string _password;
 }
 
-class SOCKS4 : SOCKS, base.SOCKS4
+class Socks4 : Socks, base.Socks4
 {
 	void sendPacket (ubyte[] data)
 	{
@@ -131,7 +131,7 @@ class SOCKS4 : SOCKS, base.SOCKS4
 			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.toBytes() ~ target.addr.toBytes() ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
 		}
 		else {
-			throw new base.SOCKSError("address not supported");
+			throw new base.SocksError("address not supported");
 		}
 	}
 
@@ -149,19 +149,17 @@ protected:
 		auto status = cast (Reply) data.front; data.popFront();
 
 		if (status != Reply.Granted) {
-			throw new base.SOCKSError(status);
+			throw new base.SocksError(status);
 		}
 
-		foreach (_; 0 .. 6) {
-			data.popFront();
-		}
+		data = data[6 .. $];
 
 		deferrable.succeed();
 		exchange(dropTo);
 	}
 }
 
-class SOCKS4a : SOCKS4
+class Socks4a : Socks4
 {
 	override void sendRequest (Type type, Address address)
 	{
@@ -176,7 +174,7 @@ class SOCKS4a : SOCKS4
 	}
 }
 
-class SOCKS5 : SOCKS, base.SOCKS5
+class Socks5 : Socks, base.Socks5
 {
 	static const Method[] Methods = [Method.NoAuthenticationRequired, Method.UsernameAndPassword];
 
@@ -206,7 +204,7 @@ class SOCKS5 : SOCKS, base.SOCKS5
 			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ target.port.toBytes());
 		}
 		else {
-			throw new base.SOCKSError(Reply.AddressTypeNotSupported);
+			throw new base.SocksError(Reply.AddressTypeNotSupported);
 		}
 	}
 
@@ -219,7 +217,7 @@ protected:
 				auto method = cast (Method) data.front; data.popFront();
 
 				if (ver != 5) {
-					throw new base.SOCKSError("SOCKS version 5 not supported");
+					throw new base.SocksError("Socks version 5 not supported");
 				}
 
 				switch (method) {
@@ -235,11 +233,11 @@ protected:
 				auto status = cast (Reply) data.front; data.popFront();
 
 				if (ver != 5) {
-					throw new base.SOCKSError("SOCKS version 5 not supported");
+					throw new base.SocksError("Socks version 5 not supported");
 				}
 
 				if (status != Reply.Succeeded) {
-					throw new base.SOCKSError("access denied by proxy");
+					throw new base.SocksError("access denied by proxy");
 				}
 
 				sendConnectRequest();
@@ -250,11 +248,11 @@ protected:
 				auto status = cast (Reply) data[1];
 
 				if (ver != 5) {
-					throw new Exception("SOCKS version 5 not supported");
+					throw new Exception("Socks version 5 not supported");
 				}
 
 				if (status != Reply.Succeeded) {
-					throw new base.SOCKSError(status);
+					throw new base.SocksError(status);
 				}
 
 				if (data.length < 3) {
@@ -296,9 +294,7 @@ protected:
 
 				_state = State.Finished;
 
-				foreach (_; 0 .. size) {
-					data.popFront();
-				}
+				data = data[size .. $];
 
 				exchange(dropTo);
 			break;
@@ -429,7 +425,7 @@ class Proxy6Address : Internet6Address
 Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address target, Address through, void delegate (T) callback)
 {
 	Connection drop_to = (cast (Connection) T.classinfo.create()).created(reactor);
-	SOCKS      proxy;
+	Socks      proxy;
 	string     username;
 	string     password;
 	string     ver;
@@ -449,13 +445,13 @@ Deferrable!Connection connectThrough(T : Connection) (Reactor reactor, Address t
 	}
 
 	if (ver == "4") {
-		proxy = cast (SOCKS) reactor.connect!SOCKS4(through);
+		proxy = cast (Socks) reactor.connect!Socks4(through);
 	}
 	else if (ver == "4a") {
-		proxy = cast (SOCKS) reactor.connect!SOCKS4a(through);
+		proxy = cast (Socks) reactor.connect!Socks4a(through);
 	}
 	else if (ver == "5") {
-		proxy = cast (SOCKS) reactor.connect!SOCKS5(through);
+		proxy = cast (Socks) reactor.connect!Socks5(through);
 	}
 	else {
 		throw new Error("version unsupported");
@@ -543,7 +539,7 @@ private:
 	{
 		auto result = new ubyte[T.sizeof];
 
-		for (int i = 0; i < T.sizeof; i++) {
+		for (int i = T.sizeof - 1; i >= 0; i--) {
 			result[i]   = data & 0xff;
 			data      >>= 8;
 		}
