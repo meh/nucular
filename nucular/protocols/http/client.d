@@ -23,7 +23,7 @@ import std.array;
 import nucular.reactor : Reactor, instance, Address, Connection;
 import nucular.deferrable;
 import nucular.queue;
-import nucular.protocols.socks;
+import nucular.protocols.socks.client;
 import nucular.protocols.http.request;
 
 class Client

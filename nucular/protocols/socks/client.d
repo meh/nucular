@@ -16,7 +16,7 @@
  * along with nucular. If not, see <http://www.gnu.org/licenses/>.
  ****************************************************************************/
 
-module nucular.protocols.socks;
+module nucular.protocols.socks.client;
 
 public import nucular.protocols.dns.resolver : UnresolvedAddress;
 
@@ -30,6 +30,7 @@ import nucular.reactor : Reactor, instance, Address, InternetAddress, Internet6A
 import nucular.deferrable;
 import nucular.connection;
 import buffered = nucular.protocols.buffered;
+import base = nucular.protocols.socks.base;
 
 abstract class SOCKS : buffered.Protocol
 {
@@ -115,63 +116,8 @@ private:
 	string _password;
 }
 
-class SOCKSError : Exception
+class SOCKS4 : SOCKS, base.SOCKS4
 {
-	this (string message)
-	{
-		super(message);
-	}
-
-	this (SOCKS4.Reply code)
-	{
-		string message;
-
-		final switch (code) {
-			case SOCKS4.Reply.Granted:                throw new Exception("there were no errors, why did you call this?");
-			case SOCKS4.Reply.Rejected:               message = "rejected or failed request"; break;
-			case SOCKS4.Reply.IdentdNotRunning:       message = "identd isn't running"; break;
-			case SOCKS4.Reply.IdentdNotAuthenticated: message = "identd failed the authentication"; break;
-		}
-
-		super(message);
-	}
-
-	this (SOCKS5.Reply code)
-	{
-		string message;
-
-		final switch (code) {
-			case SOCKS5.Reply.Succeeded:               throw new Exception("there were no errors, why did you call this?");
-			case SOCKS5.Reply.GeneralError:            message = "general SOCKS server failure"; break;
-			case SOCKS5.Reply.ConnectionNotAllowed:    message = "connection not allowed by ruleset"; break;
-			case SOCKS5.Reply.NetworkUnreachable:      message = "network unreachable"; break;
-			case SOCKS5.Reply.HostUnreachable:         message = "host unreachable"; break;
-			case SOCKS5.Reply.ConnectionRefused:       message = "connection refused"; break;
-			case SOCKS5.Reply.TTLExpired:              message = "TTL expired"; break;
-			case SOCKS5.Reply.CommandNotSupported:     message = "command not supported"; break;
-			case SOCKS5.Reply.AddressTypeNotSupported: message = "address type not supported"; break;
-		}
-
-		super(message);
-	}
-}
-
-class SOCKS4 : SOCKS
-{
-	enum Type
-	{
-		StreamConnection = 0x01,
-		PortBinding
-	}
-
-	enum Reply
-	{
-		Granted = 0x5a,
-		Rejected,
-		IdentdNotRunning,
-		IdentdNotAuthenticated
-	}
-
 	void sendPacket (ubyte[] data)
 	{
 		sendData([cast (ubyte) 4] ~ data);
@@ -185,7 +131,7 @@ class SOCKS4 : SOCKS
 			sendPacket(cast (ubyte[]) [cast (ubyte) type] ~ target.port.toBytes() ~ target.addr.toBytes() ~ cast (ubyte[]) username ~ [cast (ubyte) 0]);
 		}
 		else {
-			throw new SOCKSError("address not supported");
+			throw new base.SOCKSError("address not supported");
 		}
 	}
 
@@ -203,7 +149,7 @@ protected:
 		auto status = cast (Reply) data.front; data.popFront();
 
 		if (status != Reply.Granted) {
-			throw new SOCKSError(status);
+			throw new base.SOCKSError(status);
 		}
 
 		foreach (_; 0 .. 6) {
@@ -230,57 +176,8 @@ class SOCKS4a : SOCKS4
 	}
 }
 
-class SOCKS5 : SOCKS
+class SOCKS5 : SOCKS, base.SOCKS5
 {
-	enum State
-	{
-		MethodNegotiation,
-		Connecting,
-		Authenticating,
-		Finished
-	}
-
-	enum Method
-	{
-		NoAuthenticationRequired,
-		GSSAPI,
-		UsernameAndPassword,
-		ChallengeHandshakeAuthenticationProtocol,
-		ChallengeResponseAuthenticationMethod = 0x05,
-		SecureSocketsLayer,
-		NDSAuthentication,
-		MultiAuthenticationFramework,
-		
-		NoAcceptable = 0xFF
-	}
-
-	enum Type
-	{
-		Connect = 1,
-		Bind,
-		UDPAssociate
-	}
-	
-	enum NetworkType
-	{
-		IPv4     = 0x01,
-		HostName = 0x03,
-		IPv6
-	}
-
-	enum Reply
-	{
-		Succeeded,
-		GeneralError,
-		ConnectionNotAllowed,
-		NetworkUnreachable,
-		HostUnreachable,
-		ConnectionRefused,
-		TTLExpired,
-		CommandNotSupported,
-		AddressTypeNotSupported
-	}
-
 	static const Method[] Methods = [Method.NoAuthenticationRequired, Method.UsernameAndPassword];
 
 	override void connected ()
@@ -309,7 +206,7 @@ class SOCKS5 : SOCKS
 			sendPacket(cast (ubyte[]) [cast (ubyte) type, 0, cast (ubyte) NetworkType.IPv6] ~ cast (ubyte[]) target.addr() ~ target.port.toBytes());
 		}
 		else {
-			throw new SOCKSError(Reply.AddressTypeNotSupported);
+			throw new base.SOCKSError(Reply.AddressTypeNotSupported);
 		}
 	}
 
@@ -322,7 +219,7 @@ protected:
 				auto method = cast (Method) data.front; data.popFront();
 
 				if (ver != 5) {
-					throw new SOCKSError("SOCKS version 5 not supported");
+					throw new base.SOCKSError("SOCKS version 5 not supported");
 				}
 
 				switch (method) {
@@ -338,11 +235,11 @@ protected:
 				auto status = cast (Reply) data.front; data.popFront();
 
 				if (ver != 5) {
-					throw new SOCKSError("SOCKS version 5 not supported");
+					throw new base.SOCKSError("SOCKS version 5 not supported");
 				}
 
 				if (status != Reply.Succeeded) {
-					throw new SOCKSError("access denied by proxy");
+					throw new base.SOCKSError("access denied by proxy");
 				}
 
 				sendConnectRequest();
@@ -357,7 +254,7 @@ protected:
 				}
 
 				if (status != Reply.Succeeded) {
-					throw new SOCKSError(status);
+					throw new base.SOCKSError(status);
 				}
 
 				if (data.length < 3) {

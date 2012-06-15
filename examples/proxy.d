@@ -2,7 +2,7 @@ import std.stdio;
 import std.regex;
 
 import nucular.reactor;
-import nucular.protocols.socks;
+import nucular.protocols.socks.client;
 
 class Reader : Connection
 {
