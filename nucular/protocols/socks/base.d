@@ -78,14 +78,6 @@ interface Socks4
 
 interface Socks5
 {
-	enum State
-	{
-		MethodNegotiation,
-		Connecting,
-		Authenticating,
-		Finished
-	}
-
 	enum Method
 	{
 		NoAuthenticationRequired,
