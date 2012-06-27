@@ -196,7 +196,7 @@ class Query
 		return !_internal.find!(a => a.name == name).empty;
 	}
 
-	Query add (string name, string value = null)
+	ref add (string name, string value = null)
 	{
 		_internal ~= new Parameter(name, value);
 

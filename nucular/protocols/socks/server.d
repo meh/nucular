@@ -29,8 +29,12 @@ import nucular.connection;
 import buffered = nucular.protocols.buffered;
 import base = nucular.protocols.socks.base;
 
-abstract class Socks : buffered.Protocol
+class Socks : buffered.Protocol
 {
+	alias base.SocksError SocksError;
+	alias base.Socks4     Socks4;
+	alias base.Socks5     Socks5;
+
 	final override void receiveBufferedData (ref ubyte[] data)
 	{
 		try {
@@ -46,7 +50,32 @@ abstract class Socks : buffered.Protocol
 		receiveProxyData(data);
 	}
 
-	void receiveProxyData (ubyte[] data)
+	void begin (string ver)
+	{
+		// this is just a place holder
+	}
+
+	bool authenticate (string username)
+	{
+		return true;
+	}
+
+	bool authenticate (string username, string password)
+	{
+		return true;
+	}
+
+	void methods (Socks5.Method[] methods)
+	{
+		// this is just a place holder
+	}
+
+	void request (Socks4.Type type, Address address)
+	{
+		// this is just a place holder
+	}
+
+	void request (Socks5.Type type, Address address)
 	{
 		// this is just a place holder
 	}
@@ -56,148 +85,181 @@ abstract class Socks : buffered.Protocol
 		// this is just a place holder
 	}
 
-protected:
-	abstract void parseRequest (ref ubyte[] data);
-}
-
-class Socks4 : Socks, base.Socks4
-{
-	void sendResponse (Reply reply)
-	{
-		sendData(cast (ubyte[]) [0, reply, 0, 0, 0, 0, 0, 0]);
-	}
-
-	void request (Type type, Address address, string username)
+	void failedRequest (Socks4.Reply reply)
 	{
 		// this is just a place holder
 	}
 
-protected:
-	override void parseRequest (ref ubyte[] data)
-	{
-		if (data.length < 9) {
-			minimum = 9;
-
-			return;
-		}
-
-		enforceEx!(base.SocksError)(data[0] == 4, "wrong SOCKS version");
-
-		Type   type = cast (Type) data[1];
-		ushort port = data[2 .. 4].fromBytes!ushort;
-		uint   addr = data[4 .. 8].fromBytes!uint;
-		int    end  = -1;
-
-		foreach (index, piece; data[8 .. $]) {
-			if (piece == 0) {
-				end = index.to!int + 1;
-
-				break;
-			}
-		}
-
-		if (end == -1) {
-			return;
-		}
-
-		string username = cast (string) data[8 .. 8 + end];
-
-		request(type, new InternetAddress(addr, port), username);
-
-		data       = data[8 + end .. $];
-		unbuffered = true;
-	}
-}
-
-class Socks4a : Socks, base.Socks4
-{
-	void sendResponse (Reply reply)
-	{
-		sendData(cast (ubyte[]) [0, reply, 0, 0, 0, 0, 0, 0]);
-	}
-
-	void request (Type type, Address address, string username)
+	void failedRequest (Socks5.Reply reply)
 	{
 		// this is just a place holder
 	}
 
-protected:
-	override void parseRequest (ref ubyte[] data)
+	void receiveProxyData (ubyte[] data)
 	{
-		if (data.length < 9) {
-			minimum = 9;
+		// this is just a place holder
+	}
 
-			return;
-		}
+	final void sendResponse (Socks4.Reply reply)
+	{
+		sendData(cast (ubyte[]) [0, reply, 0, 0, 0, 0, 0, 0]);
+	}
 
-		enforceEx!(base.SocksError)(data[0] == 4, "wrong SOCKS version");
+	final void sendResponse (Socks5.Reply reply)
+	{
 
-		Type   type         = cast (Type) data[1];
-		ushort port         = data[2 .. 4].fromBytes!ushort;
-		uint   addr         = data[4 .. 8].fromBytes!uint;
-		bool   needs_host   = false;
-		int    username_end = -1;
+	}
 
-		if (addr >> 8 == 0 && addr != 0) {
-			needs_host = true;
-		}
+	final void use (Socks5.Method method)
+	{
+		_method = method;
 
-		foreach (index, piece; data[8 .. $]) {
-			if (piece == 0) {
-				username_end = index.to!int + 1;
+		sendData(cast (ubyte[]) [5, cast (ubyte) method]);
+	}
 
-				break;
+	final @property isAuthenticated ()
+	{
+		return _authenticated;
+	}
+
+	final @property method ()
+	{
+		return _method;
+	}
+
+	final @property socksVersion ()
+	{
+		return _socks_version;
+	}
+
+private:
+	void parseRequest (ref ubyte[] data)
+	{
+		if (data[0] == 4) {
+			if (data.length < 9) {
+				minimum = 9;
+
+				return;
 			}
-		}
 
-		if (username_end == -1) {
-			return;
-		}
+			Socks4.Type type         = cast (Socks4.Type) data[1];
+			ushort      port         = data[2 .. 4].fromBytes!ushort;
+			uint        addr         = data[4 .. 8].fromBytes!uint;
+			Address     address;
+			bool        needs_host   = false;
+			int         username_end = -1;
 
-		string username = cast (string) data[8 .. 8 + username_end];
+			if (addr >> 8 == 0 && addr != 0) {
+				begin(_socks_version = "4a");
 
-		if (needs_host) {
-			int host_end = -1;
+				needs_host = true;
+			}
+			else {
+				begin(_socks_version = "4");
+			}
 
-			foreach (index, piece; data[8 + username_end .. $]) {
+			foreach (index, piece; data[8 .. $]) {
 				if (piece == 0) {
-					host_end = index.to!int + 1;
+					username_end = index.to!int + 1;
 
 					break;
 				}
 			}
 
-			if (host_end == -1) {
-				return;
+			string username = cast (string) data[8 .. 8 + username_end];
+
+			if (needs_host) {
+				int host_end = -1;
+
+				foreach (index, piece; data[8 + username_end .. $]) {
+					if (piece == 0) {
+						host_end = index.to!int + 1;
+
+						break;
+					}
+				}
+
+				if (host_end == -1) {
+					return;
+				}
+
+				string host = cast (string) data[8 + username_end .. 8 + username_end + host_end];
+				
+				address = new UnresolvedAddress(host, port);
+				data    = data[8 + username_end + host_end .. $];
+			}
+			else {
+				address = new InternetAddress(addr, port);
+				data    = data[8 + username_end .. $];
 			}
 
-			string host = cast (string) data[8 + username_end .. 8 + username_end + host_end];
+			if (authenticate(username)) {
+				_authenticated = true;
 
-			request(type, new UnresolvedAddress(host, port), username);
+				request(type, address);
+			}
+			else {
+				failedRequest(Socks4.Reply.IdentdNotAuthenticated);
+			}
 
-			data = data[8 + username_end + host_end .. $];
+			unbuffered = true;
+		}
+		else if (data[0] == 5) {
+			begin(_socks_version = "5");
+
+			if (isAuthenticated) {
+
+			}
+			else {
+				if (method == Socks5.Method.NoAcceptable) {
+
+				}
+				else {
+					switch (method) {
+						case Socks5.Method.NoAuthenticationRequired:
+							_authenticated = true;
+							break;
+
+						case Socks5.Method.UsernameAndPassword:
+
+						default: assert (0);
+					}
+				}
+			}
 		}
 		else {
-			request(type, new InternetAddress(addr, port), username);
-
-			data = data[8 + username_end .. $];
+			throw new SocksError("unsupported SOCKS version");
 		}
+	}
 
-		unbuffered = true;
+private:
+	string _socks_version;
+	bool   _authenticated;
+
+	Socks5.Method _method;
+}
+
+class Socks4 : Socks, base.Socks4
+{
+	final override void begin (string ver)
+	{
+		enforceEx!SocksError(ver == "4", "wrong SOCKS version");
+	}
+}
+
+class Socks4a : Socks, base.Socks4
+{
+	final override void begin (string ver)
+	{
+		enforceEx!SocksError(ver == "4" || ver == "4a", "wrong SOCKS version");
 	}
 }
 
 class Socks5 : Socks, base.Socks5
 {
-	void request (Type type, Address address, string username)
+	final override void begin (string ver)
 	{
-		// this is just a place holder
-	}
-
-protected:
-	override void parseRequest (ref ubyte[] data)
-	{
-
+		enforceEx!SocksError(ver == "5", "wrong SOCKS version");
 	}
 }
 

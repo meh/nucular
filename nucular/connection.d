@@ -96,7 +96,7 @@ class Connection
 		int _value;
 	}
 
-	final Connection created (Reactor reactor, Descriptor descriptor = null)
+	final ref created (Reactor reactor, Descriptor descriptor = null)
 	{
 		_reactor    = reactor;
 		_mutex      = new Mutex;
@@ -108,14 +108,14 @@ class Connection
 		return this;
 	}
 
-	final Connection watched (Reactor reactor, Descriptor descriptor)
+	final ref watched (Reactor reactor, Descriptor descriptor)
 	{
 		created(reactor, descriptor);
 
 		return this;
 	}
 
-	final Connection accepted (Server server, Descriptor descriptor)
+	final ref accepted (Server server, Descriptor descriptor)
 	{
 		created(server.reactor, descriptor);
 
@@ -130,7 +130,7 @@ class Connection
 		return this;
 	}
 
-	final Connection connecting (Reactor reactor, Descriptor descriptor)
+	final ref connecting (Reactor reactor, Descriptor descriptor)
 	{
 		watched(reactor, descriptor);
 		_client = true;

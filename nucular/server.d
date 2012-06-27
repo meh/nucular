@@ -240,6 +240,8 @@ version (Posix) {
 	{
 		this (string path)
 		{
+			enforce(path.length + 1 <= _addr.sun_path.length);
+
 			_length = cast (socklen_t) (_addr.sun_path.offsetof + path.length + 1);
 
 			_addr = cast (sockaddr_un*) (new ubyte[_length]).ptr;

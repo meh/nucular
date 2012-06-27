@@ -178,14 +178,6 @@ class Socks5 : Socks, base.Socks5
 {
 	static const Method[] Methods = [Method.NoAuthenticationRequired, Method.UsernameAndPassword];
 
-	enum State
-	{
-		MethodNegotiation,
-		Connecting,
-		Authenticating,
-		Finished
-	}
-
 	override void connected ()
 	{
 		_state = State.MethodNegotiation;
@@ -217,6 +209,14 @@ class Socks5 : Socks, base.Socks5
 	}
 
 protected:
+	enum State
+	{
+		MethodNegotiation,
+		Connecting,
+		Authenticating,
+		Finished
+	}
+
 	override void parseResponse (ref ubyte[] data)
 	{
 		final switch (_state) {
