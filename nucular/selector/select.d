@@ -206,7 +206,7 @@ private:
 private:
 	timeval toTimeval (Duration duration)
 	{
-		return timeval(duration.total!"seconds", duration.fracSec.usecs);
+		return timeval(cast (int) duration.total!"seconds", duration.fracSec.usecs);
 	}
 
 	Descriptor[] toDescriptors (fd_set set, Descriptor[] descriptors)

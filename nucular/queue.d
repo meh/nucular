@@ -85,7 +85,7 @@ private:
 	}
 
 private:
-	Node* _head;
-	Node* _tail;
-	ulong _length;
+	Node*  _head;
+	Node*  _tail;
+	size_t _length;
 }

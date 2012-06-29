@@ -59,8 +59,8 @@ abstract class Request
 
 	@property name () pure const
 	{
-		string name = this.classinfo.name;
-		long   last = name.lastIndexOf('.');
+		auto name = this.classinfo.name;
+		auto last = name.lastIndexOf('.');
 
 		return name[last == -1 ? 0 : last + 1 .. $].toUpper();
 	}

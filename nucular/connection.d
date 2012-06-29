@@ -540,7 +540,7 @@ class Connection
 		return done;
 	}
 
-	final Data* receiveFrom (ulong length)
+	final Data* receiveFrom (size_t length)
 	{
 		ubyte[]   data = new ubyte[length];
 		Address   address;

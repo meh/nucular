@@ -53,7 +53,7 @@ class Protocol : Connection
 		}
 
 		if (buffer.length >= minimum) {
-			ulong old = minimum;
+			size_t old = minimum;
 
 			receiveBufferedData(buffer);
 
@@ -78,7 +78,7 @@ class Protocol : Connection
 		return _minimum;
 	}
 
-	final @property minimum (ulong value)
+	final @property minimum (size_t value)
 	{
 		enforce(value == 0 || maximum == 0 || maximum >= value);
 
@@ -90,7 +90,7 @@ class Protocol : Connection
 		return _maximum;
 	}
 
-	final @property maximum (ulong value)
+	final @property maximum (size_t value)
 	{
 		enforce(value == 0 || minimum == 0 || value >= minimum);
 
@@ -143,9 +143,9 @@ private:
 
 	bool _unbuffered;
 
-	ulong _minimum    = 0;
-	bool  _auto_reset = true;
+	size_t _minimum    = 0;
+	bool   _auto_reset = true;
 
-	ulong _maximum        = 0;
-	bool  _drop_beginning = false;
+	size_t _maximum        = 0;
+	bool   _drop_beginning = false;
 }

@@ -164,18 +164,18 @@ class Parser
 					_on_chunk(cast (ubyte[]) data);
 				}
 
-				if (_length + data.length >= h.value.to!ulong) {
+				if (_length + data.length >= h.value.to!size_t) {
 					if (_on_content || !_on_chunk) {
-						_content ~= cast (ubyte[]) data[0 .. h.value.to!ulong - _length];
+						_content ~= cast (ubyte[]) data[0 .. h.value.to!size_t - _length];
 						_length  += data.length;
-						data      = data[h.value.to!ulong - _length .. $];
+						data      = data[h.value.to!size_t - _length .. $];
 
 						if (_on_content) {
 							_on_content(cast (ubyte[]) _content);
 						}
 					}
 					else {
-						data = data[h.value.to!ulong - _length .. $];
+						data = data[h.value.to!size_t - _length .. $];
 					}
 
 					if (_on_end) {
@@ -238,8 +238,8 @@ private:
 	Headers _headers;
 	ubyte[] _content;
 
-	State _state;
-	ulong _length;
+	State  _state;
+	size_t _length;
 
 	bool _only_headers;
 
