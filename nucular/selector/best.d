@@ -49,6 +49,11 @@ else {
 
 		public import nucular.selector.kqueue;
 	}
+	else version (OSX) {
+		version = kqueue;
+
+		public import nucular.selector.kqueue;
+	}
 	else version (linux) {
 		version = epoll;
 
