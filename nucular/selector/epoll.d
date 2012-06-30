@@ -22,6 +22,7 @@ version (epoll):
 
 import core.time;
 import core.stdc.errno;
+import core.sys.posix.unistd;
 
 import std.algorithm;
 import std.array;
@@ -39,10 +40,18 @@ class Selector : base.Selector
 
 		errnoEnforce((_efd = epoll_create1(0)) >= 0);
 
-		epoll_event event = { events: EPOLLIN };
-		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, breaker.to!int, &event) == 0);
+		epoll_event p;
+		p.events   = EPOLLIN;
+		p.data.u32 = uint.max;
+
+		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, breaker.to!int, &p) == 0);
 
 		resize(4096);
+	}
+
+	~this ()
+	{
+		.close(_efd);
 	}
 
 	override bool add (Descriptor descriptor)
@@ -178,7 +187,7 @@ class Selector : base.Selector
 		// XXX: somehow it's fucking up the u64, so we use u32, it won't
 		//      be able to handle 4 billion fds anyway.
 		foreach (ref current; _events[0 .. _length]) {
-			if (current.data.u32 == length - 1) {
+			if (current.data.u32 == uint.max) {
 				continue;
 			}
 
@@ -207,7 +216,7 @@ class Selector : base.Selector
 		set!mode;
 
 		try {
-			errnoEnforce((_length = epoll_wait(_efd, _events.ptr, _events.length, timeout)) >= 0);
+			errnoEnforce((_length = epoll_wait(_efd, _events.ptr, cast (int) _events.length, timeout)) >= 0);
 		}
 		catch (ErrnoException e) {
 			if (e.errno != EINTR && e.errno != EAGAIN) {
