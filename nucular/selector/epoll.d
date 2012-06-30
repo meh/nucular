@@ -35,11 +35,14 @@ class Selector : base.Selector
 {
 	this ()
 	{
-		_events = new epoll_event[64];
-
-		errnoEnforce((_efd = epoll_create(cast (int) _events.length)) >= 0);
-
 		super();
+
+		errnoEnforce((_efd = epoll_create1(0)) >= 0);
+
+		epoll_event event = { events: EPOLLIN };
+		errnoEnforce(epoll_ctl(_efd, EPOLL_CTL_ADD, breaker.to!int, &event) == 0);
+
+		resize(4096);
 	}
 
 	override bool add (Descriptor descriptor)
@@ -84,18 +87,23 @@ class Selector : base.Selector
 		return true;
 	}
 
+	void resize (size_t size)
+	{
+		_events.length = size;
+	}
+
 	base.Selected available() ()
 	{
 		epoll();
 
-		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
+		return base.Selected(to!"read", to!"write", to!"error");
 	}
 
 	base.Selected available() (Duration timeout)
 	{
 		epoll(timeout.total!("msecs").to!int);
 
-		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
+		return base.Selected(to!"read", to!"write", to!"error");
 	}
 
 	base.Selected available(string mode) ()
@@ -103,7 +111,7 @@ class Selector : base.Selector
 	{
 		epoll!"read";
 
-		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
+		return base.Selected(to!"read", [], to!"error");
 	}
 
 	base.Selected available(string mode) (Duration timeout)
@@ -111,7 +119,7 @@ class Selector : base.Selector
 	{
 		epoll!"read"(timeout.total!("msecs").to!int);
 
-		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
+		return base.Selected(to!"read", [], to!"error");
 	}
 
 	base.Selected available(string mode) ()
@@ -119,7 +127,7 @@ class Selector : base.Selector
 	{
 		epoll!"write";
 
-		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
+		return base.Selected([], to!"write", to!"error");
 	}
 
 	base.Selected available(string mode) (Duration timeout)
@@ -127,7 +135,7 @@ class Selector : base.Selector
 	{
 		epoll!"write"(timeout.total!("msecs").to!int);
 
-		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
+		return base.Selected([], to!"write", to!"error");
 	}
 
 	void set(string mode) ()
@@ -170,6 +178,10 @@ class Selector : base.Selector
 		// XXX: somehow it's fucking up the u64, so we use u32, it won't
 		//      be able to handle 4 billion fds anyway.
 		foreach (ref current; _events[0 .. _length]) {
+			if (current.data.u32 == length - 1) {
+				continue;
+			}
+
 			static if (mode == "read") {
 				if (current.events & EPOLLIN) {
 					result ~= descriptors[current.data.u32];
@@ -202,6 +214,8 @@ class Selector : base.Selector
 				throw e;
 			}
 		}
+
+		breaker.flush();
 	}
 
 private:

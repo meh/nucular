@@ -715,6 +715,11 @@ class Reactor
 		wakeUp();
 	}
 
+	@property selector ()
+	{
+		return _selector;
+	}
+
 	@property defaultCreationCallback (void delegate (Connection) block)
 	{
 		_default_creation_callback = block;

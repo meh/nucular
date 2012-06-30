@@ -78,6 +78,11 @@ class Selector
 			return _read;
 		}
 
+		int to(T : int) ()
+		{
+			return _read.to!int;
+		}
+
 		override string toString ()
 		{
 			return "Breaker(r=" ~ _read.toString() ~ " w=" ~ _write.toString() ~ ")";
@@ -91,8 +96,6 @@ class Selector
 	this ()
 	{
 		_breaker = new Breaker;
-
-		add(_breaker.to!Descriptor);
 	}
 
 	bool add (Descriptor descriptor)
@@ -119,26 +122,9 @@ class Selector
 
 	final bool has (Descriptor descriptor)
 	{
-		return _descriptors.countUntil(descriptor) != -1;
+		return _descriptors.canFind(descriptor);
 	}
-
-	final Descriptor[] prepare (Descriptor[] descriptors)
-	{
-		_breaker.flush();
-
-		if (descriptors.empty) {
-			return null;
-		}
-
-		auto index = descriptors.countUntil(_breaker.to!Descriptor);
-
-		if (index != -1) {
-			descriptors = descriptors.remove(index);
-		}
-
-		return descriptors;
-	}
-
+	
 	final void wakeUp ()
 	{
 		_breaker.act();
@@ -151,7 +137,7 @@ class Selector
 
 	final @property length ()
 	{
-		return _descriptors.length - 1;
+		return _descriptors.length;
 	}
 
 	abstract Selected available() ();
@@ -164,6 +150,11 @@ protected:
 	final @property descriptors ()
 	{
 		return _descriptors;
+	}
+
+	final @property breaker ()
+	{
+		return _breaker;
 	}
 
 private:

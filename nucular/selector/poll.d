@@ -34,6 +34,15 @@ import base = nucular.selector.base;
 
 class Selector : base.Selector
 {
+	this ()
+	{
+		super();
+
+		pollfd p = { fd: breaker.to!int, events: POLLIN };
+
+		_set ~= p;
+	}
+
 	override bool add (Descriptor descriptor)
 	{
 		if (!super.add(descriptor)) {
@@ -42,8 +51,11 @@ class Selector : base.Selector
 
 		pollfd p = { fd: descriptor.to!int };
 
-		_set  ~= p;
-		_last  = null;
+		_set.length++;
+
+		_set[$ - 1] = _set[$ - 2];
+		_set[$ - 2] = p;
+		_last       = null;
 
 		return true;
 	}
@@ -63,14 +75,14 @@ class Selector : base.Selector
 	{
 		poll();
 
-		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
+		return base.Selected(to!"read", to!"write", to!"error");
 	}
 
 	base.Selected available() (Duration timeout)
 	{
 		poll(timeout.total!("msecs").to!int);
 
-		return base.Selected(prepare(to!"read"), prepare(to!"write"), prepare(to!"error"));
+		return base.Selected(to!"read", to!"write", to!"error");
 	}
 
 	base.Selected available(string mode) ()
@@ -78,7 +90,7 @@ class Selector : base.Selector
 	{
 		poll!"read";
 
-		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
+		return base.Selected(to!"read", [], to!"error");
 	}
 
 	base.Selected available(string mode) (Duration timeout)
@@ -86,7 +98,7 @@ class Selector : base.Selector
 	{
 		poll!"read"(timeout.total!("msecs").to!int);
 
-		return base.Selected(prepare(to!"read"), [], prepare(to!"error"));
+		return base.Selected(to!"read", [], to!"error");
 	}
 
 	base.Selected available(string mode) ()
@@ -94,7 +106,7 @@ class Selector : base.Selector
 	{
 		poll!"write";
 
-		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
+		return base.Selected([], to!"write", to!"error");
 	}
 
 	base.Selected available(string mode) (Duration timeout)
@@ -102,7 +114,7 @@ class Selector : base.Selector
 	{
 		poll!"write"(timeout.total!("msecs").to!int);
 
-		return base.Selected([], prepare(to!"write"), prepare(to!"error"));
+		return base.Selected([], to!"write", to!"error");
 	}
 
 	void set(string mode) ()
@@ -112,7 +124,7 @@ class Selector : base.Selector
 			return;
 		}
 
-		foreach (ref p; _set) {
+		foreach (ref p; _set[0 .. $ - 1]) {
 			static if (mode == "both") {
 				p.events = POLLIN | POLLOUT;
 			}
@@ -132,7 +144,7 @@ class Selector : base.Selector
 	{
 		Descriptor[] result;
 
-		foreach (index, ref p; _set) {
+		foreach (index, ref p; _set[0 .. $ - 1]) {
 			static if (mode == "read") {
 				if (p.revents & POLLIN) {
 					result ~= descriptors[index];
@@ -165,6 +177,8 @@ class Selector : base.Selector
 				throw e;
 			}
 		}
+
+		breaker.flush();
 	}
 
 private:

@@ -40,9 +40,9 @@ class Selector : base.Selector
 {
 	this ()
 	{
-		FD_ZERO(&_set);
-
 		super();
+
+		FD_ZERO(&_set);
 	}
 
 	override bool add (Descriptor descriptor)
@@ -77,12 +77,14 @@ class Selector : base.Selector
 		fd_set write = _set;
 		fd_set error = _set;
 
+		FD_SET(breaker.to!int, &read);
 		select(&read, &write, &error);
+		breaker.flush();
 
 		return base.Selected(
-			prepare(read.toDescriptors(descriptors)),
-			prepare(write.toDescriptors(descriptors)),
-			prepare(error.toDescriptors(descriptors))
+			read.toDescriptors(descriptors),
+			write.toDescriptors(descriptors),
+			error.toDescriptors(descriptors)
 		);
 	}
 
@@ -92,12 +94,14 @@ class Selector : base.Selector
 		fd_set write = _set;
 		fd_set error = _set;
 
+		FD_SET(breaker.to!int, &read);
 		select(&read, &write, &error, timeout.toTimeval);
+		breaker.flush();
 
 		return base.Selected(
-			prepare(read.toDescriptors(descriptors)),
-			prepare(write.toDescriptors(descriptors)),
-			prepare(error.toDescriptors(descriptors))
+			read.toDescriptors(descriptors),
+			write.toDescriptors(descriptors),
+			error.toDescriptors(descriptors)
 		);
 	}
 
@@ -107,12 +111,14 @@ class Selector : base.Selector
 		fd_set read  = _set;
 		fd_set error = _set;
 
+		FD_SET(breaker.to!int, &read);
 		select(&read, null, &error);
+		breaker.flush();
 
 		return base.Selected(
-			prepare(read.toDescriptors(descriptors)),
+			read.toDescriptors(descriptors),
 			[],
-			prepare(error.toDescriptors(descriptors))
+			error.toDescriptors(descriptors)
 		);
 	}
 
@@ -122,42 +128,50 @@ class Selector : base.Selector
 		fd_set read  = _set;
 		fd_set error = _set;
 
+		FD_SET(breaker.to!int, &read);
 		select(&read, null, &error, timeout.toTimeval);
+		breaker.flush();
 
 		return base.Selected(
-			prepare(read.toDescriptors(descriptors)),
+			read.toDescriptors(descriptors),
 			[],
-			prepare(error.toDescriptors(descriptors))
+			error.toDescriptors(descriptors)
 		);
 	}
 
 	base.Selected available(string mode) ()
 		if (mode == "write")
 	{
+		fd_set read;
 		fd_set write = _set;
 		fd_set error = _set;
 
-		select(null, &write, &error);
+		FD_SET(breaker.to!int, &read);
+		select(&read, &write, &error);
+		breaker.flush();
 
 		return base.Selected(
 			[],
-			prepare(write.toDescriptors(descriptors)),
-			prepare(error.toDescriptors(descriptors))
+			write.toDescriptors(descriptors),
+			error.toDescriptors(descriptors)
 		);
 	}
 
 	base.Selected available(string mode) (Duration timeout)
 		if (mode == "write")
 	{
+		fd_set read;
 		fd_set write = _set;
 		fd_set error = _set;
 
-		select(null, &write, &error, timeout.toTimeval);
+		FD_SET(breaker.to!int, &read);
+		select(&read, &write, &error, timeout.toTimeval);
+		breaker.flush();
 
 		return base.Selected(
 			[],
-			prepare(write.toDescriptors(descriptors)),
-			prepare(error.toDescriptors(descriptors))
+			write.toDescriptors(descriptors),
+			error.toDescriptors(descriptors)
 		);
 	}
 

@@ -18,8 +18,6 @@
 
 module nucular.security;
 
-import std.stdio : writeln;
-
 import std.socket : Address, InternetAddress, Internet6Address;
 import std.exception;
 import std.file;

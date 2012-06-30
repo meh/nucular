@@ -18,8 +18,6 @@
 
 module nucular.connection;
 
-import std.stdio : writeln;
-
 import std.conv;
 import std.exception;
 import std.array;
