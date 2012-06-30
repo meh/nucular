@@ -35,7 +35,9 @@ class Selector : base.Selector
 {
 	this ()
 	{
-		errnoEnforce((_efd = epoll_create(_events.length)) >= 0);
+		_events = new epoll_event[64];
+
+		errnoEnforce((_efd = epoll_create(cast (int) _events.length)) >= 0);
 
 		super();
 	}
@@ -203,10 +205,10 @@ class Selector : base.Selector
 	}
 
 private:
-	int             _efd;
-	epoll_event[64] _events;
-	int             _length;
-	string          _last;
+	int           _efd;
+	epoll_event[] _events;
+	int           _length;
+	string        _last;
 }
 
 private extern (C):
