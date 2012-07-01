@@ -251,7 +251,7 @@ private extern (C):
 
 	enum
 	{
-		EPOLL_CLOEXEC = octal!2000000,
+		EPOLL_CLOEXEC  = octal!2000000,
 		EPOLL_NONBLOCK = octal!4000
 	}
 
