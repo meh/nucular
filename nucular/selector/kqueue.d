@@ -163,22 +163,32 @@ class Selector : base.Selector
 		kevent_t ev;
 
 		foreach (index, descriptor; descriptors) {
+			EV_SET(&ev, descriptor.to!int, 0, 0, 0, 0, cast (void*) index);
+
 			static if (mode == "read") {
-				EV_SET(&ev, descriptor.to!int, EVFILT_WRITE, EV_ADD | EV_DISABLE, 0, 0, cast (void*) index);
+				ev.filter = EVFILT_WRITE;
+				ev.flags  = EV_ADD | EV_DISABLE;
+
 				errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
 			}
 			else static if (mode == "write") {
-				EV_SET(&ev, descriptor.to!int, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, cast (void*) index);
+				ev.filter = EVFILT_READ;
+				ev.flags  = EV_ADD | EV_DISABLE;
+
 				errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
 			}
 
 			static if (mode == "read" || mode == "both") {
-				EV_SET(&ev, descriptor.to!int, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, cast (void*) index);
+				ev.filter = EVFILT_READ;
+				ev.flags  = EV_ADD | EV_ENABLE;
+
 				errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
 			}
 
 			static if (mode == "write" || mode == "both") {
-				EV_SET(&ev, descriptor.to!int, EVFILT_WRITE, EV_ADD | EV_ENABLE, 0, 0, cast (void*) index);
+				ev.filter = EVFILT_WRITE;
+				ev.flags  = EV_ADD | EV_ENABLE;
+
 				errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
 			}
 		}
