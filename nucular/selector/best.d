@@ -30,6 +30,9 @@ else version (kqueue) {
 else version (iocompletion) {
 	public import nucular.selector.iocompletion;
 }
+else version (port) {
+	public import nucular.selector.port;
+}
 else version (select) {
 	public import nucular.selector.select;
 }
@@ -49,10 +52,20 @@ else {
 
 		public import nucular.selector.kqueue;
 	}
+	else version (NetBSD) {
+		version = kqueue;
+
+		public import nucular.selector.kqueue;
+	}
 	else version (OSX) {
 		version = kqueue;
 
 		public import nucular.selector.kqueue;
+	}
+	else version (Solaris) {
+		version = port;
+
+		public import nucular.selector.port;
 	}
 	else version (linux) {
 		version = epoll;
