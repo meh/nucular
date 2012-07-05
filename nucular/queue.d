@@ -22,7 +22,7 @@ struct Queue(T)
 {
 	void pushBack (T data)
 	{
-		auto node = new Node(data, null, _tail);
+		auto node = new Node(data, null);
 
 		if (_head is null) {
 			_head = _tail = node;
@@ -43,9 +43,6 @@ struct Queue(T)
 
 		if (_head is null) {
 			_tail = null;
-		}
-		else {
-			_head.previous = null;
 		}
 
 		_length--;
@@ -71,21 +68,19 @@ struct Queue(T)
 private:
 	struct Node
 	{
-		T data;
-
+		T     data;
 		Node* next;
-		Node* previous;
 
-		this (T a, Node* b, Node* c)
+		this (T a, Node* b)
 		{
-			data     = a;
-			next     = b;
-			previous = c;
+			data = a;
+			next = b;
 		}
 	}
 
 private:
-	Node*  _head;
-	Node*  _tail;
+	Node* _head;
+	Node* _tail;
+
 	size_t _length;
 }
