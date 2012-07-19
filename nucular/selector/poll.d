@@ -51,11 +51,8 @@ class Selector : base.Selector
 
 		pollfd p = { fd: descriptor.to!int };
 
-		_set.length++;
-
-		_set[$ - 1] = _set[$ - 2];
-		_set[$ - 2] = p;
-		_last       = null;
+		_set  ~= p;
+		_last  = null;
 
 		return true;
 	}
@@ -124,7 +121,7 @@ class Selector : base.Selector
 			return;
 		}
 
-		foreach (ref p; _set[0 .. $ - 1]) {
+		foreach (ref p; _set[1 .. $]) {
 			static if (mode == "both") {
 				p.events = POLLIN | POLLOUT;
 			}
@@ -144,7 +141,7 @@ class Selector : base.Selector
 	{
 		Descriptor[] result;
 
-		foreach (index, ref p; _set[0 .. $ - 1]) {
+		foreach (index, ref p; _set[1 .. $]) {
 			static if (mode == "read") {
 				if (p.revents & POLLIN) {
 					result ~= descriptors[index];
