@@ -573,19 +573,22 @@ class Reactor
 
 		Timer[]         timers_to_call;
 		PeriodicTimer[] periodic_timers_to_call;
+		SysTime         now = Clock.currTime();
 
 		synchronized (_mutex) {
 			foreach (timer; _timers) {
-				if (timer.left() <= (0).dur!"seconds") {
+				if (timer.left(now) <= (0).dur!"seconds") {
 					timers_to_call ~= timer;
 				}
 			}
 
 			foreach (timer; _periodic_timers) {
-				if (timer.left() <= (0).dur!"seconds") {
+				if (timer.left(now) <= (0).dur!"seconds") {
 					periodic_timers_to_call ~= timer;
 				}
 			}
+
+			_timers = _timers.filter!(a => !timers_to_call.any!(b => a == b)).array;
 		}
 
 		foreach (timer; timers_to_call) {
@@ -594,10 +597,6 @@ class Reactor
 
 		foreach (timer; periodic_timers_to_call) {
 			timer.execute();
-		}
-
-		synchronized (_mutex) {
-			_timers = _timers.filter!(a => !timers_to_call.any!(b => a == b)).array;
 		}
 	}
 
