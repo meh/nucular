@@ -27,9 +27,6 @@ else version (epoll) {
 else version (kqueue) {
 	public import nucular.selector.kqueue;
 }
-else version (iocompletion) {
-	public import nucular.selector.iocompletion;
-}
 else version (port) {
 	public import nucular.selector.port;
 }
@@ -37,12 +34,7 @@ else version (select) {
 	public import nucular.selector.select;
 }
 else {
-	version (Windows) {
-		version = iocompletion;
-
-		public import nucular.selector.iocompletion;
-	}
-	else version (FreeBSD) {
+	version (FreeBSD) {
 		version = kqeue;
 
 		public import nucular.selector.kqueue;
