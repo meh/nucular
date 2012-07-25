@@ -20,8 +20,6 @@ module nucular.selector.kqueue;
 
 version (kqueue):
 
-import std.stdio : writeln;
-
 import core.time;
 import core.stdc.errno;
 import core.sys.freebsd.sys.event;
@@ -166,16 +164,20 @@ class Selector : base.Selector
 			EV_SET(&ev, descriptor.to!int, 0, 0, 0, 0, cast (void*) index);
 
 			static if (mode == "read") {
-				ev.filter = EVFILT_WRITE;
-				ev.flags  = EV_ADD | EV_DISABLE;
+				if (_last == "both") {
+					ev.filter = EVFILT_WRITE;
+					ev.flags  = EV_ADD | EV_DISABLE;
 
-				errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
+					errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
+				}
 			}
 			else static if (mode == "write") {
-				ev.filter = EVFILT_READ;
-				ev.flags  = EV_ADD | EV_DISABLE;
+				if (_last == "both") {
+					ev.filter = EVFILT_READ;
+					ev.flags  = EV_ADD | EV_DISABLE;
 
-				errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
+					errnoEnforce(.kevent(_kq, &ev, 1, null, 0, null) >= 0);
+				}
 			}
 
 			static if (mode == "read" || mode == "both") {
